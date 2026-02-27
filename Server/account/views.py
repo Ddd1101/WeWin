@@ -13,10 +13,22 @@ import string
 
 
 def generate_company_code():
-    while True:
-        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        if not Company.objects.filter(code=code).exists():
-            return code
+    last_company = Company.objects.order_by('-id').first()
+    if last_company:
+        try:
+            last_code = int(last_company.code)
+            new_code = last_code + 1
+        except ValueError:
+            new_code = 10000001
+    else:
+        new_code = 10000001
+    
+    code_str = str(new_code).zfill(8)
+    while Company.objects.filter(code=code_str).exists():
+        new_code += 1
+        code_str = str(new_code).zfill(8)
+    
+    return code_str
 
 
 SECRET_KEY = settings.SECRET_KEY
@@ -233,6 +245,7 @@ def get_users(request):
                 'phone': user.phone,
                 'company_id': user.company_id,
                 'company_name': user.company.name if user.company else None,
+                'company_code': user.company.code if user.company else None,
                 'is_active': user.is_active,
                 'date_joined': user.date_joined.isoformat()
             })
@@ -331,6 +344,7 @@ def create_user(request):
             'phone': user.phone,
             'company_id': user.company_id,
             'company_name': user.company.name if user.company else None,
+            'company_code': user.company.code if user.company else None,
             'is_active': user.is_active,
             'date_joined': user.date_joined.isoformat()
         }, status=201)

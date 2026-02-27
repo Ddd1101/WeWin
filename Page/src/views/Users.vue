@@ -13,7 +13,8 @@
         <el-table-column prop="user_type_display" label="用户类型" width="180" />
         <el-table-column prop="email" label="邮箱" width="200" />
         <el-table-column prop="phone" label="电话" width="150" />
-        <el-table-column prop="company_name" label="企业名称" width="200" />
+        <el-table-column prop="company_name" label="企业名称" width="180" />
+        <el-table-column prop="company_code" label="企业编号" width="120" />
         <el-table-column prop="is_active" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.is_active ? 'success' : 'danger'">
