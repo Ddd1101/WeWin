@@ -1,8 +1,10 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.exceptions import PermissionDenied
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from django.contrib.auth import get_user_model, login, logout as auth_logout
 from .models import Enterprise, UserType
 from .serializers import (
@@ -14,6 +16,7 @@ from .serializers import (
 User = get_user_model()
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class EnterpriseViewSet(viewsets.ModelViewSet):
     queryset = Enterprise.objects.all()
     serializer_class = EnterpriseSerializer
@@ -25,6 +28,7 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
         return [IsAdminUser()]
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer

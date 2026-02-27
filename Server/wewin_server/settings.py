@@ -47,7 +47,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
+    # "django.middleware.csrf.CsrfViewMiddleware",  # 暂时禁用CSRF用于开发
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -131,6 +131,12 @@ AUTH_USER_MODEL = 'accounts.User'
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+
+# CSRF settings for development
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8001',
+    'http://127.0.0.1:8001',
+]
 
 # REST Framework settings
 REST_FRAMEWORK = {

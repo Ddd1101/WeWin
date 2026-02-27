@@ -91,7 +91,11 @@ export default {
       validateFields({ force: true }, (err, values) => {
         if (!err) {
           this.registerBtn = true
-          register(values).then(() => {
+          const data = {
+            ...values,
+            password_confirm: values.password
+          }
+          register(data).then(() => {
             this.$message.success('注册成功，请登录')
             $router.push({ name: 'login' })
             this.registerBtn = false
