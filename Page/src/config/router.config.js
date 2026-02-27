@@ -265,6 +265,12 @@ export const asyncRouterMap = [
                 }
               }
             ]
+          },
+          {
+            path: '/account/user-management',
+            name: 'UserManagement',
+            component: () => import('@/views/account/UserManagement'),
+            meta: { title: '用户管理', keepAlive: true, permission: ['user'] }
           }
         ]
       }

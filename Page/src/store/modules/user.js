@@ -39,7 +39,6 @@ const user = {
   },
 
   actions: {
-    // 登录
     Login ({ commit }, userInfo) {
       return new Promise((resolve, reject) => {
         login(userInfo).then(response => {
@@ -58,7 +57,6 @@ const user = {
       })
     },
 
-    // 获取用户信息
     GetInfo ({ commit }) {
       return new Promise((resolve, reject) => {
         getInfo().then(response => {
@@ -75,8 +73,7 @@ const user = {
       })
     },
 
-    // 登出
-    Logout ({ commit, state }) {
+    Logout ({ commit }) {
       return new Promise((resolve) => {
         logout().then(() => {
           commit('SET_TOKEN', '')
@@ -86,7 +83,11 @@ const user = {
           resolve()
         }).catch((err) => {
           console.log('logout fail:', err)
-        }).finally(() => {
+          commit('SET_TOKEN', '')
+          commit('SET_ROLES', [])
+          commit('SET_INFO', {})
+          storage.remove(ACCESS_TOKEN)
+          resolve()
         })
       })
     }

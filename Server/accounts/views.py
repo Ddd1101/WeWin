@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.exceptions import PermissionDenied
-from django.contrib.auth import get_user_model, login, logout
+from django.contrib.auth import get_user_model, login, logout as auth_logout
 from .models import Enterprise, UserType
 from .serializers import (
     UserSerializer,
@@ -76,7 +76,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def logout(self, request):
-        logout(request)
+        auth_logout(request)
         return Response({'success': 'Logged out'})
 
     @action(detail=False, methods=['get'])
