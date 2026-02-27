@@ -236,6 +236,104 @@ def get_users(request):
 
 
 @require_http_methods(['GET'])
+def get_companies(request):
+    try:
+        companies = Company.objects.all()
+        company_list = []
+        for company in companies:
+            company_list.append({
+                'id': company.id,
+                'name': company.name,
+                'code': company.code
+            })
+        return JsonResponse({'companies': company_list})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def create_user(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+        email = data.get('email', '')
+        phone = data.get('phone', '')
+        user_type = data.get('user_type')
+        company_id = data.get('company_id')
+
+        if not all([username, password, user_type]):
+            return JsonResponse({'error': '必填字段不能为空'}, status=400)
+
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'error': '用户名已存在'}, status=400)
+
+        company = None
+        if company_id:
+            try:
+                company = Company.objects.get(id=company_id)
+            except Company.DoesNotExist:
+                return JsonResponse({'error': '企业不存在'}, status=404)
+
+        has_permission = False
+        if current_user.user_type == UserType.SUPER_ADMIN:
+            has_permission = True
+        elif current_user.user_type == UserType.SITE_ADMIN:
+            if user_type != UserType.SUPER_ADMIN:
+                has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
+            if user_type == UserType.ENTERPRISE_USER and company == current_user.company:
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限创建该类型用户'}, status=403)
+
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            email=email,
+            user_type=user_type,
+            company=company,
+            phone=phone,
+            created_by=current_user
+        )
+
+        return JsonResponse({
+            'id': user.id,
+            'username': user.username,
+            'user_type': user.user_type,
+            'user_type_display': user.get_user_type_display(),
+            'email': user.email,
+            'phone': user.phone,
+            'company_id': user.company_id,
+            'company_name': user.company.name if user.company else None,
+            'is_active': user.is_active,
+            'date_joined': user.date_joined.isoformat()
+        }, status=201)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
 def get_page_config(request):
     try:
         auth_header = request.headers.get('Authorization')
@@ -262,5 +360,100 @@ def get_page_config(request):
             })
 
         return JsonResponse({'pages': pages})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['PUT'])
+def update_user_status(request, user_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        target_user = User.objects.get(id=user_id)
+        
+        has_permission = False
+        if current_user.user_type == UserType.SUPER_ADMIN:
+            has_permission = True
+        elif current_user.user_type == UserType.SITE_ADMIN:
+            if target_user.user_type != UserType.SUPER_ADMIN:
+                has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
+            if target_user.user_type == UserType.ENTERPRISE_USER and target_user.company == current_user.company:
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限修改该用户'}, status=403)
+
+        data = json.loads(request.body)
+        is_active = data.get('is_active')
+        
+        if is_active is not None:
+            target_user.is_active = is_active
+            target_user.save()
+
+        return JsonResponse({
+            'id': target_user.id,
+            'username': target_user.username,
+            'is_active': target_user.is_active
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['DELETE'])
+def delete_user(request, user_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        target_user = User.objects.get(id=user_id)
+        
+        has_permission = False
+        if current_user.user_type == UserType.SUPER_ADMIN:
+            has_permission = True
+        elif current_user.user_type == UserType.SITE_ADMIN:
+            if target_user.user_type != UserType.SUPER_ADMIN:
+                has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
+            if target_user.user_type == UserType.ENTERPRISE_USER and target_user.company == current_user.company:
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限删除该用户'}, status=403)
+
+        if target_user.id == current_user.id:
+            return JsonResponse({'error': '不能删除自己'}, status=400)
+
+        target_user.delete()
+        return JsonResponse({'message': '删除成功'})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

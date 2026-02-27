@@ -17,6 +17,9 @@
         <p><strong>默认账号：</strong></p>
         <p>网站超级管理员: superadmin / superadmin123</p>
       </div>
+      <div class="register-link">
+        还没有账号？<router-link to="/register">立即注册</router-link>
+      </div>
     </div>
   </div>
 </template>
@@ -113,5 +116,17 @@ const handleLogin = async () => {
 }
 .account-hint p {
   margin: 5px 0;
+}
+.register-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+}
+.register-link a {
+  color: #409eff;
+  text-decoration: none;
+}
+.register-link a:hover {
+  text-decoration: underline;
 }
 </style>
