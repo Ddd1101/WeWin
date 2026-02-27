@@ -12,6 +12,11 @@ const routes = [
     component: () => import('../views/Register.vue')
   },
   {
+    path: '/bind-company',
+    name: 'BindCompany',
+    component: () => import('../views/BindCompany.vue')
+  },
+  {
     path: '/',
     name: 'Layout',
     component: () => import('../layout/index.vue'),
@@ -64,7 +69,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
-  if (to.path !== '/login' && to.path !== '/register' && !token) {
+  if (to.path !== '/login' && to.path !== '/register' && to.path !== '/bind-company' && !token) {
     next('/login')
   } else if ((to.path === '/login' || to.path === '/register') && token) {
     next('/')

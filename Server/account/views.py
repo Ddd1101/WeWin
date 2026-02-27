@@ -8,6 +8,15 @@ import json
 from datetime import datetime, timedelta
 import jwt
 from django.conf import settings
+import random
+import string
+
+
+def generate_company_code():
+    while True:
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        if not Company.objects.filter(code=code).exists():
+            return code
 
 
 SECRET_KEY = settings.SECRET_KEY
@@ -453,6 +462,206 @@ def delete_user(request, user_id):
 
         target_user.delete()
         return JsonResponse({'message': '删除成功'})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def simple_register(request):
+    try:
+        data = json.loads(request.body)
+        
+        username = data.get('username')
+        password = data.get('password')
+        email = data.get('email', '')
+        phone = data.get('phone', '')
+        
+        if not all([username, password]):
+            return JsonResponse({'error': '用户名和密码不能为空'}, status=400)
+        
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'error': '用户名已存在'}, status=400)
+        
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            email=email,
+            phone=phone,
+            user_type=UserType.TEMPORARY
+        )
+        
+        token = generate_token(user)
+        
+        return JsonResponse({
+            'token': token,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'user_type': user.user_type,
+                'user_type_display': user.get_user_type_display(),
+                'email': user.email,
+                'phone': user.phone,
+                'company_id': None,
+                'company_name': None
+            }
+        }, status=201)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_current_user(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+        
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+        
+        user = User.objects.get(id=payload['user_id'])
+        
+        return JsonResponse({
+            'id': user.id,
+            'username': user.username,
+            'user_type': user.user_type,
+            'user_type_display': user.get_user_type_display(),
+            'email': user.email,
+            'phone': user.phone,
+            'company_id': user.company_id,
+            'company_name': user.company.name if user.company else None,
+            'company_code': user.company.code if user.company else None
+        })
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def create_and_bind_company(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+        
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+        
+        user = User.objects.get(id=payload['user_id'])
+        
+        if user.company:
+            return JsonResponse({'error': '您已经绑定了企业'}, status=400)
+        
+        data = json.loads(request.body)
+        company_name = data.get('company_name')
+        company_address = data.get('company_address', '')
+        company_contact_name = data.get('company_contact_name', '')
+        company_contact_phone = data.get('company_contact_phone', '')
+        
+        if not company_name:
+            return JsonResponse({'error': '企业名称不能为空'}, status=400)
+        
+        if Company.objects.filter(name=company_name).exists():
+            return JsonResponse({'error': '企业名称已存在'}, status=400)
+        
+        with transaction.atomic():
+            company_code = generate_company_code()
+            company = Company.objects.create(
+                name=company_name,
+                code=company_code,
+                address=company_address,
+                contact_name=company_contact_name,
+                contact_phone=company_contact_phone
+            )
+            
+            user.company = company
+            user.user_type = UserType.ENTERPRISE_ADMIN
+            user.save()
+        
+        return JsonResponse({
+            'id': user.id,
+            'username': user.username,
+            'user_type': user.user_type,
+            'user_type_display': user.get_user_type_display(),
+            'email': user.email,
+            'phone': user.phone,
+            'company_id': company.id,
+            'company_name': company.name,
+            'company_code': company.code
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def bind_existing_company(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+        
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+        
+        user = User.objects.get(id=payload['user_id'])
+        
+        if user.company:
+            return JsonResponse({'error': '您已经绑定了企业'}, status=400)
+        
+        data = json.loads(request.body)
+        company_code = data.get('company_code')
+        
+        if not company_code:
+            return JsonResponse({'error': '企业编号不能为空'}, status=400)
+        
+        company = Company.objects.filter(code=company_code).first()
+        if not company:
+            return JsonResponse({'error': '企业不存在'}, status=404)
+        
+        user.company = company
+        user.user_type = UserType.ENTERPRISE_USER
+        user.save()
+        
+        return JsonResponse({
+            'id': user.id,
+            'username': user.username,
+            'user_type': user.user_type,
+            'user_type_display': user.get_user_type_display(),
+            'email': user.email,
+            'phone': user.phone,
+            'company_id': company.id,
+            'company_name': company.name,
+            'company_code': company.code
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
     except User.DoesNotExist:
         return JsonResponse({'error': '用户不存在'}, status=404)
     except Exception as e:

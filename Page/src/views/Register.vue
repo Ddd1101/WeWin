@@ -15,11 +15,8 @@
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="form.email" placeholder="请输入邮箱" />
         </el-form-item>
-        <el-form-item label="企业名称" prop="company_name">
-          <el-input v-model="form.company_name" placeholder="请输入企业名称" />
-        </el-form-item>
-        <el-form-item label="企业编号" prop="company_code">
-          <el-input v-model="form.company_code" placeholder="请输入企业编号" />
+        <el-form-item label="电话" prop="phone">
+          <el-input v-model="form.phone" placeholder="请输入电话" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleRegister" :loading="loading" style="width: 100%">
@@ -60,8 +57,7 @@ const form = ref({
   password: '',
   confirmPassword: '',
   email: '',
-  company_name: '',
-  company_code: ''
+  phone: ''
 })
 
 const rules = ref({
@@ -70,9 +66,7 @@ const rules = ref({
   confirmPassword: [
     { required: true, message: '请再次输入密码', trigger: 'blur' },
     { validator: validateConfirmPassword, trigger: 'blur' }
-  ],
-  company_name: [{ required: true, message: '请输入企业名称', trigger: 'blur' }],
-  company_code: [{ required: true, message: '请输入企业编号', trigger: 'blur' }]
+  ]
 })
 
 const handleRegister = async () => {
@@ -86,11 +80,10 @@ const handleRegister = async () => {
           username: form.value.username,
           password: form.value.password,
           email: form.value.email,
-          company_name: form.value.company_name,
-          company_code: form.value.company_code
+          phone: form.value.phone
         }
         
-        const response = await fetch('http://localhost:8000/api/account/create-enterprise-admin/', {
+        const response = await fetch('http://localhost:8000/api/account/register/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -105,7 +98,7 @@ const handleRegister = async () => {
           userStore.setToken(result.token)
           userStore.setUserInfo(result.user)
           setTimeout(() => {
-            router.push('/')
+            router.push('/bind-company')
           }, 1000)
         } else {
           ElMessage.error(result.error || '注册失败')
