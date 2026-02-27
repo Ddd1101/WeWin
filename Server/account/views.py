@@ -1,0 +1,266 @@
+from django.contrib.auth import authenticate, login, logout
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.db import transaction
+from .models import User, Company, UserType, PageConfig
+import json
+from datetime import datetime, timedelta
+import jwt
+from django.conf import settings
+
+
+SECRET_KEY = settings.SECRET_KEY
+
+
+def generate_token(user):
+    payload = {
+        'user_id': user.id,
+        'username': user.username,
+        'user_type': user.user_type,
+        'exp': datetime.utcnow() + timedelta(days=7)
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def login_view(request):
+    try:
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+
+        if not username or not password:
+            return JsonResponse({'error': '用户名和密码不能为空'}, status=400)
+
+        user = authenticate(username=username, password=password)
+        if user is None:
+            return JsonResponse({'error': '用户名或密码错误'}, status=401)
+
+        if not user.is_active:
+            return JsonResponse({'error': '账户已被禁用'}, status=403)
+
+        token = generate_token(user)
+
+        return JsonResponse({
+            'token': token,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'user_type': user.user_type,
+                'email': user.email,
+                'company_id': user.company_id if user.company else None,
+                'company_name': user.company.name if user.company else None
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def logout_view(request):
+    logout(request)
+    return JsonResponse({'message': '登出成功'})
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def create_enterprise_admin(request):
+    try:
+        data = json.loads(request.body)
+        
+        username = data.get('username')
+        password = data.get('password')
+        email = data.get('email', '')
+        phone = data.get('phone', '')
+        
+        company_name = data.get('company_name')
+        company_code = data.get('company_code')
+        company_address = data.get('company_address', '')
+        company_contact_name = data.get('company_contact_name', '')
+        company_contact_phone = data.get('company_contact_phone', '')
+
+        if not all([username, password, company_name, company_code]):
+            return JsonResponse({'error': '必填字段不能为空'}, status=400)
+
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'error': '用户名已存在'}, status=400)
+
+        if Company.objects.filter(name=company_name).exists():
+            return JsonResponse({'error': '企业名称已存在'}, status=400)
+
+        if Company.objects.filter(code=company_code).exists():
+            return JsonResponse({'error': '企业编号已存在'}, status=400)
+
+        with transaction.atomic():
+            company = Company.objects.create(
+                name=company_name,
+                code=company_code,
+                address=company_address,
+                contact_name=company_contact_name,
+                contact_phone=company_contact_phone
+            )
+
+            user = User.objects.create_user(
+                username=username,
+                password=password,
+                email=email,
+                user_type=UserType.ENTERPRISE_ADMIN,
+                company=company,
+                phone=phone
+            )
+
+        token = generate_token(user)
+
+        return JsonResponse({
+            'token': token,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'user_type': user.user_type,
+                'email': user.email,
+                'company_id': company.id,
+                'company_name': company.name
+            }
+        }, status=201)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def create_enterprise_user(request):
+    try:
+        data = json.loads(request.body)
+        
+        username = data.get('username')
+        password = data.get('password')
+        email = data.get('email', '')
+        phone = data.get('phone', '')
+        company_identifier = data.get('company_identifier')
+
+        if not all([username, password, company_identifier]):
+            return JsonResponse({'error': '必填字段不能为空'}, status=400)
+
+        company = Company.objects.filter(name=company_identifier).first()
+        if not company:
+            company = Company.objects.filter(code=company_identifier).first()
+
+        if not company:
+            return JsonResponse({'error': '企业不存在'}, status=404)
+
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'error': '用户名已存在'}, status=400)
+
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            email=email,
+            user_type=UserType.ENTERPRISE_USER,
+            company=company,
+            phone=phone
+        )
+
+        token = generate_token(user)
+
+        return JsonResponse({
+            'token': token,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'user_type': user.user_type,
+                'email': user.email,
+                'company_id': company.id,
+                'company_name': company.name
+            }
+        }, status=201)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_users(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        
+        users = []
+        if current_user.user_type == UserType.SUPER_ADMIN:
+            users = User.objects.all()
+        elif current_user.user_type == UserType.SITE_ADMIN:
+            users = User.objects.exclude(user_type=UserType.SUPER_ADMIN)
+        elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
+            users = User.objects.filter(company=current_user.company)
+        else:
+            return JsonResponse({'error': '无权限查看用户'}, status=403)
+
+        user_list = []
+        for user in users:
+            user_list.append({
+                'id': user.id,
+                'username': user.username,
+                'user_type': user.user_type,
+                'user_type_display': user.get_user_type_display(),
+                'email': user.email,
+                'phone': user.phone,
+                'company_id': user.company_id,
+                'company_name': user.company.name if user.company else None,
+                'is_active': user.is_active,
+                'date_joined': user.date_joined.isoformat()
+            })
+
+        return JsonResponse({'users': user_list})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_page_config(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        user_type = payload['user_type']
+        configs = PageConfig.objects.filter(user_type=user_type, is_visible=True).order_by('order')
+        
+        pages = []
+        for config in configs:
+            pages.append({
+                'name': config.page_name,
+                'route': config.page_route,
+                'order': config.order
+            })
+
+        return JsonResponse({'pages': pages})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

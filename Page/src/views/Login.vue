@@ -14,10 +14,8 @@
         </el-form-item>
       </el-form>
       <div class="account-hint">
-        <p><strong>测试账号：</strong></p>
-        <p>管理员: admin / 123456</p>
-        <p>店长: manager / 123456</p>
-        <p>员工: staff / 123456</p>
+        <p><strong>默认账号：</strong></p>
+        <p>网站超级管理员: superadmin / superadmin123</p>
       </div>
     </div>
   </div>
@@ -45,12 +43,6 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
-const testAccounts = {
-  admin: { password: '123456', role: 'superadmin' },
-  manager: { password: '123456', role: 'admin' },
-  staff: { password: '123456', role: 'user' }
-}
-
 const handleLogin = async () => {
   if (!loginFormRef.value) return
   
@@ -58,22 +50,27 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        const response = await fetch('http://localhost:8000/api/account/login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username: loginForm.username,
+            password: loginForm.password
+          })
+        })
         
-        const account = testAccounts[loginForm.username]
-        if (account && account.password === loginForm.password) {
-          const token = 'mock-token-' + Date.now()
-          const userInfo = { username: loginForm.username, role: account.role }
-          const currentStore = { id: 1, name: '旗舰店' }
-          
-          userStore.setToken(token)
-          userStore.setUserInfo(userInfo)
-          userStore.setCurrentStore(currentStore)
+        const data = await response.json()
+        
+        if (response.ok) {
+          userStore.setToken(data.token)
+          userStore.setUserInfo(data.user)
           
           ElMessage.success('登录成功')
           router.push('/')
         } else {
-          ElMessage.error('用户名或密码错误')
+          ElMessage.error(data.error || '登录失败')
         }
       } catch (error) {
         ElMessage.error('登录失败，请重试')
