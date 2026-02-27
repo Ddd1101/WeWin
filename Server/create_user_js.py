@@ -1,4 +1,4 @@
-import storage from 'store'
+content = '''import storage from 'store'
 import expirePlugin from 'store/plugins/expire'
 import { login, getInfo, logout } from '@/api/accounts'
 import { ACCESS_TOKEN } from '@/store/mutation-types'
@@ -39,7 +39,6 @@ const user = {
   },
 
   actions: {
-    // 登录
     Login ({ commit }, userInfo) {
       return new Promise((resolve, reject) => {
         login(userInfo).then(response => {
@@ -58,7 +57,6 @@ const user = {
       })
     },
 
-    // 获取用户信息
     GetInfo ({ commit }) {
       return new Promise((resolve, reject) => {
         getInfo().then(response => {
@@ -75,7 +73,6 @@ const user = {
       })
     },
 
-    // 登出
     Logout ({ commit, state }) {
       return new Promise((resolve) => {
         logout().then(() => {
@@ -95,3 +92,9 @@ const user = {
 }
 
 export default user
+'''
+
+with open(r'd:\workplace_shop\WeWin\Page\src\store\modules\user.js', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("user.js file created successfully!")
