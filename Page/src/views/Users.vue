@@ -1,103 +1,136 @@
 <template>
-  <div class="users">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>用户管理</span>
-          <el-button type="primary" @click="handleRefresh">刷新</el-button>
-        </div>
-      </template>
+  <div class="users-container">
+    <div class="users-header">
+      <h2>用户管理</h2>
+      <el-button type="primary" @click="handleRefresh">刷新</el-button>
+    </div>
+    
+    <!-- 筛选条件 -->
+    <div class="filter-container">
+      <el-form :inline="true" :model="filterForm" class="filter-form">
+        <el-form-item label="用户名">
+          <el-input v-model="filterForm.username" placeholder="请输入用户名" clearable />
+        </el-form-item>
+        <el-form-item label="姓名">
+          <el-input v-model="filterForm.realName" placeholder="请输入真实姓名" clearable />
+        </el-form-item>
+        <el-form-item label="用户类型">
+          <el-select v-model="filterForm.userType" placeholder="请选择用户类型" clearable>
+            <el-option label="网站超级管理员" value="super_admin" />
+            <el-option label="网站管理员" value="site_admin" />
+            <el-option label="企业负责人" value="enterprise_leader" />
+            <el-option label="企业用户管理员" value="enterprise_admin" />
+            <el-option label="企业用户普通账户" value="enterprise_user" />
+            <el-option label="临时账户" value="temporary" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="企业">
+          <el-input v-model="filterForm.company" placeholder="请输入企业名称或编号" clearable />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="filterForm.status" placeholder="请选择状态" clearable>
+            <el-option label="激活" value="true" />
+            <el-option label="禁用" value="false" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleFilter">筛选</el-button>
+          <el-button @click="resetFilter">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+    
+    <!-- 用户表格 -->
+    <el-table
+      :data="filteredUsers"
+      v-loading="loading"
+      stripe
+      style="width: 100%"
+    >
+      <!-- 展开行 -->
+      <el-table-column type="expand">
+        <template #default="{ row }">
+          <div class="user-details">
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="邮箱">{{ row.email || '未设置' }}</el-descriptions-item>
+              <el-descriptions-item label="电话">{{ row.phone || '未设置' }}</el-descriptions-item>
+              <el-descriptions-item label="企业编号">{{ row.company_code || '无' }}</el-descriptions-item>
+              <el-descriptions-item label="创建时间">
+                <el-tooltip 
+                  :content="new Date(row.date_joined).toLocaleString('zh-CN', { 
+                    year: 'numeric', 
+                    month: '2-digit', 
+                    day: '2-digit', 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                  })" 
+                  placement="top"
+                >
+                  <span>{{ new Date(row.date_joined).toLocaleString('zh-CN', { 
+                    year: 'numeric', 
+                    month: '2-digit', 
+                    day: '2-digit', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  }) }}</span>
+                </el-tooltip>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+        </template>
+      </el-table-column>
       
-      <!-- 筛选条件 -->
-      <div class="filter-section">
-        <el-form :inline="true" :model="filterForm" class="filter-form">
-          <el-form-item label="用户名">
-            <el-input v-model="filterForm.username" placeholder="请输入用户名" clearable />
-          </el-form-item>
-          <el-form-item label="姓名">
-            <el-input v-model="filterForm.realName" placeholder="请输入真实姓名" clearable />
-          </el-form-item>
-          <el-form-item label="用户类型">
-            <el-select v-model="filterForm.userType" placeholder="请选择用户类型" clearable>
-              <el-option label="网站超级管理员" value="super_admin" />
-              <el-option label="网站管理员" value="site_admin" />
-              <el-option label="企业负责人" value="enterprise_leader" />
-              <el-option label="企业用户管理员" value="enterprise_admin" />
-              <el-option label="企业用户普通账户" value="enterprise_user" />
-              <el-option label="临时账户" value="temporary" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="企业">
-            <el-input v-model="filterForm.company" placeholder="请输入企业名称或编号" clearable />
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="filterForm.status" placeholder="请选择状态" clearable>
-              <el-option label="激活" value="true" />
-              <el-option label="禁用" value="false" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="handleFilter">筛选</el-button>
-            <el-button @click="resetFilter">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-      
-      <el-table :data="filteredUsers" v-loading="loading" stripe>
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="username" label="用户名" width="150" />
-        <el-table-column prop="real_name" label="姓名" width="120">
-          <template #default="{ row }">
-            {{ row.real_name || '未设置' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="用户类型" width="200">
-          <template #default="{ row }">
-            <el-select v-if="(row.user_type === 'temporary' || row.user_type === 'site_admin')" v-model="row.user_type" @change="(value) => changeUserType({...row, user_type: value})" size="small" style="width: 100%;">
-              <el-option label="网站超级管理员" value="super_admin" />
-              <el-option label="网站管理员" value="site_admin" />
-            </el-select>
-            <el-select v-else :disabled="true" v-model="row.user_type" size="small" style="width: 100%;">
-              <el-option label="网站超级管理员" value="super_admin" />
-              <el-option label="网站管理员" value="site_admin" />
-              <el-option label="企业负责人" value="enterprise_leader" />
-              <el-option label="企业用户管理员" value="enterprise_admin" />
-              <el-option label="企业用户普通账户" value="enterprise_user" />
-              <el-option label="临时账户" value="temporary" />
-            </el-select>
-          </template>
-        </el-table-column>
-        <el-table-column prop="email" label="邮箱" width="200" />
-        <el-table-column prop="phone" label="电话" width="150" />
-        <el-table-column prop="company_name" label="企业名称" width="180" />
-        <el-table-column prop="company_code" label="企业编号" width="120" />
-        <el-table-column label="状态" width="180">
-          <template #default="{ row }">
-            <el-select v-model="row.is_active" :disabled="row.user_type === 'super_admin'" @change="(value) => toggleUserStatus({...row, is_active: value})" size="small" style="width: 100%;">
-              <el-option label="激活" :value="true" />
-              <el-option label="禁用" :value="false" />
-            </el-select>
-          </template>
-        </el-table-column>
-        <el-table-column label="创建时间" width="180">
-          <template #default="{ row }">
-            <el-tooltip :content="new Date(row.date_joined).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })" placement="top">
-              <span>{{ new Date(row.date_joined).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</span>
-            </el-tooltip>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="100">
-          <!-- 操作列留空，因为所有操作都已集成到对应列中 -->
-        </el-table-column>
-      </el-table>
-    </el-card>
+      <!-- 表格列 -->
+      <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column prop="username" label="用户名" width="150" />
+      <el-table-column prop="real_name" label="姓名" width="120">
+        <template #default="{ row }">
+          {{ row.real_name || '未设置' }}
+        </template>
+      </el-table-column>
+      <el-table-column label="用户类型" width="200">
+        <template #default="{ row }">
+          <el-select 
+            v-model="row.user_type" 
+            @change="(value) => changeUserType({...row, user_type: value})" 
+            size="small" 
+            style="width: 100%;"
+            :disabled="!(row.user_type === 'temporary' || row.user_type === 'site_admin')"
+          >
+            <el-option label="网站超级管理员" value="super_admin" />
+            <el-option label="网站管理员" value="site_admin" />
+            <el-option v-if="row.user_type !== 'temporary' && row.user_type !== 'site_admin'" label="企业负责人" value="enterprise_leader" />
+            <el-option v-if="row.user_type !== 'temporary' && row.user_type !== 'site_admin'" label="企业用户管理员" value="enterprise_admin" />
+            <el-option v-if="row.user_type !== 'temporary' && row.user_type !== 'site_admin'" label="企业用户普通账户" value="enterprise_user" />
+            <el-option v-if="row.user_type !== 'temporary' && row.user_type !== 'site_admin'" label="临时账户" value="temporary" />
+          </el-select>
+        </template>
+      </el-table-column>
+      <el-table-column prop="company_name" label="企业名称" width="180" />
+      <el-table-column label="状态" width="180">
+        <template #default="{ row }">
+          <el-select 
+            v-model="row.is_active" 
+            @change="(value) => toggleUserStatus({...row, is_active: value})" 
+            size="small" 
+            style="width: 100%;"
+            :disabled="row.user_type === 'super_admin'"
+          >
+            <el-option label="激活" :value="true" />
+            <el-option label="禁用" :value="false" />
+          </el-select>
+        </template>
+      </el-table-column>
+    </el-table>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { ElMessage, ElSelect, ElOption } from 'element-plus'
+import { ElMessage, ElTable, ElTableColumn, ElButton, ElInput, ElForm, ElFormItem, ElSelect, ElOption, ElDescriptions, ElDescriptionsItem, ElTooltip } from 'element-plus'
 
+// 响应式数据
 const users = ref([])
 const loading = ref(false)
 
@@ -154,6 +187,7 @@ const filteredUsers = computed(() => {
   })
 })
 
+// 加载用户列表
 const loadUsers = async () => {
   loading.value = true
   try {
@@ -178,6 +212,7 @@ const loadUsers = async () => {
   }
 }
 
+// 刷新用户列表
 const handleRefresh = () => {
   loadUsers()
 }
@@ -252,23 +287,41 @@ const toggleUserStatus = async (user) => {
   }
 }
 
+// 页面挂载时加载用户列表
 onMounted(() => {
   loadUsers()
 })
 </script>
 
 <style scoped>
-.card-header {
+.users-container {
+  padding: 20px;
+  background-color: #f5f7fa;
+  min-height: 100vh;
+}
+
+.users-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.filter-section {
   margin-bottom: 20px;
   padding: 15px;
-  background-color: #f5f7fa;
+  background-color: #fff;
   border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.users-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.filter-container {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .filter-form {
@@ -282,5 +335,19 @@ onMounted(() => {
 .filter-form .el-input,
 .filter-form .el-select {
   min-width: 180px;
+}
+
+.user-details {
+  padding: 10px 0;
+}
+
+.el-table {
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.el-table__expanded-cell {
+  background-color: #f9fafc !important;
 }
 </style>
