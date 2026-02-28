@@ -101,10 +101,10 @@
           >
             <el-option label="网站超级管理员" value="super_admin" />
             <el-option label="网站管理员" value="site_admin" />
-            <el-option v-if="row.user_type !== 'temporary' && row.user_type !== 'site_admin'" label="企业负责人" value="enterprise_leader" />
-            <el-option v-if="row.user_type !== 'temporary' && row.user_type !== 'site_admin'" label="企业用户管理员" value="enterprise_admin" />
-            <el-option v-if="row.user_type !== 'temporary' && row.user_type !== 'site_admin'" label="企业用户普通账户" value="enterprise_user" />
-            <el-option v-if="row.user_type !== 'temporary' && row.user_type !== 'site_admin'" label="临时账户" value="temporary" />
+            <el-option label="企业负责人" value="enterprise_leader" />
+            <el-option label="企业用户管理员" value="enterprise_admin" />
+            <el-option label="企业用户普通账户" value="enterprise_user" />
+            <el-option label="临时账户" value="temporary" />
           </el-select>
         </template>
       </el-table-column>
@@ -237,7 +237,11 @@ const resetFilter = () => {
 // 变更用户类型
 const changeUserType = async (user) => {
   try {
+    // 从原始用户列表中获取当前用户的原始类型
+    const originalUser = users.value.find(u => u.id === user.id)
+    const originalUserType = originalUser ? originalUser.user_type : user.user_type
     const newUserType = user.user_type
+    
     const token = localStorage.getItem('token')
     const response = await fetch(`http://localhost:8000/api/account/users/${user.id}/update-type/`, {
       method: 'PUT',
@@ -255,16 +259,27 @@ const changeUserType = async (user) => {
       loadUsers()
     } else {
       ElMessage.error(data.error || '变更失败')
+      // 恢复原来的用户类型
+      const userIndex = users.value.findIndex(u => u.id === user.id)
+      if (userIndex !== -1) {
+        users.value[userIndex].user_type = originalUserType
+      }
     }
   } catch (error) {
     ElMessage.error('变更失败，请重试')
+    // 重新加载用户列表以确保数据一致性
+    loadUsers()
   }
 }
 
 // 切换用户状态
 const toggleUserStatus = async (user) => {
   try {
+    // 从原始用户列表中获取当前用户的原始状态
+    const originalUser = users.value.find(u => u.id === user.id)
+    const originalStatus = originalUser ? originalUser.is_active : user.is_active
     const newStatus = user.is_active
+    
     const token = localStorage.getItem('token')
     const response = await fetch(`http://localhost:8000/api/account/users/${user.id}/status/`, {
       method: 'PUT',
@@ -282,9 +297,16 @@ const toggleUserStatus = async (user) => {
       loadUsers()
     } else {
       ElMessage.error(data.error || '操作失败')
+      // 恢复原来的状态
+      const userIndex = users.value.findIndex(u => u.id === user.id)
+      if (userIndex !== -1) {
+        users.value[userIndex].is_active = originalStatus
+      }
     }
   } catch (error) {
     ElMessage.error('操作失败，请重试')
+    // 重新加载用户列表以确保数据一致性
+    loadUsers()
   }
 }
 
