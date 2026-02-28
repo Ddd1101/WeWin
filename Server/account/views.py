@@ -278,20 +278,7 @@ def get_users(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-@require_http_methods(['GET'])
-def get_companies(request):
-    try:
-        companies = Company.objects.all()
-        company_list = []
-        for company in companies:
-            company_list.append({
-                'id': company.id,
-                'name': company.name,
-                'code': company.code
-            })
-        return JsonResponse({'companies': company_list})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+
 
 
 @csrf_exempt
