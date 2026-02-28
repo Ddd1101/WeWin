@@ -1,0 +1,257 @@
+<template>
+  <div class="companies-container">
+    <el-card>
+      <template #header>
+        <div class="card-header">
+          <span>企业管理</span>
+          <el-button type="primary" @click="openAddCompanyDialog">
+            <el-icon><Plus /></el-icon>
+            新增企业
+          </el-button>
+        </div>
+      </template>
+      
+      <el-table :data="companies" style="width: 100%">
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="name" label="企业名称" />
+        <el-table-column prop="code" label="企业编号" />
+        <el-table-column prop="address" label="企业地址" />
+        <el-table-column prop="contact_name" label="联系人" />
+        <el-table-column prop="contact_phone" label="联系电话" />
+        <el-table-column prop="created_at" label="创建时间" />
+        <el-table-column label="操作" width="200">
+          <template #default="scope">
+            <el-button size="small" @click="openEditCompanyDialog(scope.row)">
+              <el-icon><Edit /></el-icon>
+              编辑
+            </el-button>
+            <el-button size="small" type="danger" @click="deleteCompany(scope.row.id)">
+              <el-icon><Delete /></el-icon>
+              删除
+            </el-button>
+            <el-button size="small" @click="viewCompanyUsers(scope.row.id)">
+              <el-icon><User /></el-icon>
+              查看用户
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
+    </el-card>
+    
+    <!-- 新增/编辑企业对话框 -->
+    <el-dialog
+      v-model="dialogVisible"
+      :title="dialogTitle"
+      width="500px"
+    >
+      <el-form :model="form" label-width="120px">
+        <el-form-item label="企业名称" required>
+          <el-input v-model="form.name" placeholder="请输入企业名称" />
+        </el-form-item>
+        <el-form-item label="企业编号" required>
+          <el-input v-model="form.code" placeholder="请输入企业编号" />
+        </el-form-item>
+        <el-form-item label="企业地址">
+          <el-input v-model="form.address" placeholder="请输入企业地址" />
+        </el-form-item>
+        <el-form-item label="联系人">
+          <el-input v-model="form.contact_name" placeholder="请输入联系人姓名" />
+        </el-form-item>
+        <el-form-item label="联系电话">
+          <el-input v-model="form.contact_phone" placeholder="请输入联系电话" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveCompany">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
+    
+    <!-- 企业用户列表对话框 -->
+    <el-dialog
+      v-model="usersDialogVisible"
+      title="企业用户列表"
+      width="800px"
+    >
+      <el-table :data="companyUsers" style="width: 100%">
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="username" label="用户名" />
+        <el-table-column prop="real_name" label="真实姓名" />
+        <el-table-column prop="user_type_display" label="用户类型" />
+        <el-table-column prop="email" label="邮箱" />
+        <el-table-column prop="phone" label="电话" />
+        <el-table-column prop="is_active" label="是否激活">
+          <template #default="scope">
+            <el-switch v-model="scope.row.is_active" @change="updateUserStatus(scope.row.id, scope.row.is_active)" />
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { Plus, Edit, Delete, User, OfficeBuilding } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getCompanies, createCompany, updateCompany, deleteCompany as deleteCompanyApi, getCompanyUsers } from '../api'
+
+const companies = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+
+const dialogVisible = ref(false)
+const dialogTitle = ref('新增企业')
+const form = ref({
+  name: '',
+  code: '',
+  address: '',
+  contact_name: '',
+  contact_phone: ''
+})
+
+const usersDialogVisible = ref(false)
+const companyUsers = ref([])
+
+const loadCompanies = async () => {
+  try {
+    const response = await getCompanies()
+    companies.value = response.data.companies
+    total.value = response.data.companies.length
+  } catch (error) {
+    ElMessage.error('获取企业列表失败')
+  }
+}
+
+const openAddCompanyDialog = () => {
+  dialogTitle.value = '新增企业'
+  form.value = {
+    name: '',
+    code: '',
+    address: '',
+    contact_name: '',
+    contact_phone: ''
+  }
+  dialogVisible.value = true
+}
+
+const openEditCompanyDialog = (company) => {
+  dialogTitle.value = '编辑企业'
+  form.value = {
+    id: company.id,
+    name: company.name,
+    code: company.code,
+    address: company.address,
+    contact_name: company.contact_name,
+    contact_phone: company.contact_phone
+  }
+  dialogVisible.value = true
+}
+
+const saveCompany = async () => {
+  try {
+    if (form.value.id) {
+      // 编辑企业
+      await updateCompany(form.value)
+      ElMessage.success('企业信息更新成功')
+    } else {
+      // 新增企业
+      await createCompany(form.value)
+      ElMessage.success('企业创建成功')
+    }
+    dialogVisible.value = false
+    loadCompanies()
+  } catch (error) {
+    ElMessage.error('操作失败')
+  }
+}
+
+const deleteCompany = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该企业吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deleteCompanyApi(id)
+    ElMessage.success('企业删除成功')
+    loadCompanies()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
+}
+
+const viewCompanyUsers = async (companyId) => {
+  try {
+    const response = await getCompanyUsers(companyId)
+    companyUsers.value = response.data.users
+    usersDialogVisible.value = true
+  } catch (error) {
+    ElMessage.error('获取企业用户失败')
+  }
+}
+
+const updateUserStatus = async (userId, isActive) => {
+  try {
+    // 调用更新用户状态的API
+    await updateUserStatusApi(userId, isActive)
+    ElMessage.success('用户状态更新成功')
+  } catch (error) {
+    ElMessage.error('更新用户状态失败')
+  }
+}
+
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  loadCompanies()
+}
+
+const handleCurrentChange = (current) => {
+  currentPage.value = current
+  loadCompanies()
+}
+
+onMounted(() => {
+  loadCompanies()
+})
+</script>
+
+<style scoped>
+.companies-container {
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+</style>

@@ -62,7 +62,16 @@ const activeMenu = computed(() => route.path)
 
 const menuRoutes = computed(() => {
   const layoutRoute = router.options.routes.find(r => r.path === '/')
-  return layoutRoute ? layoutRoute.children.filter(child => child.meta) : []
+  if (!layoutRoute) return []
+  
+  return layoutRoute.children.filter(child => {
+    // 检查是否需要管理员权限
+    if (child.meta.requiresAdmin) {
+      // 只有超级管理员和网站管理员可以看到
+      return userStore.userInfo.user_type === 'super_admin' || userStore.userInfo.user_type === 'site_admin'
+    }
+    return true
+  })
 })
 
 const stores = ref([

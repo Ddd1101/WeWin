@@ -69,4 +69,29 @@ export const changePassword = (data) => {
   return api.post('/password/change/', data)
 }
 
+// 企业管理相关API
+export const getCompanies = () => {
+  return api.get('/companies/')
+}
+
+export const createCompany = (data) => {
+  return api.post('/companies/', data)
+}
+
+export const updateCompany = (data) => {
+  return api.put(`/companies/${data.id}/`, data)
+}
+
+export const deleteCompany = (id) => {
+  return api.delete(`/companies/${id}/`)
+}
+
+export const getCompanyUsers = (companyId) => {
+  return api.get(`/companies/${companyId}/users/`)
+}
+
+export const updateUserStatusApi = (userId, isActive) => {
+  return api.put(`/users/${userId}/status/`, { is_active: isActive })
+}
+
 export default api
