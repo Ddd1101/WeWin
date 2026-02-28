@@ -54,4 +54,16 @@ export const createEnterpriseUser = (data) => {
   return api.post('/create-enterprise-user/', data)
 }
 
+export const getCurrentUser = () => {
+  return api.get('/current-user/')
+}
+
+export const updateProfile = (data) => {
+  return api.put('/profile/update/', data)
+}
+
+export const changePassword = (data) => {
+  return api.post('/password/change/', data)
+}
+
 export default api

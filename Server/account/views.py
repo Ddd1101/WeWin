@@ -680,3 +680,91 @@ def bind_existing_company(request):
         return JsonResponse({'error': '用户不存在'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['PUT'])
+def update_profile(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+        
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+        
+        user = User.objects.get(id=payload['user_id'])
+        
+        data = json.loads(request.body)
+        email = data.get('email')
+        phone = data.get('phone')
+        
+        if email:
+            user.email = email
+        if phone:
+            user.phone = phone
+        
+        user.save()
+        
+        return JsonResponse({
+            'id': user.id,
+            'username': user.username,
+            'user_type': user.user_type,
+            'user_type_display': user.get_user_type_display(),
+            'email': user.email,
+            'phone': user.phone,
+            'company_id': user.company_id,
+            'company_name': user.company.name if user.company else None,
+            'company_code': user.company.code if user.company else None
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def change_password(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+        
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+        
+        user = User.objects.get(id=payload['user_id'])
+        
+        data = json.loads(request.body)
+        old_password = data.get('old_password')
+        new_password = data.get('new_password')
+        
+        if not old_password or not new_password:
+            return JsonResponse({'error': '旧密码和新密码不能为空'}, status=400)
+        
+        if not user.check_password(old_password):
+            return JsonResponse({'error': '旧密码错误'}, status=400)
+        
+        user.set_password(new_password)
+        user.save()
+        
+        return JsonResponse({'message': '密码修改成功'})
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
