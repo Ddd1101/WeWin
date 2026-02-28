@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { ElMessage } from 'element-plus'
@@ -45,6 +45,14 @@ const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
+
+// 页面加载时从localStorage读取保存的用户名
+onMounted(() => {
+  const savedUsername = localStorage.getItem('lastLoginUsername')
+  if (savedUsername) {
+    loginForm.username = savedUsername
+  }
+})
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return
@@ -67,6 +75,9 @@ const handleLogin = async () => {
         const data = await response.json()
         
         if (response.ok) {
+          // 保存用户名到localStorage
+          localStorage.setItem('lastLoginUsername', loginForm.username)
+          
           userStore.setToken(data.token)
           userStore.setUserInfo(data.user)
           
