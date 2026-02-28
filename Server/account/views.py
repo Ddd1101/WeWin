@@ -517,6 +517,7 @@ def simple_register(request):
         password = data.get('password')
         email = data.get('email', '')
         phone = data.get('phone', '')
+        real_name = data.get('real_name', '')
         
         if not all([username, password]):
             return JsonResponse({'error': '用户名和密码不能为空'}, status=400)
