@@ -938,19 +938,18 @@ def create_company(request):
 
         data = json.loads(request.body)
         name = data.get('name')
-        code = data.get('code')
         address = data.get('address', '')
         contact_name = data.get('contact_name', '')
         contact_phone = data.get('contact_phone', '')
 
-        if not all([name, code]):
-            return JsonResponse({'error': '企业名称和编号不能为空'}, status=400)
+        if not name:
+            return JsonResponse({'error': '企业名称不能为空'}, status=400)
 
         if Company.objects.filter(name=name).exists():
             return JsonResponse({'error': '企业名称已存在'}, status=400)
 
-        if Company.objects.filter(code=code).exists():
-            return JsonResponse({'error': '企业编号已存在'}, status=400)
+        # 自动生成企业编号
+        code = generate_company_code()
 
         company = Company.objects.create(
             name=name,
@@ -1008,10 +1007,7 @@ def update_company(request, company_id):
                 return JsonResponse({'error': '企业名称已存在'}, status=400)
             company.name = data['name']
 
-        if 'code' in data:
-            if data['code'] != company.code and Company.objects.filter(code=data['code']).exists():
-                return JsonResponse({'error': '企业编号已存在'}, status=400)
-            company.code = data['code']
+        # 企业编号不允许修改
 
         if 'address' in data:
             company.address = data['address']

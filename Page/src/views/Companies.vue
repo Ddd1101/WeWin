@@ -117,9 +117,6 @@
         <el-form-item label="企业名称" required>
           <el-input v-model="form.name" placeholder="请输入企业名称" />
         </el-form-item>
-        <el-form-item label="企业编号" required>
-          <el-input v-model="form.code" placeholder="请输入企业编号" />
-        </el-form-item>
         <el-form-item label="企业地址">
           <el-input v-model="form.address" placeholder="请输入企业地址" />
         </el-form-item>
@@ -179,7 +176,6 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('新增企业')
 const form = ref({
   name: '',
-  code: '',
   address: '',
   contact_name: '',
   contact_phone: ''
@@ -215,7 +211,6 @@ const openEditCompanyDialog = (company) => {
   form.value = {
     id: company.id,
     name: company.name,
-    code: company.code,
     address: company.address,
     contact_name: company.contact_name,
     contact_phone: company.contact_phone
@@ -237,7 +232,12 @@ const saveCompany = async () => {
     dialogVisible.value = false
     loadCompanies()
   } catch (error) {
-    ElMessage.error('操作失败')
+    console.log('Save company error:', error)
+    if (error.response && error.response.data && error.response.data.error) {
+      ElMessage.error('操作失败: ' + error.response.data.error)
+    } else {
+      ElMessage.error('操作失败')
+    }
   }
 }
 
