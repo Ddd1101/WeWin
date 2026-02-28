@@ -75,7 +75,23 @@ const handleLogin = async () => {
         ElMessage.success('登录成功')
         router.push('/')
       } catch (error) {
-        ElMessage.error(error.response?.data?.error || '登录失败，请重试')
+        console.log('Login error:', error)
+        if (error.response) {
+          // 服务器返回了错误响应
+          const errorMessage = error.response.data?.error || '登录失败，请重试'
+          console.log('Error message:', errorMessage)
+          if (errorMessage.includes('账户已被禁用')) {
+            ElMessage.error('账户已被禁用，请联系管理员')
+          } else {
+            ElMessage.error(errorMessage)
+          }
+        } else if (error.request) {
+          // 请求已发送但没有收到响应
+          ElMessage.error('网络错误，请检查网络连接')
+        } else {
+          // 请求配置出错
+          ElMessage.error('登录失败，请重试')
+        }
       } finally {
         loading.value = false
       }

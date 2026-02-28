@@ -22,6 +22,8 @@ api.interceptors.response.use(
   response => response,
   error => {
     if (error.response && error.response.status === 401) {
+      // 只有当状态码为401（未授权）时才重定向到登录页面
+      // 403（禁止访问，如账户被禁用）不重定向，让错误信息传递给前端组件处理
       localStorage.removeItem('token')
       localStorage.removeItem('userInfo')
       window.location.href = '/login'
@@ -31,7 +33,8 @@ api.interceptors.response.use(
 )
 
 export const login = (username, password) => {
-  return api.post('/login/', { username, password })
+  // 登录请求不使用拦截器添加的Authorization头
+  return axios.post('http://localhost:8000/api/account/login/', { username, password })
 }
 
 export const logout = () => {

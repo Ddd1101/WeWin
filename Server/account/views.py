@@ -55,10 +55,17 @@ def login_view(request):
         if not username or not password:
             return JsonResponse({'error': '用户名和密码不能为空'}, status=400)
 
-        user = authenticate(username=username, password=password)
-        if user is None:
+        # 先通过用户名获取用户对象，不检查激活状态
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
             return JsonResponse({'error': '用户名或密码错误'}, status=401)
-
+        
+        # 检查密码
+        if not user.check_password(password):
+            return JsonResponse({'error': '用户名或密码错误'}, status=401)
+        
+        # 检查账户是否激活
         if not user.is_active:
             return JsonResponse({'error': '账户已被禁用'}, status=403)
 
