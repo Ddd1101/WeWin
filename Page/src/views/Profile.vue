@@ -4,6 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>个人信息</span>
+          <el-button v-if="!hasCompany" type="primary" @click="goToBindCompany">绑定企业</el-button>
         </div>
       </template>
       
@@ -70,8 +71,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getCurrentUser, updateProfile, changePassword } from '../api/index.js'
+
+const router = useRouter()
+const hasCompany = ref(false)
 
 const profile = ref({
   username: '',
@@ -174,6 +179,10 @@ const resetPasswordForm = () => {
   passwordFormRef.value.resetFields()
 }
 
+const goToBindCompany = () => {
+  router.push('/bind-company')
+}
+
 const loadUserInfo = () => {
   getCurrentUser()
     .then(response => {
@@ -186,6 +195,8 @@ const loadUserInfo = () => {
         email: userInfo.email || '',
         realName: userInfo.username
       }
+      // 更新是否已绑定企业的状态
+      hasCompany.value = !!userInfo.company_name
     })
     .catch(error => {
       ElMessage.error('获取用户信息失败：' + (error.response?.data?.error || '未知错误'))
