@@ -7,7 +7,39 @@
           <el-button type="primary" @click="handleRefresh">刷新</el-button>
         </div>
       </template>
-      <el-table :data="users" v-loading="loading" stripe>
+      
+      <!-- 筛选条件 -->
+      <div class="filter-section">
+        <el-form :inline="true" :model="filterForm" class="filter-form">
+          <el-form-item label="用户名">
+            <el-input v-model="filterForm.username" placeholder="请输入用户名" clearable />
+          </el-form-item>
+          <el-form-item label="用户类型">
+            <el-select v-model="filterForm.userType" placeholder="请选择用户类型" clearable>
+              <el-option label="网站超级管理员" value="super_admin" />
+              <el-option label="网站管理员" value="site_admin" />
+              <el-option label="企业用户管理员" value="enterprise_admin" />
+              <el-option label="企业用户普通账户" value="enterprise_user" />
+              <el-option label="临时账户" value="temporary" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="企业">
+            <el-input v-model="filterForm.company" placeholder="请输入企业名称或编号" clearable />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="filterForm.status" placeholder="请选择状态" clearable>
+              <el-option label="激活" value="true" />
+              <el-option label="禁用" value="false" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleFilter">筛选</el-button>
+            <el-button @click="resetFilter">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+      
+      <el-table :data="filteredUsers" v-loading="loading" stripe>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" width="150" />
         <el-table-column prop="user_type_display" label="用户类型" width="180" />
@@ -29,11 +61,54 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 
 const users = ref([])
 const loading = ref(false)
+
+// 筛选表单
+const filterForm = ref({
+  username: '',
+  userType: '',
+  company: '',
+  status: ''
+})
+
+// 筛选后的用户列表
+const filteredUsers = computed(() => {
+  return users.value.filter(user => {
+    // 用户名筛选
+    if (filterForm.value.username && !user.username.toLowerCase().includes(filterForm.value.username.toLowerCase())) {
+      return false
+    }
+    
+    // 用户类型筛选
+    if (filterForm.value.userType && user.user_type !== filterForm.value.userType) {
+      return false
+    }
+    
+    // 企业筛选
+    if (filterForm.value.company) {
+      const companyFilter = filterForm.value.company.toLowerCase()
+      const companyName = (user.company_name || '').toLowerCase()
+      const companyCode = (user.company_code || '').toLowerCase()
+      if (!companyName.includes(companyFilter) && !companyCode.includes(companyFilter)) {
+        return false
+      }
+    }
+    
+    // 状态筛选
+    if (filterForm.value.status !== '') {
+      const statusFilter = filterForm.value.status === 'true'
+      if (user.is_active !== statusFilter) {
+        return false
+      }
+    }
+    
+    return true
+  })
+})
 
 const loadUsers = async () => {
   loading.value = true
@@ -63,6 +138,21 @@ const handleRefresh = () => {
   loadUsers()
 }
 
+// 处理筛选
+const handleFilter = () => {
+  // 筛选逻辑由computed属性处理
+}
+
+// 重置筛选
+const resetFilter = () => {
+  filterForm.value = {
+    username: '',
+    userType: '',
+    company: '',
+    status: ''
+  }
+}
+
 onMounted(() => {
   loadUsers()
 })
@@ -73,5 +163,25 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.filter-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.filter-form {
+  width: 100%;
+}
+
+.filter-form .el-form-item {
+  margin-right: 15px;
+}
+
+.filter-form .el-input,
+.filter-form .el-select {
+  min-width: 180px;
 }
 </style>
