@@ -63,7 +63,13 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="date_joined" label="创建时间" width="180" />
+        <el-table-column label="创建时间" width="180">
+          <template #default="{ row }">
+            <el-tooltip :content="new Date(row.date_joined).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })" placement="top">
+              <span>{{ new Date(row.date_joined).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
   </div>
