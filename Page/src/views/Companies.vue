@@ -18,7 +18,29 @@
         <el-table-column prop="address" label="企业地址" />
         <el-table-column prop="contact_name" label="联系人" />
         <el-table-column prop="contact_phone" label="联系电话" />
-        <el-table-column prop="created_at" label="创建时间" />
+        <el-table-column label="创建时间">
+          <template #default="scope">
+            <el-tooltip 
+              :content="new Date(scope.row.created_at).toLocaleString('zh-CN', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit', 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+              })" 
+              placement="top"
+            >
+              <span>{{ new Date(scope.row.created_at).toLocaleString('zh-CN', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }) }}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200">
           <template #default="scope">
             <el-button size="small" @click="openEditCompanyDialog(scope.row)">
