@@ -70,14 +70,41 @@
             </el-tooltip>
           </template>
         </el-table-column>
+        <el-table-column label="操作" width="150">
+          <template #default="{ row }">
+            <el-button v-if="row.user_type === 'temporary' || row.user_type === 'site_admin'" type="primary" size="small" @click="openChangeTypeDialog(row)">变更类型</el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
+    
+    <!-- 变更用户类型对话框 -->
+    <el-dialog
+      v-model="changeTypeDialogVisible"
+      :title="`变更 ${currentUser?.username} 的用户类型`"
+      width="400px"
+    >
+      <el-form :model="changeTypeForm" label-width="120px">
+        <el-form-item label="新用户类型">
+          <el-select v-model="changeTypeForm.userType" placeholder="请选择用户类型" style="width: 100%;">
+            <el-option label="网站超级管理员" value="super_admin" />
+            <el-option label="网站管理员" value="site_admin" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="changeTypeDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmChangeType">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElDialog, ElForm, ElFormItem, ElSelect, ElOption, ElButton } from 'element-plus'
 
 const users = ref([])
 const loading = ref(false)
@@ -89,6 +116,13 @@ const filterForm = ref({
   userType: '',
   company: '',
   status: ''
+})
+
+// 变更用户类型相关
+const changeTypeDialogVisible = ref(false)
+const currentUser = ref(null)
+const changeTypeForm = ref({
+  userType: ''
 })
 
 // 筛选后的用户列表
@@ -176,6 +210,45 @@ const resetFilter = () => {
     userType: '',
     company: '',
     status: ''
+  }
+}
+
+// 打开变更类型对话框
+const openChangeTypeDialog = (user) => {
+  currentUser.value = user
+  changeTypeForm.value.userType = ''
+  changeTypeDialogVisible.value = true
+}
+
+// 确认变更用户类型
+const confirmChangeType = async () => {
+  if (!changeTypeForm.value.userType) {
+    ElMessage.warning('请选择用户类型')
+    return
+  }
+
+  try {
+    const token = localStorage.getItem('token')
+    const response = await fetch(`http://localhost:8000/api/account/users/${currentUser.value.id}/update-type/`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ user_type: changeTypeForm.value.userType })
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      ElMessage.success('用户类型变更成功')
+      changeTypeDialogVisible.value = false
+      loadUsers()
+    } else {
+      ElMessage.error(data.error || '变更失败')
+    }
+  } catch (error) {
+    ElMessage.error('变更失败，请重试')
   }
 }
 

@@ -508,6 +508,62 @@ def delete_user(request, user_id):
 
 
 @csrf_exempt
+@require_http_methods(['PUT'])
+def update_user_type(request, user_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        target_user = User.objects.get(id=user_id)
+        
+        # 只有网站超级管理员可以变更用户类型
+        if current_user.user_type != UserType.SUPER_ADMIN:
+            return JsonResponse({'error': '无权限变更用户类型'}, status=403)
+
+        # 只能变更临时账户或网站管理员的类型
+        if target_user.user_type not in [UserType.TEMPORARY, UserType.SITE_ADMIN]:
+            return JsonResponse({'error': '只能变更临时账户或网站管理员的类型'}, status=400)
+
+        data = json.loads(request.body)
+        user_type = data.get('user_type')
+        
+        if not user_type:
+            return JsonResponse({'error': '用户类型不能为空'}, status=400)
+
+        # 验证用户类型是否有效
+        valid_user_types = [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]
+        if user_type not in valid_user_types:
+            return JsonResponse({'error': '无效的用户类型'}, status=400)
+
+        # 更新用户类型
+        target_user.user_type = user_type
+        target_user.save()
+
+        return JsonResponse({
+            'id': target_user.id,
+            'username': target_user.username,
+            'user_type': target_user.user_type,
+            'user_type_display': target_user.get_user_type_display()
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
 @require_http_methods(['POST'])
 def simple_register(request):
     try:
