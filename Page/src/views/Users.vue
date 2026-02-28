@@ -116,7 +116,7 @@
             @change="(value) => toggleUserStatus({...row, is_active: value})" 
             size="small" 
             style="width: 100%;"
-            :disabled="row.user_type === 'super_admin'"
+            :disabled="row.user_type === 'super_admin' || (row.company_is_active !== undefined && row.company_is_active !== null && !row.company_is_active)"
           >
             <el-option label="激活" :value="true" />
             <el-option label="禁用" :value="false" />

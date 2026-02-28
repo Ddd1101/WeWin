@@ -266,6 +266,7 @@ def get_users(request):
                 'company_id': user.company_id,
                 'company_name': user.company.name if user.company else None,
                 'company_code': user.company.code if user.company else None,
+                'company_is_active': user.company.is_active if user.company else None,
                 'is_active': user.is_active,
                 'date_joined': user.date_joined.isoformat()
             })
@@ -453,6 +454,10 @@ def update_user_status(request, user_id):
         is_active = data.get('is_active')
         
         if is_active is not None:
+            # 检查用户所属的企业是否被禁用
+            if is_active and target_user.company and not target_user.company.is_active:
+                return JsonResponse({'error': '企业已被禁用，无法激活该用户'}, status=400)
+            
             target_user.is_active = is_active
             target_user.save()
 
