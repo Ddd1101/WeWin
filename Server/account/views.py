@@ -427,7 +427,8 @@ def update_user_status(request, user_id):
         
         has_permission = False
         if current_user.user_type == UserType.SUPER_ADMIN:
-            has_permission = True
+            if target_user.user_type != UserType.SUPER_ADMIN:
+                has_permission = True
         elif current_user.user_type == UserType.SITE_ADMIN:
             if target_user.user_type != UserType.SUPER_ADMIN:
                 has_permission = True

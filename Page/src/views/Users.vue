@@ -56,11 +56,12 @@
         <el-table-column prop="phone" label="电话" width="150" />
         <el-table-column prop="company_name" label="企业名称" width="180" />
         <el-table-column prop="company_code" label="企业编号" width="120" />
-        <el-table-column prop="is_active" label="状态" width="100">
+        <el-table-column label="状态" width="180">
           <template #default="{ row }">
-            <el-tag :type="row.is_active ? 'success' : 'danger'">
-              {{ row.is_active ? '激活' : '禁用' }}
-            </el-tag>
+            <el-select v-model="row.is_active" :disabled="row.user_type === 'super_admin'" @change="(value) => toggleUserStatus({...row, is_active: value})" size="small" style="width: 100%;">
+              <el-option label="激活" :value="true" />
+              <el-option label="禁用" :value="false" />
+            </el-select>
           </template>
         </el-table-column>
         <el-table-column label="创建时间" width="180">
@@ -158,7 +159,7 @@ const filteredUsers = computed(() => {
     }
     
     // 状态筛选
-    if (filterForm.value.status !== '') {
+    if (filterForm.value.status && filterForm.value.status !== '') {
       const statusFilter = filterForm.value.status === 'true'
       if (user.is_active !== statusFilter) {
         return false
@@ -249,6 +250,33 @@ const confirmChangeType = async () => {
     }
   } catch (error) {
     ElMessage.error('变更失败，请重试')
+  }
+}
+
+// 切换用户状态
+const toggleUserStatus = async (user) => {
+  try {
+    const newStatus = user.is_active
+    const token = localStorage.getItem('token')
+    const response = await fetch(`http://localhost:8000/api/account/users/${user.id}/status/`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ is_active: newStatus })
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      ElMessage.success(`${newStatus ? '激活' : '禁用'}成功`)
+      loadUsers()
+    } else {
+      ElMessage.error(data.error || '操作失败')
+    }
+  } catch (error) {
+    ElMessage.error('操作失败，请重试')
   }
 }
 
