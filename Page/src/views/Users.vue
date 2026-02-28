@@ -46,6 +46,7 @@
       v-loading="loading"
       stripe
       style="width: 100%"
+      :max-height="800"
     >
       <!-- 展开行 -->
       <el-table-column type="expand">
@@ -82,7 +83,7 @@
       </el-table-column>
       
       <!-- 表格列 -->
-      <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column prop="id" label="ID" width="80" fixed="left" />
       <el-table-column prop="username" label="用户名" width="150" />
       <el-table-column prop="real_name" label="姓名" width="120">
         <template #default="{ row }">
@@ -107,8 +108,8 @@
           </el-select>
         </template>
       </el-table-column>
-      <el-table-column prop="company_name" label="企业名称" width="180" />
-      <el-table-column label="状态" width="180">
+      <el-table-column prop="company_name" label="企业名称" min-width="180" />
+      <el-table-column label="状态" width="180" fixed="right">
         <template #default="{ row }">
           <el-select 
             v-model="row.is_active" 
@@ -305,36 +306,58 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding: 15px;
+  padding: 20px;
   background-color: #fff;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .users-header h2 {
   margin: 0;
   color: #333;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .filter-container {
   margin-bottom: 20px;
-  padding: 15px;
+  padding: 20px;
   background-color: #fff;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .filter-form {
   width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
 }
 
 .filter-form .el-form-item {
-  margin-right: 15px;
+  margin-right: 0;
+  margin-bottom: 10px;
+  flex: 1 1 200px;
 }
 
 .filter-form .el-input,
 .filter-form .el-select {
-  min-width: 180px;
+  width: 100%;
+}
+
+.filter-form .el-button {
+  margin-top: 25px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 768px) {
+  .filter-form .el-form-item {
+    flex: 1 1 100%;
+  }
+  
+  .filter-form .el-button {
+    margin-top: 10px;
+  }
 }
 
 .user-details {
