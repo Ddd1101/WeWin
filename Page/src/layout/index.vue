@@ -29,7 +29,7 @@
             <span class="user-info">
               <el-icon><User /></el-icon>
               {{ userStore.userInfo.username || '用户' }}
-              <el-icon class="el-icon--right"><arrow-down /></el-icon>
+              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
@@ -52,6 +52,7 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { User, ArrowDown } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -90,7 +91,7 @@ const handleCommand = async (command) => {
     } catch {
     }
   } else if (command === 'profile') {
-    ElMessage.info('个人信息功能开发中')
+    router.push('/profile')
   }
 }
 </script>
