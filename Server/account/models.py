@@ -52,6 +52,7 @@ class User(AbstractUser):
         verbose_name='创建人'
     )
     phone = models.CharField(max_length=50, blank=True, null=True, verbose_name='联系电话')
+    real_name = models.CharField(max_length=100, blank=True, null=True, verbose_name='真实姓名')
     is_active = models.BooleanField(default=True, verbose_name='是否激活')
 
     class Meta:

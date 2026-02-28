@@ -14,6 +14,9 @@
           <el-form-item label="用户名">
             <el-input v-model="filterForm.username" placeholder="请输入用户名" clearable />
           </el-form-item>
+          <el-form-item label="姓名">
+            <el-input v-model="filterForm.realName" placeholder="请输入真实姓名" clearable />
+          </el-form-item>
           <el-form-item label="用户类型">
             <el-select v-model="filterForm.userType" placeholder="请选择用户类型" clearable>
               <el-option label="网站超级管理员" value="super_admin" />
@@ -42,6 +45,11 @@
       <el-table :data="filteredUsers" v-loading="loading" stripe>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" width="150" />
+        <el-table-column prop="real_name" label="姓名" width="120">
+          <template #default="{ row }">
+            {{ row.real_name || '未设置' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="user_type_display" label="用户类型" width="180" />
         <el-table-column prop="email" label="邮箱" width="200" />
         <el-table-column prop="phone" label="电话" width="150" />
@@ -70,6 +78,7 @@ const loading = ref(false)
 // 筛选表单
 const filterForm = ref({
   username: '',
+  realName: '',
   userType: '',
   company: '',
   status: ''
@@ -81,6 +90,15 @@ const filteredUsers = computed(() => {
     // 用户名筛选
     if (filterForm.value.username && !user.username.toLowerCase().includes(filterForm.value.username.toLowerCase())) {
       return false
+    }
+    
+    // 真实姓名筛选
+    if (filterForm.value.realName) {
+      const realNameFilter = filterForm.value.realName.toLowerCase()
+      const realName = (user.real_name || '').toLowerCase()
+      if (!realName.includes(realNameFilter)) {
+        return false
+      }
     }
     
     // 用户类型筛选
@@ -147,6 +165,7 @@ const handleFilter = () => {
 const resetFilter = () => {
   filterForm.value = {
     username: '',
+    realName: '',
     userType: '',
     company: '',
     status: ''

@@ -133,11 +133,14 @@ const submitForm = () => {
     if (valid) {
       const updateData = {
         email: profile.value.email,
-        phone: profile.value.phone
+        phone: profile.value.phone,
+        real_name: profile.value.realName
       }
       updateProfile(updateData)
         .then(response => {
           ElMessage.success('个人信息更新成功')
+          // 更新成功后重新加载用户信息
+          loadUserInfo()
         })
         .catch(error => {
           ElMessage.error('更新失败：' + (error.response?.data?.error || '未知错误'))
@@ -193,7 +196,7 @@ const loadUserInfo = () => {
         company: userInfo.company_name || '无',
         phone: userInfo.phone || '',
         email: userInfo.email || '',
-        realName: userInfo.username
+        realName: userInfo.real_name || userInfo.username
       }
       // 更新是否已绑定企业的状态
       hasCompany.value = !!userInfo.company_name

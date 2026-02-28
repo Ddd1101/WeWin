@@ -71,6 +71,8 @@ def login_view(request):
                 'username': user.username,
                 'user_type': user.user_type,
                 'email': user.email,
+                'phone': user.phone,
+                'real_name': user.real_name,
                 'company_id': user.company_id if user.company else None,
                 'company_name': user.company.name if user.company else None
             }
@@ -98,6 +100,7 @@ def create_enterprise_admin(request):
         password = data.get('password')
         email = data.get('email', '')
         phone = data.get('phone', '')
+        real_name = data.get('real_name', '')
         
         company_name = data.get('company_name')
         company_code = data.get('company_code')
@@ -132,7 +135,8 @@ def create_enterprise_admin(request):
                 email=email,
                 user_type=UserType.ENTERPRISE_ADMIN,
                 company=company,
-                phone=phone
+                phone=phone,
+                real_name=real_name
             )
 
         token = generate_token(user)
@@ -144,6 +148,8 @@ def create_enterprise_admin(request):
                 'username': user.username,
                 'user_type': user.user_type,
                 'email': user.email,
+                'phone': user.phone,
+                'real_name': user.real_name,
                 'company_id': company.id,
                 'company_name': company.name
             }
@@ -164,6 +170,7 @@ def create_enterprise_user(request):
         password = data.get('password')
         email = data.get('email', '')
         phone = data.get('phone', '')
+        real_name = data.get('real_name', '')
         company_identifier = data.get('company_identifier')
 
         if not all([username, password, company_identifier]):
@@ -185,7 +192,8 @@ def create_enterprise_user(request):
             email=email,
             user_type=UserType.ENTERPRISE_USER,
             company=company,
-            phone=phone
+            phone=phone,
+            real_name=real_name
         )
 
         token = generate_token(user)
@@ -197,6 +205,8 @@ def create_enterprise_user(request):
                 'username': user.username,
                 'user_type': user.user_type,
                 'email': user.email,
+                'phone': user.phone,
+                'real_name': user.real_name,
                 'company_id': company.id,
                 'company_name': company.name
             }
@@ -243,6 +253,7 @@ def get_users(request):
                 'user_type_display': user.get_user_type_display(),
                 'email': user.email,
                 'phone': user.phone,
+                'real_name': user.real_name,
                 'company_id': user.company_id,
                 'company_name': user.company.name if user.company else None,
                 'company_code': user.company.code if user.company else None,
@@ -296,6 +307,7 @@ def create_user(request):
         password = data.get('password')
         email = data.get('email', '')
         phone = data.get('phone', '')
+        real_name = data.get('real_name', '')
         user_type = data.get('user_type')
         company_id = data.get('company_id')
 
@@ -332,6 +344,7 @@ def create_user(request):
             user_type=user_type,
             company=company,
             phone=phone,
+            real_name=real_name,
             created_by=current_user
         )
 
@@ -342,6 +355,7 @@ def create_user(request):
             'user_type_display': user.get_user_type_display(),
             'email': user.email,
             'phone': user.phone,
+            'real_name': user.real_name,
             'company_id': user.company_id,
             'company_name': user.company.name if user.company else None,
             'company_code': user.company.code if user.company else None,
@@ -504,6 +518,7 @@ def simple_register(request):
             password=password,
             email=email,
             phone=phone,
+            real_name=real_name,
             user_type=UserType.TEMPORARY
         )
         
@@ -518,6 +533,7 @@ def simple_register(request):
                 'user_type_display': user.get_user_type_display(),
                 'email': user.email,
                 'phone': user.phone,
+                'real_name': user.real_name,
                 'company_id': None,
                 'company_name': None
             }
@@ -552,6 +568,7 @@ def get_current_user(request):
             'user_type_display': user.get_user_type_display(),
             'email': user.email,
             'phone': user.phone,
+            'real_name': user.real_name,
             'company_id': user.company_id,
             'company_name': user.company.name if user.company else None,
             'company_code': user.company.code if user.company else None
@@ -703,11 +720,14 @@ def update_profile(request):
         data = json.loads(request.body)
         email = data.get('email')
         phone = data.get('phone')
+        real_name = data.get('real_name')
         
         if email:
             user.email = email
         if phone:
             user.phone = phone
+        if real_name:
+            user.real_name = real_name
         
         user.save()
         
@@ -718,6 +738,7 @@ def update_profile(request):
             'user_type_display': user.get_user_type_display(),
             'email': user.email,
             'phone': user.phone,
+            'real_name': user.real_name,
             'company_id': user.company_id,
             'company_name': user.company.name if user.company else None,
             'company_code': user.company.code if user.company else None

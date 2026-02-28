@@ -29,6 +29,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { ElMessage } from 'element-plus'
+import { login } from '../api/index.js'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -61,33 +62,20 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
-        const response = await fetch('http://localhost:8000/api/account/login/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            username: loginForm.username,
-            password: loginForm.password
-          })
-        })
+        const response = await login(loginForm.username, loginForm.password)
         
-        const data = await response.json()
+        const data = response.data
         
-        if (response.ok) {
-          // 保存用户名到localStorage
-          localStorage.setItem('lastLoginUsername', loginForm.username)
-          
-          userStore.setToken(data.token)
-          userStore.setUserInfo(data.user)
-          
-          ElMessage.success('登录成功')
-          router.push('/')
-        } else {
-          ElMessage.error(data.error || '登录失败')
-        }
+        // 保存用户名到localStorage
+        localStorage.setItem('lastLoginUsername', loginForm.username)
+        
+        userStore.setToken(data.token)
+        userStore.setUserInfo(data.user)
+        
+        ElMessage.success('登录成功')
+        router.push('/')
       } catch (error) {
-        ElMessage.error('登录失败，请重试')
+        ElMessage.error(error.response?.data?.error || '登录失败，请重试')
       } finally {
         loading.value = false
       }
