@@ -22,5 +22,6 @@ urlpatterns = [
     path('companies/<int:company_id>/', views.update_company, name='update-company'),
     path('companies/<int:company_id>/', views.delete_company, name='delete-company'),
     path('companies/<int:company_id>/users/', views.get_company_users, name='get-company-users'),
+    path('companies/batch-status/', views.batch_update_company_status, name='batch-update-company-status'),
     path('page-config/', views.get_page_config, name='get-page-config'),
 ]

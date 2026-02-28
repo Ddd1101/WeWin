@@ -4,14 +4,41 @@
       <template #header>
         <div class="card-header">
           <span>企业管理</span>
-          <el-button type="primary" @click="openAddCompanyDialog">
-            <el-icon><Plus /></el-icon>
-            新增企业
-          </el-button>
+          <div class="header-actions">
+            <el-button 
+              type="primary" 
+              @click="openAddCompanyDialog"
+              :disabled="selectedCompanies.length > 0"
+            >
+              <el-icon><Plus /></el-icon>
+              新增企业
+            </el-button>
+            <el-button 
+              type="success" 
+              @click="batchActivateCompanies"
+              :disabled="selectedCompanies.length === 0"
+            >
+              <el-icon><Check /></el-icon>
+              批量启用
+            </el-button>
+            <el-button 
+              type="danger" 
+              @click="batchDeactivateCompanies"
+              :disabled="selectedCompanies.length === 0"
+            >
+              <el-icon><Close /></el-icon>
+              批量禁用
+            </el-button>
+          </div>
         </div>
       </template>
       
-      <el-table :data="companies" style="width: 100%">
+      <el-table 
+        :data="companies" 
+        style="width: 100%"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="55" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="企业名称" />
         <el-table-column prop="code" label="企业编号" />
@@ -39,6 +66,14 @@
                 minute: '2-digit' 
               }) }}</span>
             </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="120">
+          <template #default="scope">
+            <el-switch 
+              v-model="scope.row.is_active" 
+              @change="updateCompanyStatus(scope.row)"
+            />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200">
@@ -128,14 +163,17 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Plus, Edit, Delete, User, OfficeBuilding } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, User, OfficeBuilding, Check, Close } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCompanies, createCompany, updateCompany, deleteCompany as deleteCompanyApi, getCompanyUsers } from '../api'
+import { getCompanies, createCompany, updateCompany, deleteCompany as deleteCompanyApi, getCompanyUsers, batchUpdateCompanyStatus } from '../api'
 
 const companies = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+
+// 选中的企业
+const selectedCompanies = ref([])
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增企业')
@@ -248,6 +286,65 @@ const handleSizeChange = (size) => {
 const handleCurrentChange = (current) => {
   currentPage.value = current
   loadCompanies()
+}
+
+// 处理选择事件
+const handleSelectionChange = (val) => {
+  selectedCompanies.value = val
+}
+
+// 单个企业状态更新
+const updateCompanyStatus = async (company) => {
+  try {
+    await updateCompany(company)
+    ElMessage.success(`企业${company.is_active ? '启用' : '禁用'}成功`)
+  } catch (error) {
+    ElMessage.error('操作失败')
+    // 恢复原来的状态
+    company.is_active = !company.is_active
+  }
+}
+
+// 批量启用企业
+const batchActivateCompanies = async () => {
+  try {
+    await ElMessageBox.confirm('确定要批量启用选中的企业吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    const companyIds = selectedCompanies.value.map(company => company.id)
+    await batchUpdateCompanyStatus(companyIds, true)
+    ElMessage.success('批量启用成功')
+    loadCompanies()
+    selectedCompanies.value = []
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('批量启用失败')
+    }
+  }
+}
+
+// 批量禁用企业
+const batchDeactivateCompanies = async () => {
+  try {
+    await ElMessageBox.confirm('确定要批量禁用选中的企业吗？禁用后，企业下的非管理员用户将被禁用。', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    const companyIds = selectedCompanies.value.map(company => company.id)
+    await batchUpdateCompanyStatus(companyIds, false)
+    ElMessage.success('批量禁用成功')
+    loadCompanies()
+    selectedCompanies.value = []
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('批量禁用失败')
+    }
+  }
 }
 
 onMounted(() => {

@@ -35,6 +35,14 @@ api.interceptors.response.use(
 export const login = (username, password) => {
   // 登录请求不使用拦截器添加的Authorization头
   return axios.post('http://localhost:8000/api/account/login/', { username, password })
+    .then(response => {
+      console.log('Login API response:', response)
+      return response
+    })
+    .catch(error => {
+      console.log('Login API error:', error)
+      throw error
+    })
 }
 
 export const logout = () => {
@@ -92,6 +100,11 @@ export const getCompanyUsers = (companyId) => {
 
 export const updateUserStatusApi = (userId, isActive) => {
   return api.put(`/users/${userId}/status/`, { is_active: isActive })
+}
+
+// 批量更新企业状态
+export const batchUpdateCompanyStatus = (companyIds, isActive) => {
+  return api.post('/companies/batch-status/', { company_ids: companyIds, is_active: isActive })
 }
 
 export default api

@@ -899,6 +899,7 @@ def get_companies(request):
                 'address': company.address,
                 'contact_name': company.contact_name,
                 'contact_phone': company.contact_phone,
+                'is_active': company.is_active,
                 'created_at': company.created_at.isoformat()
             })
         return JsonResponse({'companies': company_list})
@@ -961,6 +962,7 @@ def create_company(request):
             'address': company.address,
             'contact_name': company.contact_name,
             'contact_phone': company.contact_phone,
+            'is_active': company.is_active,
             'created_at': company.created_at.isoformat()
         }, status=201)
     except json.JSONDecodeError:
@@ -1015,7 +1017,18 @@ def update_company(request, company_id):
         if 'contact_phone' in data:
             company.contact_phone = data['contact_phone']
 
+        if 'is_active' in data:
+            company.is_active = data['is_active']
+
         company.save()
+
+        # 当企业被禁用时，禁用其下的非管理员用户
+        if not company.is_active:
+            # 禁用企业下的非管理员用户（企业负责人、企业用户管理员和企业用户普通账户）
+            User.objects.filter(
+                company=company,
+                user_type__in=[UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]
+            ).update(is_active=False)
 
         return JsonResponse({
             'id': company.id,
@@ -1024,6 +1037,7 @@ def update_company(request, company_id):
             'address': company.address,
             'contact_name': company.contact_name,
             'contact_phone': company.contact_phone,
+            'is_active': company.is_active,
             'created_at': company.created_at.isoformat()
         })
     except json.JSONDecodeError:
@@ -1117,5 +1131,56 @@ def get_company_users(request, company_id):
         return JsonResponse({'error': '用户不存在'}, status=404)
     except Company.DoesNotExist:
         return JsonResponse({'error': '企业不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def batch_update_company_status(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        
+        # 只有超级管理员和网站管理员可以批量更新企业状态
+        if current_user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            return JsonResponse({'error': '无权限批量更新企业状态'}, status=403)
+
+        data = json.loads(request.body)
+        company_ids = data.get('company_ids', [])
+        is_active = data.get('is_active')
+
+        if not company_ids or is_active is None:
+            return JsonResponse({'error': '企业ID和状态不能为空'}, status=400)
+
+        # 批量更新企业状态
+        companies = Company.objects.filter(id__in=company_ids)
+        companies.update(is_active=is_active)
+
+        # 当企业被禁用时，禁用其下的非管理员用户
+        if not is_active:
+            for company in companies:
+                # 禁用企业下的非管理员用户（企业负责人、企业用户管理员和企业用户普通账户）
+                User.objects.filter(
+                    company=company,
+                    user_type__in=[UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]
+                ).update(is_active=False)
+
+        return JsonResponse({'message': '批量更新企业状态成功'})
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
