@@ -18,6 +18,7 @@ class Command(BaseCommand):
         user_types = [
             UserType.SUPER_ADMIN,
             UserType.SITE_ADMIN,
+            UserType.ENTERPRISE_LEADER,
             UserType.ENTERPRISE_ADMIN,
             UserType.ENTERPRISE_USER,
             UserType.TEMPORARY,
@@ -26,7 +27,9 @@ class Command(BaseCommand):
         for user_type in user_types:
             for page in pages:
                 is_visible = True
-                if user_type == UserType.ENTERPRISE_ADMIN:
+                if user_type == UserType.ENTERPRISE_LEADER:
+                    is_visible = True
+                elif user_type == UserType.ENTERPRISE_ADMIN:
                     is_visible = page['route'] != 'users'
                 elif user_type == UserType.ENTERPRISE_USER:
                     is_visible = page['route'] in ['dashboard', 'products', 'inventory']

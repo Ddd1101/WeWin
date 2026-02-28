@@ -133,7 +133,7 @@ def create_enterprise_admin(request):
                 username=username,
                 password=password,
                 email=email,
-                user_type=UserType.ENTERPRISE_ADMIN,
+                user_type=UserType.ENTERPRISE_LEADER,
                 company=company,
                 phone=phone,
                 real_name=real_name
@@ -239,6 +239,8 @@ def get_users(request):
             users = User.objects.all()
         elif current_user.user_type == UserType.SITE_ADMIN:
             users = User.objects.exclude(user_type=UserType.SUPER_ADMIN)
+        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
+            users = User.objects.filter(company=current_user.company)
         elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
             users = User.objects.filter(company=current_user.company)
         else:
@@ -329,6 +331,9 @@ def create_user(request):
             has_permission = True
         elif current_user.user_type == UserType.SITE_ADMIN:
             if user_type != UserType.SUPER_ADMIN:
+                has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
+            if user_type in [UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER] and company == current_user.company:
                 has_permission = True
         elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
             if user_type == UserType.ENTERPRISE_USER and company == current_user.company:
@@ -426,6 +431,9 @@ def update_user_status(request, user_id):
         elif current_user.user_type == UserType.SITE_ADMIN:
             if target_user.user_type != UserType.SUPER_ADMIN:
                 has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
+            if target_user.user_type in [UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER] and target_user.company == current_user.company:
+                has_permission = True
         elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
             if target_user.user_type == UserType.ENTERPRISE_USER and target_user.company == current_user.company:
                 has_permission = True
@@ -477,6 +485,9 @@ def delete_user(request, user_id):
             has_permission = True
         elif current_user.user_type == UserType.SITE_ADMIN:
             if target_user.user_type != UserType.SUPER_ADMIN:
+                has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
+            if target_user.user_type in [UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER] and target_user.company == current_user.company:
                 has_permission = True
         elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
             if target_user.user_type == UserType.ENTERPRISE_USER and target_user.company == current_user.company:
@@ -623,7 +634,7 @@ def create_and_bind_company(request):
             )
             
             user.company = company
-            user.user_type = UserType.ENTERPRISE_ADMIN
+            user.user_type = UserType.ENTERPRISE_LEADER
             user.save()
         
         return JsonResponse({

@@ -21,6 +21,7 @@
             <el-select v-model="filterForm.userType" placeholder="请选择用户类型" clearable>
               <el-option label="网站超级管理员" value="super_admin" />
               <el-option label="网站管理员" value="site_admin" />
+              <el-option label="企业负责人" value="enterprise_leader" />
               <el-option label="企业用户管理员" value="enterprise_admin" />
               <el-option label="企业用户普通账户" value="enterprise_user" />
               <el-option label="临时账户" value="temporary" />

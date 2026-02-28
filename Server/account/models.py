@@ -23,6 +23,7 @@ class Company(models.Model):
 class UserType(models.TextChoices):
     SUPER_ADMIN = 'super_admin', '网站超级管理员'
     SITE_ADMIN = 'site_admin', '网站管理员'
+    ENTERPRISE_LEADER = 'enterprise_leader', '企业负责人'
     ENTERPRISE_ADMIN = 'enterprise_admin', '企业用户管理员'
     ENTERPRISE_USER = 'enterprise_user', '企业用户普通账户'
     TEMPORARY = 'temporary', '临时账户'
