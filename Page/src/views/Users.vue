@@ -148,7 +148,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { ElMessage, ElTable, ElTableColumn, ElButton, ElInput, ElForm, ElFormItem, ElSelect, ElOption, ElDescriptions, ElDescriptionsItem, ElTooltip } from 'element-plus'
+import { ElMessage, ElMessageBox, ElTable, ElTableColumn, ElButton, ElInput, ElForm, ElFormItem, ElSelect, ElOption, ElDescriptions, ElDescriptionsItem, ElTooltip } from 'element-plus'
 
 // 响应式数据
 const users = ref([])
