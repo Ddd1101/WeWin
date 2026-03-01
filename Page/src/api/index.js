@@ -79,29 +79,6 @@ export const changePassword = (data) => {
 };
 
 // 企业管理相关API
-export const getCompanies = () => {
-  return api.get("/companies/");
-};
-
-export const createCompany = (data) => {
-  return api.post("/companies/create/", data);
-};
-
-export const updateCompany = (data) => {
-  return api.put(`/companies/${data.id}/update/`, data);
-};
-
-export const deleteCompany = (id) => {
-  return api.delete(`/companies/${id}/delete/`);
-};
-
-export const getCompanyUsers = (companyId) => {
-  return api.get(`/companies/${companyId}/users/`);
-};
-
-export const updateUserStatusApi = (userId, isActive) => {
-  return api.put(`/users/${userId}/status/`, { is_active: isActive });
-};
 
 const companyApi = axios.create({
   baseURL: "http://localhost:8000/api/company",
