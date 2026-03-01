@@ -2,7 +2,23 @@
   <div class="users-container">
     <div class="users-header">
       <h2>用户管理</h2>
-      <el-button type="primary" @click="handleRefresh">刷新</el-button>
+      <div class="header-buttons">
+        <el-button 
+          type="success" 
+          @click="batchActivate"
+          :disabled="selectedUsers.length === 0"
+        >
+          批量激活
+        </el-button>
+        <el-button 
+          type="danger" 
+          @click="batchDeactivate"
+          :disabled="selectedUsers.length === 0"
+        >
+          批量禁用
+        </el-button>
+        <el-button type="primary" @click="handleRefresh">刷新</el-button>
+      </div>
     </div>
     
     <!-- 筛选条件 -->
@@ -47,6 +63,8 @@
       stripe
       style="width: 100%"
       :max-height="800"
+      @selection-change="handleSelectionChange"
+      row-key="id"
     >
       <!-- 展开行 -->
       <el-table-column type="expand">
@@ -83,6 +101,7 @@
       </el-table-column>
       
       <!-- 表格列 -->
+      <el-table-column type="selection" width="55" />
       <el-table-column prop="id" label="ID" width="80" fixed="left" />
       <el-table-column prop="username" label="用户名" width="150" />
       <el-table-column prop="real_name" label="姓名" width="120">
@@ -116,7 +135,7 @@
             @change="(value) => toggleUserStatus({...row, is_active: value})" 
             size="small" 
             style="width: 100%;"
-            :disabled="row.user_type === 'super_admin'"
+            :disabled="row.user_type === 'super_admin' || (row.company_is_active !== undefined && row.company_is_active !== null && !row.company_is_active)"
           >
             <el-option label="激活" :value="true" />
             <el-option label="禁用" :value="false" />
@@ -129,11 +148,12 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { ElMessage, ElTable, ElTableColumn, ElButton, ElInput, ElForm, ElFormItem, ElSelect, ElOption, ElDescriptions, ElDescriptionsItem, ElTooltip } from 'element-plus'
+import { ElMessage, ElMessageBox, ElTable, ElTableColumn, ElButton, ElInput, ElForm, ElFormItem, ElSelect, ElOption, ElDescriptions, ElDescriptionsItem, ElTooltip } from 'element-plus'
 
 // 响应式数据
 const users = ref([])
 const loading = ref(false)
+const selectedUsers = ref([])
 
 // 筛选表单
 const filterForm = ref({
@@ -310,6 +330,72 @@ const toggleUserStatus = async (user) => {
   }
 }
 
+// 处理选择变更
+const handleSelectionChange = (selection) => {
+  selectedUsers.value = selection
+}
+
+// 批量操作的公共函数
+const batchUpdateUsers = async (isActive, actionText) => {
+  try {
+    const token = localStorage.getItem('token')
+    
+    // 过滤掉超级管理员
+    const usersToUpdate = selectedUsers.value.filter(u => u.user_type !== 'super_admin')
+    
+    if (usersToUpdate.length === 0) {
+      ElMessage.warning(`没有可${actionText}的用户（超级管理员不能被批量操作）`)
+      return
+    }
+
+    await ElMessageBox.confirm(`确定要批量${actionText}选中的 ${usersToUpdate.length} 个用户吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    const promises = usersToUpdate.map(user => 
+      fetch(`http://localhost:8000/api/account/users/${user.id}/status/`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_active: isActive })
+      }).then(response => response.ok)
+    )
+
+    const results = await Promise.all(promises)
+    const successCount = results.filter(r => r).length
+    const failCount = results.length - successCount
+
+    if (successCount > 0) {
+      ElMessage.success(`批量${actionText}成功 ${successCount} 个用户${failCount > 0 ? `，${failCount} 个用户${actionText}失败` : ''}`)
+    }
+    if (failCount > 0 && successCount === 0) {
+      ElMessage.error(`批量${actionText}失败`)
+    }
+    
+    loadUsers()
+    selectedUsers.value = []
+  } catch (error) {
+    console.error('批量操作错误:', error)
+    if (error !== 'cancel') {
+      ElMessage.error(`批量${actionText}失败，请重试`)
+    }
+  }
+}
+
+// 批量激活
+const batchActivate = () => {
+  batchUpdateUsers(true, '激活')
+}
+
+// 批量禁用
+const batchDeactivate = () => {
+  batchUpdateUsers(false, '禁用')
+}
+
 // 页面挂载时加载用户列表
 onMounted(() => {
   loadUsers()
@@ -339,6 +425,11 @@ onMounted(() => {
   color: #333;
   font-size: 20px;
   font-weight: 600;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 10px;
 }
 
 .filter-container {

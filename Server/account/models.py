@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+import uuid
 
 
 class Company(models.Model):
@@ -8,6 +9,7 @@ class Company(models.Model):
     address = models.CharField(max_length=500, blank=True, null=True, verbose_name='企业地址')
     contact_name = models.CharField(max_length=100, blank=True, null=True, verbose_name='联系人姓名')
     contact_phone = models.CharField(max_length=50, blank=True, null=True, verbose_name='联系电话')
+    is_active = models.BooleanField(default=True, verbose_name='是否可用')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
@@ -30,6 +32,12 @@ class UserType(models.TextChoices):
 
 
 class User(AbstractUser):
+    uid = models.UUIDField(
+        verbose_name='用户唯一ID',
+        unique=True,
+        null=True,
+        blank=True
+    )
     user_type = models.CharField(
         max_length=20,
         choices=UserType.choices,
@@ -60,6 +68,11 @@ class User(AbstractUser):
         db_table = 'user'
         verbose_name = '用户'
         verbose_name_plural = '用户'
+
+    def save(self, *args, **kwargs):
+        if not self.uid:
+            self.uid = uuid.uuid4()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.username} ({self.get_user_type_display()})'

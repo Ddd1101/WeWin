@@ -62,8 +62,10 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
+        console.log('Attempting to login with:', loginForm.username)
         const response = await login(loginForm.username, loginForm.password)
         
+        console.log('Login response:', response)
         const data = response.data
         
         // 保存用户名到localStorage
@@ -78,6 +80,8 @@ const handleLogin = async () => {
         console.log('Login error:', error)
         if (error.response) {
           // 服务器返回了错误响应
+          console.log('Error response status:', error.response.status)
+          console.log('Error response data:', error.response.data)
           const errorMessage = error.response.data?.error || '登录失败，请重试'
           console.log('Error message:', errorMessage)
           if (errorMessage.includes('账户已被禁用')) {
@@ -87,9 +91,11 @@ const handleLogin = async () => {
           }
         } else if (error.request) {
           // 请求已发送但没有收到响应
+          console.log('Error request:', error.request)
           ElMessage.error('网络错误，请检查网络连接')
         } else {
           // 请求配置出错
+          console.log('Error message:', error.message)
           ElMessage.error('登录失败，请重试')
         }
       } finally {

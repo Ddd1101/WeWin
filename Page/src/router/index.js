@@ -63,6 +63,12 @@ const routes = [
         name: 'Profile',
         component: () => import('../views/Profile.vue'),
         meta: { title: '个人信息', icon: 'UserFilled' }
+      },
+      {
+        path: 'companies',
+        name: 'Companies',
+        component: () => import('../views/Companies.vue'),
+        meta: { title: '企业管理', icon: 'OfficeBuilding', requiresAdmin: true }
       }
     ]
   }
