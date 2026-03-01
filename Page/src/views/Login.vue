@@ -4,7 +4,22 @@
       <h2>电商ERP管理系统</h2>
       <el-form :model="loginForm" :rules="rules" ref="loginFormRef" label-width="0">
         <el-form-item prop="username">
-          <el-input v-model="loginForm.username" placeholder="请输入用户名" prefix-icon="User" size="large" />
+          <el-autocomplete
+            v-model="loginForm.username"
+            :fetch-suggestions="querySearch"
+            placeholder="请输入用户名"
+            prefix-icon="User"
+            size="large"
+            clearable
+            style="width: 100%"
+            :trigger-on-focus="true"
+          >
+            <template #default="{ item }">
+              <div class="history-item">
+                {{ item.value }}
+              </div>
+            </template>
+          </el-autocomplete>
         </el-form-item>
         <el-form-item prop="password">
           <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" prefix-icon="Lock" size="large" @keyup.enter="handleLogin" />
@@ -36,6 +51,7 @@ const userStore = useUserStore()
 
 const loginFormRef = ref(null)
 const loading = ref(false)
+const loginHistory = ref([])
 
 const loginForm = reactive({
   username: '',
@@ -47,11 +63,55 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
-// 页面加载时从localStorage读取保存的用户名
+// 从localStorage读取登录历史
+const loadLoginHistory = () => {
+  try {
+    const history = localStorage.getItem('loginHistory')
+    if (history) {
+      loginHistory.value = JSON.parse(history)
+    }
+  } catch (error) {
+    console.error('读取登录历史失败:', error)
+  }
+}
+
+// 保存登录历史到localStorage
+const saveLoginHistory = (username) => {
+  try {
+    // 移除已存在的同名账户
+    let history = loginHistory.value.filter(item => item !== username)
+    // 将新账户添加到最前面
+    history.unshift(username)
+    // 最多保存10个历史记录
+    history = history.slice(0, 10)
+    loginHistory.value = history
+    localStorage.setItem('loginHistory', JSON.stringify(history))
+  } catch (error) {
+    console.error('保存登录历史失败:', error)
+  }
+}
+
+// 自动补全查询函数
+const querySearch = (queryString, cb) => {
+  let results = []
+  if (queryString) {
+    results = loginHistory.value.filter(username => 
+      username.toLowerCase().includes(queryString.toLowerCase())
+    )
+  } else {
+    results = [...loginHistory.value]
+  }
+  // 转换为 el-autocomplete 需要的格式
+  const formattedResults = results.map(username => ({ value: username }))
+  cb(formattedResults)
+}
+
+// 页面加载时读取数据
 onMounted(() => {
-  const savedUsername = localStorage.getItem('lastLoginUsername')
-  if (savedUsername) {
-    loginForm.username = savedUsername
+  loadLoginHistory()
+  // 如果有历史记录，默认选中第一个
+  if (loginHistory.value.length > 0) {
+    loginForm.username = loginHistory.value[0]
   }
 })
 
@@ -68,8 +128,8 @@ const handleLogin = async () => {
         console.log('Login response:', response)
         const data = response.data
         
-        // 保存用户名到localStorage
-        localStorage.setItem('lastLoginUsername', loginForm.username)
+        // 保存登录历史
+        saveLoginHistory(loginForm.username)
         
         userStore.setToken(data.token)
         userStore.setUserInfo(data.user)
@@ -149,5 +209,12 @@ const handleLogin = async () => {
 }
 .register-link a:hover {
   text-decoration: underline;
+}
+.history-item {
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.history-item:hover {
+  background-color: #f5f7fa;
 }
 </style>
