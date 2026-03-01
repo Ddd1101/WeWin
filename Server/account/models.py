@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+import uuid
 
 
 class Company(models.Model):
@@ -31,6 +32,12 @@ class UserType(models.TextChoices):
 
 
 class User(AbstractUser):
+    uid = models.UUIDField(
+        verbose_name='用户唯一ID',
+        unique=True,
+        null=True,
+        blank=True
+    )
     user_type = models.CharField(
         max_length=20,
         choices=UserType.choices,
@@ -61,6 +68,11 @@ class User(AbstractUser):
         db_table = 'user'
         verbose_name = '用户'
         verbose_name_plural = '用户'
+
+    def save(self, *args, **kwargs):
+        if not self.uid:
+            self.uid = uuid.uuid4()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.username} ({self.get_user_type_display()})'
