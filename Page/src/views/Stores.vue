@@ -11,7 +11,29 @@
         </div>
       </template>
 
-      <el-table :data="stores" style="width: 100%" v-loading="loading">
+      <el-table :data="stores" style="width: 100%" v-loading="loading" row-key="id">
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <div class="expand-content">
+              <div class="expand-item">
+                <span class="expand-label">联系人：</span>
+                <span class="expand-value">{{ row.contact_name || '-' }}</span>
+              </div>
+              <div class="expand-item">
+                <span class="expand-label">联系电话：</span>
+                <span class="expand-value">{{ row.contact_phone || '-' }}</span>
+              </div>
+              <div v-if="row.shop_url" class="expand-item">
+                <span class="expand-label">店铺链接：</span>
+                <a :href="row.shop_url" target="_blank" class="expand-link">{{ row.shop_url }}</a>
+              </div>
+              <div v-if="row.description" class="expand-item">
+                <span class="expand-label">店铺描述：</span>
+                <span class="expand-value">{{ row.description }}</span>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="name" label="店铺名称" min-width="150" />
         <el-table-column prop="platform_display" label="电商平台" min-width="120">
           <template #default="{ row }">
@@ -27,8 +49,6 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="contact_name" label="联系人" min-width="100" />
-        <el-table-column prop="contact_phone" label="联系电话" min-width="120" />
         <el-table-column prop="is_active" label="状态" min-width="80">
           <template #default="{ row }">
             <el-tag :type="row.is_active ? 'success' : 'danger'">
@@ -222,8 +242,11 @@ const fetchStores = async () => {
   loading.value = true
   try {
     const response = await getStores()
+    console.log('获取店铺列表响应:', response)
     stores.value = response.data.stores
+    console.log('店铺数据:', stores.value)
   } catch (error) {
+    console.error('获取店铺列表失败:', error)
     ElMessage.error(error.response?.data?.error || '获取店铺列表失败')
   } finally {
     loading.value = false
@@ -405,5 +428,41 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.expand-content {
+  padding: 20px;
+}
+
+.expand-item {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.expand-item:last-child {
+  margin-bottom: 0;
+}
+
+.expand-label {
+  font-weight: 600;
+  color: #606266;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.expand-value {
+  color: #303133;
+  word-break: break-all;
+}
+
+.expand-link {
+  color: #409eff;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.expand-link:hover {
+  text-decoration: underline;
 }
 </style>
