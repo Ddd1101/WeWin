@@ -20,9 +20,6 @@
     <el-container class="main-container">
       <el-header class="header">
         <div class="header-left">
-          <el-select v-model="selectedStore" placeholder="选择店铺" @change="handleStoreChange" style="width: 200px">
-            <el-option v-for="store in stores" :key="store.id" :label="store.name" :value="store" />
-          </el-select>
         </div>
         <div class="header-right">
           <el-dropdown @command="handleCommand">
@@ -73,19 +70,6 @@ const menuRoutes = computed(() => {
     return true
   })
 })
-
-const stores = ref([
-  { id: 1, name: '旗舰店' },
-  { id: 2, name: '专卖店' },
-  { id: 3, name: '折扣店' }
-])
-
-const selectedStore = ref(userStore.currentStore)
-
-const handleStoreChange = (store) => {
-  userStore.setCurrentStore(store)
-  ElMessage.success(`已切换到 ${store.name}`)
-}
 
 const handleCommand = async (command) => {
   if (command === 'logout') {
