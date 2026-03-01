@@ -23,6 +23,7 @@ class Ali1688DataPullService(BaseDataPullService):
         self.app_key = self.api_config.app_key if self.api_config else None
         self.app_secret = self.api_config.app_secret.encode('utf-8') if self.api_config and self.api_config.app_secret else None
         self.access_token = self.api_config.access_token if self.api_config else None
+        self.request_logs = []
 
     def _calculate_signature(self, url_path: str, data: Dict[str, Any]) -> str:
         """
@@ -99,11 +100,23 @@ class Ali1688DataPullService(BaseDataPullService):
         
         url = self.BASE_URL + url_path
         
+        request_info = {
+            'url': url,
+            'method': 'POST',
+            'params': data.copy()
+        }
+        
         try:
             response = requests.post(url, data=data)
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            request_info['response'] = result
+            request_info['status_code'] = response.status_code
+            self.request_logs.append(request_info)
+            return result
         except Exception as e:
+            request_info['error'] = str(e)
+            self.request_logs.append(request_info)
             raise Exception(f'API调用失败: {str(e)}')
 
     def _get_single_trade_detail(self, order_id: str) -> Optional[Dict[str, Any]]:
@@ -209,7 +222,11 @@ class Ali1688DataPullService(BaseDataPullService):
                 )
             raise
         
-        return stats
+        result = {
+            'stats': stats,
+            'request_logs': self.request_logs
+        }
+        return result
 
     def pull_order_detail(self, platform_order_id: str) -> Optional[Dict[str, Any]]:
         """

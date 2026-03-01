@@ -541,17 +541,20 @@ def trigger_data_pull(request, store_id):
         )
         
         try:
-            stats = service.pull_orders(start_time, end_time, task)
+            result = service.pull_orders(start_time, end_time, task)
             
             return JsonResponse({
                 'task_id': task.id,
                 'status': task.status,
-                'stats': stats
+                'stats': result.get('stats'),
+                'request_logs': result.get('request_logs', [])
             })
         except Exception as e:
+            request_logs = getattr(service, 'request_logs', [])
             return JsonResponse({
                 'task_id': task.id,
-                'error': str(e)
+                'error': str(e),
+                'request_logs': request_logs
             }, status=500)
             
     except json.JSONDecodeError:
