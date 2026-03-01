@@ -15,10 +15,12 @@
     "element-plus": "^2.13.2",
     "pinia": "^3.0.4",
     "vue": "^3.5.25",
-    "vue-router": "^5.0.3"
+    "vue-router": "^5.0.3",
+    "x-data-spreadsheet": "^1.1.9"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.5.2",
+    "less": "^4.5.1",
     "vite": "^4.5.3"
   }
 }

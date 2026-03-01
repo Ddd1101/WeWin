@@ -69,6 +69,12 @@ const routes = [
         name: 'Companies',
         component: () => import('../views/Companies.vue'),
         meta: { title: '企业管理', icon: 'OfficeBuilding', requiresAdmin: true }
+      },
+      {
+        path: 'spreadsheet',
+        name: 'Spreadsheet',
+        component: () => import('../views/Spreadsheet.vue'),
+        meta: { title: '在线表格', icon: 'Grid' }
       }
     ]
   }
