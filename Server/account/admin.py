@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Company, PageConfig
+from .models import User, Company, PageConfig, Store
 
 
 @admin.register(Company)
@@ -34,3 +34,12 @@ class PageConfigAdmin(admin.ModelAdmin):
     search_fields = ['page_name', 'page_route']
     readonly_fields = ['created_at', 'updated_at']
     list_editable = ['is_visible', 'order']
+
+
+@admin.register(Store)
+class StoreAdmin(admin.ModelAdmin):
+    list_display = ['name', 'platform', 'category', 'company', 'is_active', 'created_at']
+    list_filter = ['platform', 'category', 'is_active', 'created_at', 'company']
+    search_fields = ['name', 'description']
+    readonly_fields = ['created_at', 'updated_at']
+    filter_horizontal = ['managers']

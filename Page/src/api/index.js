@@ -111,4 +111,28 @@ export const batchUpdateCompanyStatus = (companyIds, isActive) => {
   });
 };
 
+export const getPlatforms = () => {
+  return api.get("/platforms/");
+};
+
+export const getCategories = () => {
+  return api.get("/categories/");
+};
+
+export const getStores = () => {
+  return api.get("/stores/");
+};
+
+export const createStore = (data) => {
+  return api.post("/stores/create/", data);
+};
+
+export const updateStore = (data) => {
+  return api.put(`/stores/${data.id}/update/`, data);
+};
+
+export const deleteStore = (id) => {
+  return api.delete(`/stores/${id}/delete/`);
+};
+
 export default api;

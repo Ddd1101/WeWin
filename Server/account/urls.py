@@ -24,4 +24,10 @@ urlpatterns = [
     path('companies/<int:company_id>/users/', views.get_company_users, name='get-company-users'),
     path('companies/batch-status/', views.batch_update_company_status, name='batch-update-company-status'),
     path('page-config/', views.get_page_config, name='get-page-config'),
+    path('platforms/', views.get_platforms, name='get-platforms'),
+    path('categories/', views.get_categories, name='get-categories'),
+    path('stores/', views.get_stores, name='get-stores'),
+    path('stores/create/', views.create_store, name='create-store'),
+    path('stores/<int:store_id>/update/', views.update_store, name='update-store'),
+    path('stores/<int:store_id>/delete/', views.delete_store, name='delete-store'),
 ]
