@@ -37,37 +37,42 @@
         :data="companies" 
         style="width: 100%"
         @selection-change="handleSelectionChange"
+        row-key="id"
       >
+        <el-table-column type="expand">
+          <template #default="scope">
+            <div style="padding: 20px;">
+              <p><strong>企业地址：</strong>{{ scope.row.address || '-' }}</p>
+              <p><strong>联系人：</strong>{{ scope.row.contact_name || '-' }}</p>
+              <p><strong>联系电话：</strong>{{ scope.row.contact_phone || '-' }}</p>
+              <p><strong>创建时间：</strong>
+                <el-tooltip 
+                  :content="new Date(scope.row.created_at).toLocaleString('zh-CN', { 
+                    year: 'numeric', 
+                    month: '2-digit', 
+                    day: '2-digit', 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                  })" 
+                  placement="top"
+                >
+                  <span>{{ new Date(scope.row.created_at).toLocaleString('zh-CN', { 
+                    year: 'numeric', 
+                    month: '2-digit', 
+                    day: '2-digit', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  }) }}</span>
+                </el-tooltip>
+              </p>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column type="selection" width="55" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="企业名称" />
         <el-table-column prop="code" label="企业编号" />
-        <el-table-column prop="address" label="企业地址" />
-        <el-table-column prop="contact_name" label="联系人" />
-        <el-table-column prop="contact_phone" label="联系电话" />
-        <el-table-column label="创建时间">
-          <template #default="scope">
-            <el-tooltip 
-              :content="new Date(scope.row.created_at).toLocaleString('zh-CN', { 
-                year: 'numeric', 
-                month: '2-digit', 
-                day: '2-digit', 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit' 
-              })" 
-              placement="top"
-            >
-              <span>{{ new Date(scope.row.created_at).toLocaleString('zh-CN', { 
-                year: 'numeric', 
-                month: '2-digit', 
-                day: '2-digit', 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              }) }}</span>
-            </el-tooltip>
-          </template>
-        </el-table-column>
         <el-table-column label="状态" width="120">
           <template #default="scope">
             <el-switch 
