@@ -2,13 +2,19 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
+from django.utils import timezone
 import json
 import jwt
 from django.conf import settings
+from datetime import datetime, timedelta
 
 from account.models import User, UserType
 from company.models import Company
-from .models import Store, Platform, Category
+from .models import (
+    Store, Platform, Category, Order, OrderItem, OrderReceiver,
+    PlatformApiConfig, DataPullTask, StoreDataConfig, DataPullStatus
+)
+from .services import BaseDataPullService, Ali1688DataPullService
 
 
 SECRET_KEY = settings.SECRET_KEY
@@ -338,6 +344,384 @@ def delete_store(request, store_id):
 
         store.delete()
         return JsonResponse({'message': '店铺删除成功'})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Store.DoesNotExist:
+        return JsonResponse({'error': '店铺不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_store_api_config(request, store_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        store = Store.objects.get(id=store_id)
+        
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
+            if current_user.company == store.company:
+                has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_USER:
+            if current_user in store.managers.all():
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限查看API配置'}, status=403)
+
+        api_config = PlatformApiConfig.objects.filter(store=store).first()
+        
+        if api_config:
+            return JsonResponse({
+                'id': api_config.id,
+                'store_id': api_config.store_id,
+                'app_key': api_config.app_key,
+                'access_token': api_config.access_token,
+                'is_active': api_config.is_active,
+                'extra_config': api_config.extra_config,
+                'created_at': api_config.created_at.isoformat(),
+                'updated_at': api_config.updated_at.isoformat()
+            })
+        else:
+            return JsonResponse({'config': None})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Store.DoesNotExist:
+        return JsonResponse({'error': '店铺不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def create_or_update_api_config(request, store_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        store = Store.objects.get(id=store_id)
+        
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
+            if current_user.company == store.company:
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限配置API'}, status=403)
+
+        data = json.loads(request.body)
+        
+        with transaction.atomic():
+            api_config, created = PlatformApiConfig.objects.get_or_create(
+                store=store,
+                defaults={
+                    'app_key': data.get('app_key', ''),
+                    'app_secret': data.get('app_secret', ''),
+                    'access_token': data.get('access_token', ''),
+                    'refresh_token': data.get('refresh_token', ''),
+                    'extra_config': data.get('extra_config', {}),
+                    'is_active': data.get('is_active', True)
+                }
+            )
+            
+            if not created:
+                if 'app_key' in data:
+                    api_config.app_key = data['app_key']
+                if 'app_secret' in data:
+                    api_config.app_secret = data['app_secret']
+                if 'access_token' in data:
+                    api_config.access_token = data['access_token']
+                if 'refresh_token' in data:
+                    api_config.refresh_token = data['refresh_token']
+                if 'extra_config' in data:
+                    api_config.extra_config = data['extra_config']
+                if 'is_active' in data:
+                    api_config.is_active = data['is_active']
+                api_config.save()
+
+        return JsonResponse({
+            'id': api_config.id,
+            'store_id': api_config.store_id,
+            'app_key': api_config.app_key,
+            'is_active': api_config.is_active,
+            'created': created
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Store.DoesNotExist:
+        return JsonResponse({'error': '店铺不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def trigger_data_pull(request, store_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        store = Store.objects.get(id=store_id)
+        
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
+            if current_user.company == store.company:
+                has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_USER:
+            if current_user in store.managers.all():
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限触发数据拉取'}, status=403)
+
+        data = json.loads(request.body)
+        start_time_str = data.get('start_time')
+        end_time_str = data.get('end_time')
+        
+        if not start_time_str or not end_time_str:
+            return JsonResponse({'error': '请指定拉取时间范围'}, status=400)
+        
+        try:
+            start_time = datetime.fromisoformat(start_time_str)
+            end_time = datetime.fromisoformat(end_time_str)
+        except:
+            return JsonResponse({'error': '时间格式错误'}, status=400)
+
+        ServiceClass = BaseDataPullService.get_service_class(store.platform)
+        if not ServiceClass:
+            return JsonResponse({'error': f'不支持的平台: {store.platform}'}, status=400)
+
+        service = ServiceClass(store)
+        
+        task = service.create_pull_task(
+            task_type='order_pull',
+            start_time=start_time,
+            end_time=end_time,
+            params={'triggered_by': current_user.id}
+        )
+        
+        try:
+            stats = service.pull_orders(start_time, end_time, task)
+            
+            return JsonResponse({
+                'task_id': task.id,
+                'status': task.status,
+                'stats': stats
+            })
+        except Exception as e:
+            return JsonResponse({
+                'task_id': task.id,
+                'error': str(e)
+            }, status=500)
+            
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Store.DoesNotExist:
+        return JsonResponse({'error': '店铺不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_orders(request, store_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        store = Store.objects.get(id=store_id)
+        
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
+            if current_user.company == store.company:
+                has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_USER:
+            if current_user in store.managers.all():
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限查看订单'}, status=403)
+
+        order_status = request.GET.get('status')
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        
+        orders = Order.objects.filter(store=store)
+        
+        if order_status:
+            orders = orders.filter(order_status=order_status)
+        
+        if start_date:
+            try:
+                start_dt = datetime.fromisoformat(start_date)
+                orders = orders.filter(create_time__gte=start_dt)
+            except:
+                pass
+        
+        if end_date:
+            try:
+                end_dt = datetime.fromisoformat(end_date)
+                orders = orders.filter(create_time__lte=end_dt)
+            except:
+                pass
+        
+        orders = orders.order_by('-create_time')
+        
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 20))
+        offset = (page - 1) * page_size
+        
+        total_count = orders.count()
+        orders = orders[offset:offset + page_size]
+        
+        order_list = []
+        for order in orders:
+            items = []
+            for item in order.items.all():
+                items.append({
+                    'id': item.id,
+                    'product_name': item.product_name,
+                    'quantity': item.quantity,
+                    'price': float(item.price),
+                    'item_amount': float(item.item_amount),
+                    'product_cargo_number': item.product_cargo_number
+                })
+            
+            order_list.append({
+                'id': order.id,
+                'platform_order_id': order.platform_order_id,
+                'platform_order_no': order.platform_order_no,
+                'order_status': order.order_status,
+                'order_status_display': order.get_order_status_display(),
+                'refund_status': order.refund_status,
+                'total_amount': float(order.total_amount),
+                'sum_product_payment': float(order.sum_product_payment),
+                'shipping_fee': float(order.shipping_fee),
+                'refund_amount': float(order.refund_amount),
+                'create_time': order.create_time.isoformat() if order.create_time else None,
+                'pay_time': order.pay_time.isoformat() if order.pay_time else None,
+                'buyer_login_id': order.buyer_login_id,
+                'items': items
+            })
+
+        return JsonResponse({
+            'orders': order_list,
+            'total_count': total_count,
+            'page': page,
+            'page_size': page_size
+        })
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Store.DoesNotExist:
+        return JsonResponse({'error': '店铺不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_pull_tasks(request, store_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        store = Store.objects.get(id=store_id)
+        
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
+            if current_user.company == store.company:
+                has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_USER:
+            if current_user in store.managers.all():
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限查看拉取任务'}, status=403)
+
+        tasks = DataPullTask.objects.filter(store=store).order_by('-created_at')[:50]
+        
+        task_list = []
+        for task in tasks:
+            task_list.append({
+                'id': task.id,
+                'task_type': task.task_type,
+                'status': task.status,
+                'status_display': task.get_status_display(),
+                'start_time': task.start_time.isoformat() if task.start_time else None,
+                'end_time': task.end_time.isoformat() if task.end_time else None,
+                'order_count': task.order_count,
+                'new_order_count': task.new_order_count,
+                'updated_order_count': task.updated_order_count,
+                'error_message': task.error_message,
+                'created_at': task.created_at.isoformat(),
+                'updated_at': task.updated_at.isoformat()
+            })
+
+        return JsonResponse({'tasks': task_list})
     except User.DoesNotExist:
         return JsonResponse({'error': '用户不存在'}, status=404)
     except Store.DoesNotExist:
