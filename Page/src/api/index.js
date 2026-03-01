@@ -103,36 +103,115 @@ export const updateUserStatusApi = (userId, isActive) => {
   return api.put(`/users/${userId}/status/`, { is_active: isActive });
 };
 
-// 批量更新企业状态
+const companyApi = axios.create({
+  baseURL: "http://localhost:8000/api/company",
+  timeout: 10000,
+});
+
+const storeApi = axios.create({
+  baseURL: "http://localhost:8000/api/store",
+  timeout: 10000,
+});
+
+companyApi.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  },
+);
+
+storeApi.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  },
+);
+
+companyApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userInfo");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  },
+);
+
+storeApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userInfo");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  },
+);
+
+export const getCompanies = () => {
+  return companyApi.get("/");
+};
+
+export const createCompany = (data) => {
+  return companyApi.post("/create/", data);
+};
+
+export const updateCompany = (data) => {
+  return companyApi.put(`/${data.id}/update/`, data);
+};
+
+export const deleteCompany = (id) => {
+  return companyApi.delete(`/${id}/delete/`);
+};
+
+export const getCompanyUsers = (companyId) => {
+  return companyApi.get(`/${companyId}/users/`);
+};
+
 export const batchUpdateCompanyStatus = (companyIds, isActive) => {
-  return api.post("/companies/batch-status/", {
+  return companyApi.post("/batch-status/", {
     company_ids: companyIds,
     is_active: isActive,
   });
 };
 
 export const getPlatforms = () => {
-  return api.get("/platforms/");
+  return storeApi.get("/platforms/");
 };
 
 export const getCategories = () => {
-  return api.get("/categories/");
+  return storeApi.get("/categories/");
 };
 
 export const getStores = () => {
-  return api.get("/stores/");
+  return storeApi.get("/");
 };
 
 export const createStore = (data) => {
-  return api.post("/stores/create/", data);
+  return storeApi.post("/create/", data);
 };
 
 export const updateStore = (data) => {
-  return api.put(`/stores/${data.id}/update/`, data);
+  return storeApi.put(`/${data.id}/update/`, data);
 };
 
 export const deleteStore = (id) => {
-  return api.delete(`/stores/${id}/delete/`);
+  return storeApi.delete(`/${id}/delete/`);
 };
 
 export default api;

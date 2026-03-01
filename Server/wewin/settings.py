@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "account",
+    "company",
+    "store",
 ]
 
 AUTH_USER_MODEL = 'account.User'
