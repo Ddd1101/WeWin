@@ -81,19 +81,27 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200">
+        <el-table-column label="查看用户" width="100">
+          <template #default="scope">
+            <el-button size="small" @click="viewCompanyUsers(scope.row.id)">
+              <el-icon><User /></el-icon>
+              查看用户
+            </el-button>
+          </template>
+        </el-table-column>
+        <el-table-column label="编辑" width="100">
           <template #default="scope">
             <el-button size="small" @click="openEditCompanyDialog(scope.row)">
               <el-icon><Edit /></el-icon>
               编辑
             </el-button>
+          </template>
+        </el-table-column>
+        <el-table-column label="删除" width="100">
+          <template #default="scope">
             <el-button size="small" type="danger" @click="deleteCompany(scope.row.id)">
               <el-icon><Delete /></el-icon>
               删除
-            </el-button>
-            <el-button size="small" @click="viewCompanyUsers(scope.row.id)">
-              <el-icon><User /></el-icon>
-              查看用户
             </el-button>
           </template>
         </el-table-column>
