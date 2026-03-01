@@ -191,4 +191,24 @@ export const deleteStore = (id) => {
   return storeApi.delete(`/${id}/delete/`);
 };
 
+export const getStoreApiConfig = (storeId) => {
+  return storeApi.get(`/${storeId}/api-config/`);
+};
+
+export const createOrUpdateStoreApiConfig = (storeId, data) => {
+  return storeApi.post(`/${storeId}/api-config/create-or-update/`, data);
+};
+
+export const triggerDataPull = (storeId, data) => {
+  return storeApi.post(`/${storeId}/trigger-pull/`, data);
+};
+
+export const getStoreOrders = (storeId, params = {}) => {
+  return storeApi.get(`/${storeId}/orders/`, { params });
+};
+
+export const getPullTasks = (storeId) => {
+  return storeApi.get(`/${storeId}/pull-tasks/`);
+};
+
 export default api;

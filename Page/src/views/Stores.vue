@@ -36,10 +36,13 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" fixed="right" width="200">
+        <el-table-column label="操作" fixed="right" width="300">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="openEditDialog(row)">
               编辑
+            </el-button>
+            <el-button link type="success" size="small" @click="openApiConfigDialog(row)">
+              API配置
             </el-button>
             <el-button link type="danger" size="small" @click="handleDelete(row)">
               删除
@@ -97,6 +100,53 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="apiConfigDialogVisible"
+      title="API配置"
+      width="600px"
+      @close="resetApiConfigForm"
+    >
+      <el-form :model="apiConfigForm" ref="apiConfigFormRef" label-width="120px">
+        <el-alert
+          title="提示"
+          type="info"
+          :closable="false"
+          style="margin-bottom: 20px;"
+        >
+          <template #default>
+            请填写平台API相关配置信息，用于从电商平台后台拉取订单数据。
+          </template>
+        </el-alert>
+        <el-form-item label="店铺名称">
+          <el-input v-model="currentStore.name" disabled />
+        </el-form-item>
+        <el-form-item label="电商平台">
+          <el-tag>{{ currentStore.platform_display }}</el-tag>
+        </el-form-item>
+        <el-form-item label="App Key">
+          <el-input v-model="apiConfigForm.app_key" placeholder="请输入App Key" show-password />
+        </el-form-item>
+        <el-form-item label="App Secret">
+          <el-input v-model="apiConfigForm.app_secret" placeholder="请输入App Secret" show-password />
+        </el-form-item>
+        <el-form-item label="Access Token">
+          <el-input v-model="apiConfigForm.access_token" type="textarea" :rows="2" placeholder="请输入Access Token" />
+        </el-form-item>
+        <el-form-item label="Refresh Token">
+          <el-input v-model="apiConfigForm.refresh_token" type="textarea" :rows="2" placeholder="请输入Refresh Token（可选）" />
+        </el-form-item>
+        <el-form-item label="是否启用">
+          <el-switch v-model="apiConfigForm.is_active" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="apiConfigDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveApiConfig" :loading="apiConfigSubmitLoading">
+          保存配置
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -104,7 +154,10 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { getPlatforms, getCategories, getStores, createStore, updateStore, deleteStore, getUsers } from '../api'
+import { 
+  getPlatforms, getCategories, getStores, createStore, updateStore, deleteStore, getUsers,
+  getStoreApiConfig, createOrUpdateStoreApiConfig 
+} from '../api'
 
 const stores = ref([])
 const platforms = ref([])
@@ -116,6 +169,11 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref(null)
 
+const apiConfigDialogVisible = ref(false)
+const apiConfigSubmitLoading = ref(false)
+const apiConfigFormRef = ref(null)
+const currentStore = ref({})
+
 const form = ref({
   name: '',
   platform: '',
@@ -125,6 +183,14 @@ const form = ref({
   contact_name: '',
   contact_phone: '',
   manager_ids: [],
+  is_active: true
+})
+
+const apiConfigForm = ref({
+  app_key: '',
+  app_secret: '',
+  access_token: '',
+  refresh_token: '',
   is_active: true
 })
 
@@ -169,7 +235,8 @@ const fetchPlatforms = async () => {
     const response = await getPlatforms()
     platforms.value = response.data.platforms
   } catch (error) {
-    ElMessage.error('获取平台列表失败')
+    console.error('获取平台列表失败:', error)
+    ElMessage.error(error.response?.data?.error || '获取平台列表失败')
   }
 }
 
@@ -178,7 +245,8 @@ const fetchCategories = async () => {
     const response = await getCategories()
     categories.value = response.data.categories
   } catch (error) {
-    ElMessage.error('获取品类列表失败')
+    console.error('获取品类列表失败:', error)
+    ElMessage.error(error.response?.data?.error || '获取品类列表失败')
   }
 }
 
@@ -270,6 +338,57 @@ const handleDelete = async (row) => {
     if (error !== 'cancel') {
       ElMessage.error(error.response?.data?.error || '删除店铺失败')
     }
+  }
+}
+
+const openApiConfigDialog = async (row) => {
+  currentStore.value = row
+  apiConfigDialogVisible.value = true
+  await fetchApiConfig(row.id)
+}
+
+const fetchApiConfig = async (storeId) => {
+  try {
+    const response = await getStoreApiConfig(storeId)
+    if (response.data.config) {
+      apiConfigForm.value = {
+        app_key: response.data.config.app_key || '',
+        app_secret: response.data.config.app_secret || '',
+        access_token: response.data.config.access_token || '',
+        refresh_token: response.data.config.refresh_token || '',
+        is_active: response.data.config.is_active !== false
+      }
+    } else {
+      resetApiConfigForm()
+    }
+  } catch (error) {
+    ElMessage.error(error.response?.data?.error || '获取API配置失败')
+  }
+}
+
+const resetApiConfigForm = () => {
+  apiConfigForm.value = {
+    app_key: '',
+    app_secret: '',
+    access_token: '',
+    refresh_token: '',
+    is_active: true
+  }
+  if (apiConfigFormRef.value) {
+    apiConfigFormRef.value.clearValidate()
+  }
+}
+
+const handleSaveApiConfig = async () => {
+  apiConfigSubmitLoading.value = true
+  try {
+    await createOrUpdateStoreApiConfig(currentStore.value.id, apiConfigForm.value)
+    ElMessage.success('保存API配置成功')
+    apiConfigDialogVisible.value = false
+  } catch (error) {
+    ElMessage.error(error.response?.data?.error || '保存API配置失败')
+  } finally {
+    apiConfigSubmitLoading.value = false
   }
 }
 
