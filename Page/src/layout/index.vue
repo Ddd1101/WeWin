@@ -11,10 +11,22 @@
         text-color="#bfcbd9"
         active-text-color="#409EFF"
       >
-        <el-menu-item v-for="route in menuRoutes" :key="route.path" :index="route.path">
-          <el-icon><component :is="route.meta.icon" /></el-icon>
-          <span>{{ route.meta.title }}</span>
-        </el-menu-item>
+        <template v-for="route in menuRoutes" :key="route.path">
+          <el-sub-menu v-if="route.children && route.children.length > 0" :index="route.path">
+            <template #title>
+              <el-icon><component :is="route.meta.icon" /></el-icon>
+              <span>{{ route.meta.title }}</span>
+            </template>
+            <el-menu-item v-for="child in route.children" :key="child.path" :index="`${route.path}/${child.path}`">
+              <el-icon><component :is="child.meta.icon" /></el-icon>
+              <span>{{ child.meta.title }}</span>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-menu-item v-else :index="route.path">
+            <el-icon><component :is="route.meta.icon" /></el-icon>
+            <span>{{ route.meta.title }}</span>
+          </el-menu-item>
+        </template>
       </el-menu>
     </el-aside>
     <el-container class="main-container">
@@ -61,14 +73,22 @@ const menuRoutes = computed(() => {
   const layoutRoute = router.options.routes.find(r => r.path === '/')
   if (!layoutRoute) return []
   
-  return layoutRoute.children.filter(child => {
+  const filterRoute = (route) => {
     // 检查是否需要管理员权限
-    if (child.meta.requiresAdmin) {
+    if (route.meta?.requiresAdmin) {
       // 只有超级管理员和网站管理员可以看到
-      return userStore.userInfo.user_type === 'super_admin' || userStore.userInfo.user_type === 'site_admin'
+      if (!(userStore.userInfo.user_type === 'super_admin' || userStore.userInfo.user_type === 'site_admin')) {
+        return false
+      }
+    }
+    // 如果有子路由，过滤子路由
+    if (route.children && route.children.length > 0) {
+      route.children = route.children.filter(child => filterRoute(child))
     }
     return true
-  })
+  }
+  
+  return layoutRoute.children.filter(child => filterRoute(child))
 })
 
 const handleCommand = async (command) => {
