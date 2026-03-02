@@ -1,0 +1,260 @@
+================================================================================
+                    测试页面点击执行测试后的后端方法调用链路
+================================================================================
+
+一、前端调用 (前端 → 后端
+--------------------------------------------------------------------------------
+
+1. 前端 StoreTest.vue
+   ↓
+   handleTest() 方法 (d:\workplace_shop\WeWin\Page\src\views\StoreTest.vue:136)
+   │
+   ├── 验证表单数据 (storeId, startTime, endTime)
+   │
+   └── 调用 API
+       ↓
+       triggerDataPull(storeId, {
+         start_time: startTime,
+         end_time: endTime
+       })
+       (d:\workplace_shop\WeWin\Page\src\api\index.js:202-204)
+
+================================================================================
+
+二、API层 (API → URL路由)
+--------------------------------------------------------------------------------
+
+2. API 层 (d:\workplace_shop\WeWin\Page\src\api\index.js:202-204)
+   ↓
+   export const triggerDataPull = (storeId, data) => {
+     return storeApi.post(`/${storeId}/trigger-pull/`, data);
+   }
+   │
+   └── 发送 POST 请求
+       URL: http://localhost:8000/api/store/{storeId}/trigger-pull/
+       Method: POST
+       Body: {
+         start_time: "YYYY-MM-DDTHH:mm:ss",
+         end_time: "YYYY-MM-DDTHH:mm:ss"
+       }
+
+================================================================================
+
+三、URL路由层 (URL路由 → 视图)
+--------------------------------------------------------------------------------
+
+3. URL 路由配置 (d:\workplace_shop\WeWin\Server\store\urls.py:13)
+   ↓
+   path('<int:store_id>/trigger-pull/', views.trigger_data_pull, name='trigger-data-pull')
+   │
+   └── 匹配成功，调用视图函数
+       ↓
+       trigger_data_pull(request, store_id)
+
+================================================================================
+
+四、视图层 (视图 → 服务层)
+--------------------------------------------------------------------------------
+
+4. 视图函数 (d:\workplace_shop\WeWin\Server\store\views.py:487-564)
+   ↓
+   trigger_data_pull(request, store_id)
+   │
+   ├── 步骤1: 认证授权
+   │   ├── 验证 Authorization header
+   │   ├── 解析 JWT Token
+   │   ├── 获取当前用户
+   │   ├── 获取店铺对象
+   │   └── 验证权限检查
+   │
+   ├── 步骤2: 解析请求参数
+   │   ├── 解析 JSON body
+   │   ├── 获取 start_time_str
+   │   ├── 获取 end_time_str
+   │   └── 转换为 datetime 对象
+   │
+   ├── 步骤3: 获取数据拉取服务
+   │   ↓
+   │   ServiceClass = BaseDataPullService.get_service_class(store.platform)
+   │   ↓
+   │   (根据店铺平台获取对应的服务类，例如 Ali1688DataPullService
+   │
+   ├── 步骤4: 创建服务实例
+   │   ↓
+   │   service = ServiceClass(store)
+   │
+   ├── 步骤5: 创建数据拉取任务
+   │   ↓
+   │   task = service.create_pull_task(
+   │       task_type='order_pull',
+   │       start_time=start_time,
+   │       end_time=end_time,
+   │       params={'triggered_by': current_user.id
+   │   )
+   │
+   └── 步骤6: 执行数据拉取
+       ↓
+       service.pull_orders(start_time, end_time, task)
+
+================================================================================
+
+五、服务层 (服务层 → 1688 API)
+--------------------------------------------------------------------------------
+
+5. Ali1688DataPullService.pull_orders()
+   (d:\workplace_shop\WeWin\Server\store\services\ali1688.py:156-229)
+   │
+   ├── 初始化
+   │   ├── 更新任务状态为 PULLING
+   │   └── 初始化统计信息 stats
+   │
+   ├── 步骤1: 构建请求参数
+   │   ↓
+   │   req_data = {
+   │       createStartTime: 格式化开始时间,
+   │       createEndTime: 格式化结束时间,
+   │       needMemoInfo: 'true',
+   │       needBuyerAddressAndPhone: 'true',
+   │       pageSize: 20
+   │   }
+   │
+   ├── 步骤2: 第一次调用获取订单总数
+   │   ↓
+   │   res = self._get_trade_data(req_data)
+   │   │
+   │   └── 获取 total_record = res.get('totalRecord', 0)
+   │   └── 计算总页数 page_num
+   │
+   ├── 步骤3: 循环分页获取订单
+   │   ↓
+   │   for page in range(page_num):
+   │   │
+   │   ├── 设置页码
+   │   │   req_data['page'] = str(page + 1)
+   │   │
+   │   ├── 调用获取订单
+   │   │   ↓
+   │   │   res = self._get_trade_data(req_data)
+   │   │
+   │   └── 遍历订单数据
+   │   │   ↓
+   │   │   for order_data in res['result']:
+   │   │       ├── stats['total_count'] += 1
+   │   │       ├── 保存订单
+   │   │       │   ↓
+   │   │       │   is_new = self.save_order(order_data)
+   │   │       │   │
+   │   │       │   └── 创建/更新 Order 模型
+   │   │       │   ├── 创建/更新 OrderItem 模型
+   │   │       │   └── 创建/更新 OrderReceiver 模型
+   │   │       │
+   │   │       ├── 统计新增/更新计数
+   │   │       └── 错误处理
+   │
+   └── 步骤4: 更新任务状态
+       ↓
+       self.update_task_status(task, DataPullStatus.SUCCESS)
+
+================================================================================
+
+六、1688 API调用 (_get_trade_data)
+--------------------------------------------------------------------------------
+
+6. _get_trade_data() 方法
+   (d:\workplace_shop\WeWin\Server\store\services\ali1688.py:82-120)
+   │
+   ├── 步骤1: 验证 API 配置
+   │   ├── 检查 app_key, app_secret, access_token
+   │
+   ├── 步骤2: 构建 URL 路径
+   │   ↓
+   │   url_path = REQUEST_TYPE_TRADE + 'alibaba.trade.getSellerOrderList/' + app_key
+   │
+   ├── 步骤3: 计算签名
+   │   ↓
+   │   _aop_signature = self._calculate_signature(url_path, data)
+   │
+   ├── 步骤4: 构建请求参数
+   │   ↓
+   │   data['access_token'] = access_token
+   │   data['_aop_signature'] = _aop_signature
+   │
+   ├── 步骤5: 构建完整 URL
+   │   ↓
+   │   url = BASE_URL + url_path
+   │   (https://gw.open.1688.com/openapi/param2/1/com.alibaba.trade/alibaba.trade.getSellerOrderList/{app_key})
+   │
+   ├── 步骤6: 发送 POST 请求
+   │   ↓
+   │   requests.post(url, data=data)
+   │
+   ├── 步骤7: 记录请求日志
+   │   ↓
+   │   request_info = {
+   │       'url': url,
+   │       'method': 'POST',
+   │       'params': data.copy(),
+   │       'response': result,
+   │       'status_code': response.status_code
+   │   }
+   │   self.request_logs.append(request_info)
+   │
+   └── 步骤8: 返回结果
+       ↓
+       return response.json()
+
+================================================================================
+
+七、保存订单 (save_order)
+--------------------------------------------------------------------------------
+
+7. save_order() 方法
+   (d:\workplace_shop\WeWin\Server\store\services\ali1688.py:226-290)
+   │
+   ├── 步骤1: 获取订单基础信息
+   │
+   ├── 步骤2: 查找或创建 Order 订单
+   │   ↓
+   │   Order.objects.get_or_create(
+   │       store=self.store,
+   │       platform_order_id=platform_order_id
+   │   )
+   │
+   ├── 步骤3: 更新或 创建/更新 OrderReceiver 收货人
+   │   ↓
+   │   self._save_order_receiver(order, order_data)
+   │
+   └── 步骤4: 创建/更新 OrderItem 订单商品
+       ↓
+       self._save_order_items(order, order_data.get('productItems', []))
+
+================================================================================
+
+八、返回结果汇总
+--------------------------------------------------------------------------------
+
+8. 返回结果链
+   ↓
+   Ali1688DataPullService.pull_orders() 返回
+   ↓
+   {
+       'stats': stats,
+       'request_logs': self.request_logs
+   }
+   ↓
+   views.trigger_data_pull() 返回
+   ↓
+   JsonResponse({
+       'task_id': task.id,
+       'status': task.status,
+       'stats': result.get('stats'),
+       'request_logs': result.get('request_logs', [])
+   })
+   ↓
+   前端 StoreTest.vue 接收
+   ↓
+   response.value = res.data
+   ↓
+   显示在页面上
+
+================================================================================
