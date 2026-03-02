@@ -90,6 +90,109 @@
           </div>
         </div>
         
+        <div v-if="allOrders.length > 0" class="response-section">
+          <div class="response-header">
+            <span>订单可视化 ({{ allOrders.length }} 个订单)</span>
+          </div>
+          <div class="orders-list">
+            <el-card v-for="(order, orderIndex) in allOrders" :key="orderIndex" class="order-card">
+              <template #header>
+                <div class="order-header">
+                  <span class="order-id">订单号: {{ order.baseInfo?.idOfStr || order.baseInfo?.id || '-' }}</span>
+                  <el-tag :type="getOrderStatusType(order.baseInfo?.status)">{{ order.baseInfo?.status || '-' }}</el-tag>
+                </div>
+              </template>
+              <div class="order-content">
+                <div class="order-section">
+                  <div class="section-title">基本信息</div>
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <span class="info-label">买家:</span>
+                      <span class="info-value">{{ order.baseInfo?.buyerLoginId || '-' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">创建时间:</span>
+                      <span class="info-value">{{ formatTime(order.baseInfo?.createTime) }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">付款时间:</span>
+                      <span class="info-value">{{ formatTime(order.baseInfo?.payTime) }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">订单金额:</span>
+                      <span class="info-value price">¥{{ order.baseInfo?.totalAmount?.toFixed(2) || '0.00' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">商品金额:</span>
+                      <span class="info-value">¥{{ order.baseInfo?.sumProductPayment?.toFixed(2) || '0.00' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">运费:</span>
+                      <span class="info-value">¥{{ order.baseInfo?.shippingFee?.toFixed(2) || '0.00' }}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div v-if="order.productItems && order.productItems.length > 0" class="order-section">
+                  <div class="section-title">商品列表 ({{ order.productItems.length }})</div>
+                  <div class="product-list">
+                    <div v-for="(item, itemIndex) in order.productItems" :key="itemIndex" class="product-item">
+                      <div v-if="item.productImgUrl && item.productImgUrl.length > 0" class="product-image">
+                        <el-image 
+                          :src="item.productImgUrl[0]" 
+                          :preview-src-list="item.productImgUrl"
+                          fit="cover"
+                          class="product-img"
+                        >
+                          <template #error>
+                            <div class="image-error">
+                              <el-icon><Picture /></el-icon>
+                            </div>
+                          </template>
+                        </el-image>
+                      </div>
+                      <div class="product-info">
+                        <div class="product-name">{{ item.name || '-' }}</div>
+                        <div class="product-sku" v-if="item.skuInfos && item.skuInfos.length > 0">
+                          规格: {{ item.skuInfos.join(' / ') }}
+                        </div>
+                        <div class="product-meta">
+                          <span>单价: ¥{{ item.price?.toFixed(2) || '0.00' }}</span>
+                          <span>数量: {{ item.quantity || 0 }}</span>
+                          <span>小计: ¥{{ item.itemAmount?.toFixed(2) || '0.00' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div v-if="order.baseInfo?.receiveAddressInfo" class="order-section">
+                  <div class="section-title">收货信息</div>
+                  <div class="receiver-info">
+                    <div class="info-item">
+                      <span class="info-label">收货人:</span>
+                      <span class="info-value">{{ order.baseInfo.receiveAddressInfo.fullName || '-' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">电话:</span>
+                      <span class="info-value">{{ order.baseInfo.receiveAddressInfo.phone || order.baseInfo.receiveAddressInfo.mobile || '-' }}</span>
+                    </div>
+                    <div class="info-item full-width">
+                      <span class="info-label">地址:</span>
+                      <span class="info-value">
+                        {{ order.baseInfo.receiveAddressInfo.province || '' }}
+                        {{ order.baseInfo.receiveAddressInfo.city || '' }}
+                        {{ order.baseInfo.receiveAddressInfo.area || '' }}
+                        {{ order.baseInfo.receiveAddressInfo.address || '' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </el-card>
+          </div>
+        </div>
+        
         <div v-if="response" class="response-section">
           <div class="response-header">
             <span>响应结果</span>
@@ -102,14 +205,58 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Picture } from '@element-plus/icons-vue'
 import { getStores, triggerDataPull } from '../api'
 
 const stores = ref([])
 const testing = ref(false)
 const response = ref(null)
 const activeRequestLogs = ref([])
+
+const allOrders = computed(() => {
+  if (!response.value || !response.value.request_logs) {
+    return []
+  }
+  
+  const orders = []
+  response.value.request_logs.forEach(log => {
+    if (log.response && log.response.result) {
+      orders.push(...log.response.result)
+    }
+  })
+  
+  return orders
+})
+
+const formatTime = (timeStr) => {
+  if (!timeStr) return '-'
+  try {
+    const year = timeStr.substring(0, 4)
+    const month = timeStr.substring(4, 6)
+    const day = timeStr.substring(6, 8)
+    const hour = timeStr.substring(8, 10)
+    const minute = timeStr.substring(10, 12)
+    const second = timeStr.substring(12, 14)
+    return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+  } catch (e) {
+    return timeStr
+  }
+}
+
+const getOrderStatusType = (status) => {
+  const statusMap = {
+    'WAIT_BUYER_PAY': 'warning',
+    'WAIT_SELLER_SEND_GOODS': 'primary',
+    'WAIT_BUYER_CONFIRM_GOODS': 'info',
+    'TRADE_BUYER_SIGNED': 'success',
+    'TRADE_FINISHED': 'success',
+    'TRADE_CLOSED': 'danger',
+    'TRADE_CLOSED_BY_TAOBAO': 'danger'
+  }
+  return statusMap[status] || 'info'
+}
 
 const testForm = ref({
   storeId: null,
@@ -255,5 +402,158 @@ onMounted(() => {
 
 .no-request-logs {
   padding: 40px 0;
+}
+
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.order-card {
+  border: 1px solid #e0e0e0;
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-id {
+  font-weight: 600;
+  font-size: 16px;
+  color: #303133;
+}
+
+.order-content {
+  padding: 10px 0;
+}
+
+.order-section {
+  margin-bottom: 20px;
+}
+
+.order-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 20px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+}
+
+.info-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.info-label {
+  font-weight: 500;
+  color: #909399;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+.info-value {
+  color: #303133;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.info-value.price {
+  color: #f56c6c;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.product-item {
+  padding: 15px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  display: flex;
+  gap: 15px;
+}
+
+.product-image {
+  flex-shrink: 0;
+}
+
+.product-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #e0e0e0;
+}
+
+.image-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 80px;
+  height: 80px;
+  background-color: #f5f7fa;
+  color: #909399;
+  border-radius: 4px;
+  border: 1px dashed #e0e0e0;
+}
+
+.image-error .el-icon {
+  font-size: 32px;
+}
+
+.product-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.product-name {
+  font-weight: 500;
+  color: #303133;
+  font-size: 14px;
+}
+
+.product-sku {
+  font-size: 13px;
+  color: #909399;
+}
+
+.product-meta {
+  display: flex;
+  gap: 20px;
+  font-size: 13px;
+  color: #606266;
+  margin-top: 8px;
+}
+
+.receiver-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
 }
 </style>
