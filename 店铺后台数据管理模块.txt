@@ -1,0 +1,12 @@
+1. 不同的平台拉取后台数据的接口和数据结构都不同，需要在店铺管理模块下，细分出一个后台数据拉取模块
+2. AliData文件夹内是一个简略的1688水晶手串后台拉取数据的示例，仅能用在1688平台
+3. 其中every_counting.py是脚本的入口文件
+4. 根据定时代码逻辑进行代码逻辑的理解
+6. 在后期，我希望新增商品管理的模块，使其与订单相关联，获取商品的销售情况
+7. 订单的买家我也希望能够被管理，查看指定买家的订单、购买频率、按日/月/年 统计其消费情况；同时可以对买家进行打标签，进行标记和跟踪
+8. 接口说明https://open.1688.com/api/apidocdetail.htm?spm=1688open.api-list.0.0.257f55edNyi48b&aopApiCategory=trade_new&id=com.alibaba.trade%3Aalibaba.trade.ec.getOrder.sellerView-1  对应 alibaba.trade.getSellerOrderList/ 接口；
+https://open.1688.com/api/apidocdetail.htm?spm=1688open.api-list.0.0.56ad55edDcfSHK&aopApiCategory=Logistics_NEW&id=com.alibaba.logistics%3Aalibaba.trade.ec.getLogisticsInfos.sellerView-1，对应 alibaba.trade.getSellerOrderList/ 接口；
+https://open.1688.com/api/apidocdetail.htm?spm=1688open.api-list.0.0.11f155ed2Oayj0&aopApiCategory=Logistics_NEW&id=com.alibaba.logistics%3Aalibaba.trade.getLogisticsTraceInfo.buyerView-1，对应alibaba.trade.getLogisticsTraceInfo.sellerView/接口；
+https://open.1688.com/api/apidocdetail.htm?spm=1688open.api-list.0.0.11f155edYMqvgl&aopApiCategory=trade_new&id=com.alibaba.trade%3Aalibaba.trade.ec.getOrder.sellerView-1，对应"alibaba.trade.get.sellerView/接口
+9. 根据接口的说明，尽可能在接口说明中的字段进行单独存储，并根据实际场景需要相互关联
+10. 参考网站中的订单详情接口、字段说明、返回结果、订单详情出参示例，将AliData内获1688水晶手串店铺的逻辑迁移到Server中，并在数据库中构建对应的订单表、订单详情表、订单商品表。考虑同平台不同行业返回数据不同以及不同平台接口和数据结构不同的情况，进行合理的代码组织
