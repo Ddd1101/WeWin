@@ -63,6 +63,7 @@ class Store(models.Model):
     contact_name = models.CharField(max_length=100, blank=True, null=True, verbose_name='联系人姓名')
     contact_phone = models.CharField(max_length=50, blank=True, null=True, verbose_name='联系电话')
     is_active = models.BooleanField(default=True, verbose_name='是否启用')
+    api_config = models.JSONField(default=dict, blank=True, verbose_name='API配置')
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
