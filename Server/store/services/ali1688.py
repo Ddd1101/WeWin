@@ -190,6 +190,7 @@ class Ali1688DataPullService(BaseDataPullService):
             page_num = (total_record + 19) // 20
             
             for page in range(page_num):
+                req_data.pop("_aop_signature")
                 req_data['page'] = str(page + 1)
                 res = self._get_trade_data(req_data)
                 
