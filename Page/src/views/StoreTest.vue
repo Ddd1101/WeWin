@@ -152,7 +152,16 @@
                         </el-image>
                       </div>
                       <div class="product-info">
-                        <div class="product-name">{{ item.name || '-' }}</div>
+                        <a 
+                          v-if="item.productSnapshotUrl" 
+                          :href="item.productSnapshotUrl" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          class="product-name-link"
+                        >
+                          <div class="product-name">{{ item.name || '-' }}</div>
+                        </a>
+                        <div v-else class="product-name">{{ item.name || '-' }}</div>
                         <div class="product-sku" v-if="item.skuInfos && item.skuInfos.length > 0">
                           规格: {{ item.skuInfos.join(' / ') }}
                         </div>
@@ -532,10 +541,22 @@ onMounted(() => {
   min-width: 0;
 }
 
+.product-name-link {
+  text-decoration: none;
+  display: block;
+}
+
+.product-name-link:hover .product-name {
+  color: #409eff;
+  text-decoration: underline;
+}
+
 .product-name {
   font-weight: 500;
   color: #303133;
   font-size: 14px;
+  cursor: pointer;
+  transition: color 0.3s;
 }
 
 .product-sku {
