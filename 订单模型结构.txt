@@ -1,0 +1,257 @@
+================================================================================
+                        订单模型结构树状图
+================================================================================
+
+Store (店铺)
+  │
+  ├── PlatformApiConfig (平台API配置) [1:1]
+  │
+  ├── StoreDataConfig (店铺数据配置) [1:1]
+  │
+  ├── DataPullTask (数据拉取任务) [1:N]
+  │
+  ├── StoreData (店铺数据记录) [1:N]
+  │
+  └── Order (订单) [1:N]
+       │
+       ├── OrderItem (订单商品) [1:N]
+       │   │
+       │   ├── platform_item_id (平台子订单ID)
+       │   ├── platform_item_id_string (子订单ID字符串)
+       │   ├── product_id (商品ID)
+       │   ├── product_name (商品名称)
+       │   ├── product_img_url (商品图片URL)
+       │   ├── product_snapshot_url (商品快照URL)
+       │   ├── product_cargo_number (商品货号)
+       │   ├── sku_id (SKU ID)
+       │   ├── sku_specs (SKU规格) [JSON]
+       │   ├── spec_id (规格ID)
+       │   ├── quantity (数量)
+       │   ├── quantity_factor (数量因子)
+       │   ├── price (单价)
+       │   ├── item_amount (商品金额)
+       │   ├── entry_discount (子订单折扣)
+       │   ├── unit (单位)
+       │   ├── type (类型)
+       │   ├── item_status (子订单状态)
+       │   ├── status_str (状态字符串)
+       │   ├── item_refund_status (子订单退款状态)
+       │   ├── refund (退款金额)
+       │   ├── refund_id (退款单ID)
+       │   ├── guarantees_terms (保障条款) [JSON]
+       │   ├── logistics_status (物流状态)
+       │   ├── gmt_create (创建时间)
+       │   ├── gmt_modified (修改时间)
+       │   ├── platform_raw_data (平台原始数据) [JSON]
+       │   ├── created_at (创建时间)
+       │   └── updated_at (更新时间)
+       │
+       ├── OrderReceiver (订单收货人) [1:1]
+       │   │
+       │   ├── receiver_name (收货人姓名)
+       │   ├── to_full_name (收货人姓名-平台字段)
+       │   ├── receiver_phone (收货人电话)
+       │   ├── receiver_mobile (收货人手机)
+       │   ├── province (省份)
+       │   ├── city (城市)
+       │   ├── district (区县)
+       │   ├── town (乡镇/街道)
+       │   ├── address (详细地址)
+       │   ├── zip_code (邮编)
+       │   ├── to_post (邮编-平台字段)
+       │   ├── to_division_code (收货地址编码)
+       │   ├── to_town_code (乡镇编码)
+       │   ├── to_area (收货地区)
+       │   ├── full_address (完整地址)
+       │   ├── created_at (创建时间)
+       │   └── updated_at (更新时间)
+       │
+       ├── OrderContact (订单联系人) [1:1] × 2 (买家/卖家)
+       │   │
+       │   ├── contact_type (联系人类型: buyer/seller)
+       │   ├── phone (联系电话)
+       │   ├── im_in_platform (平台即时通讯ID)
+       │   ├── name (联系人姓名)
+       │   ├── company_name (公司名称)
+       │   ├── created_at (创建时间)
+       │   └── updated_at (更新时间)
+       │
+       ├── OrderStep (订单步骤) [1:N]
+       │   │
+       │   ├── step_no (步骤编号)
+       │   ├── step_name (步骤名称)
+       │   ├── last_step (是否最后一步)
+       │   ├── active_status (活动状态)
+       │   ├── pay_status (付款状态)
+       │   ├── logistics_status (物流状态)
+       │   ├── pay_fee (付款费用)
+       │   ├── paid_fee (已付费用)
+       │   ├── adjust_fee (调整费用)
+       │   ├── discount_fee (折扣费用)
+       │   ├── post_fee (邮费)
+       │   ├── paid_post_fee (已付邮费)
+       │   ├── gmt_start (开始时间)
+       │   ├── gmt_pay (付款时间)
+       │   ├── created_at (创建时间)
+       │   └── updated_at (更新时间)
+       │
+       ├── OrderTradeTerm (订单交易条款) [1:N]
+       │   │
+       │   ├── phase (阶段)
+       │   ├── phase_amount (阶段金额)
+       │   ├── pay_status (付款状态)
+       │   ├── pay_way (付款方式)
+       │   ├── pay_time (付款时间)
+       │   ├── card_pay (是否卡支付)
+       │   ├── express_pay (是否快捷支付)
+       │   ├── created_at (创建时间)
+       │   └── updated_at (更新时间)
+       │
+       ├── OrderRateInfo (订单评价信息) [1:1]
+       │   │
+       │   ├── buyer_rate_status (买家评价状态)
+       │   ├── seller_rate_status (卖家评价状态)
+       │   ├── created_at (创建时间)
+       │   └── updated_at (更新时间)
+       │
+       ├── OrderBizInfo (订单业务信息) [1:1]
+       │   │
+       │   ├── credit_order (是否信用订单)
+       │   ├── ods_cyd (是否ODS CYD)
+       │   ├── created_at (创建时间)
+       │   └── updated_at (更新时间)
+       │
+       ├── OrderLogistics (订单物流信息) [1:1]
+       │   │
+       │   ├── address (地址)
+       │   ├── area (地区)
+       │   ├── area_code (地区编码)
+       │   ├── city (城市)
+       │   ├── contact_person (联系人)
+       │   ├── mobile (手机号码)
+       │   ├── province (省份)
+       │   ├── zip (邮政编码)
+       │   ├── created_at (创建时间)
+       │   ├── updated_at (更新时间)
+       │   │
+       │   └── OrderLogisticsItem (订单物流明细) [1:N]
+       │       │
+       │       ├── platform_logistics_id (平台物流ID)
+       │       ├── logistics_code (物流编码)
+       │       ├── type (类型)
+       │       ├── status (状态)
+       │       ├── logistics_company_id (物流公司ID)
+       │       ├── logistics_company_no (物流公司编号)
+       │       ├── logistics_bill_no (物流单号)
+       │       ├── sub_item_ids (子订单ID列表)
+       │       ├── from_city (出发城市)
+       │       ├── from_area (出发地区)
+       │       ├── from_address (出发地址)
+       │       ├── from_phone (出发地电话)
+       │       ├── from_post (出发地邮编)
+       │       ├── to_city (目的城市)
+       │       ├── to_area (目的地区)
+       │       ├── to_address (目的地址)
+       │       ├── to_post (目的邮编)
+       │       ├── no_logistics_condition (无需物流条件)
+       │       ├── no_logistics_name (无需物流名称)
+       │       ├── no_logistics_tel (无需物流电话)
+       │       ├── no_logistics_bill_no (无需物流单号)
+       │       ├── delivered_time (发货时间)
+       │       ├── gmt_create (创建时间)
+       │       ├── gmt_modified (修改时间)
+       │       ├── created_at (创建时间)
+       │       └── updated_at (更新时间)
+       │
+       └── Order (订单自身字段)
+           │
+           ├── 基础信息
+           │   ├── platform_order_id (平台订单ID)
+           │   ├── platform_order_no (平台订单号)
+           │   ├── order_status (订单状态)
+           │   └── refund_status (退款状态)
+           │
+           ├── 买家信息
+           │   ├── buyer_user_id (买家用户ID)
+           │   ├── buyer_id (买家ID)
+           │   ├── buyer_login_id (买家登录ID)
+           │   ├── buyer_level (买家等级)
+           │   ├── buyer_alipay_id (买家支付宝ID)
+           │   └── buyer_open_uid (买家Open UID)
+           │
+           ├── 卖家信息
+           │   ├── seller_user_id (卖家用户ID)
+           │   ├── seller_id (卖家ID)
+           │   ├── seller_login_id (卖家登录ID)
+           │   └── seller_alipay_id (卖家支付宝ID)
+           │
+           ├── 金额信息
+           │   ├── total_amount (订单总额)
+           │   ├── sum_product_payment (商品总额)
+           │   ├── shipping_fee (运费)
+           │   ├── discount (折扣)
+           │   ├── refund_amount (退款金额)
+           │   └── refund_payment (退款支付金额)
+           │
+           ├── 时间信息
+           │   ├── create_time (订单创建时间)
+           │   ├── pay_time (支付时间)
+           │   ├── modify_time (修改时间)
+           │   └── all_delivered_time (全部发货时间)
+           │
+           ├── 订单属性
+           │   ├── step_pay_all (是否分步付款)
+           │   ├── seller_order (是否卖家订单)
+           │   └── over_sea_order (是否海外订单)
+           │
+           ├── 备注信息
+           │   ├── seller_remark_icon (卖家备注图标)
+           │   ├── seller_memo (卖家备注)
+           │   └── buyer_memo (买家备注)
+           │
+           ├── 交易信息
+           │   ├── alipay_trade_id (支付宝交易号)
+           │   ├── trade_type (交易类型)
+           │   ├── flow_template_code (流程模板代码)
+           │   └── business_type (业务类型)
+           │
+           ├── 发货信息
+           │   ├── can_send_goods (是否可发货)
+           │   └── cant_send_reason (不可发货原因)
+           │
+           ├── 扩展字段
+           │   ├── new_step_order_list (分步订单列表) [JSON]
+           │   ├── ext_attributes (扩展属性) [JSON]
+           │   └── platform_raw_data (平台原始数据) [JSON]
+           │
+           └── 系统字段
+               ├── synced_at (同步时间)
+               ├── created_at (创建时间)
+               └── updated_at (更新时间)
+
+================================================================================
+                                关系说明
+================================================================================
+
+一对一关系 (1:1):
+  - Order ↔ OrderReceiver (订单收货人)
+  - Order ↔ OrderContact (订单联系人 - 每个订单有买家和卖家两个联系人)
+  - Order ↔ OrderRateInfo (订单评价信息)
+  - Order ↔ OrderBizInfo (订单业务信息)
+  - Order ↔ OrderLogistics (订单物流信息)
+  - Store ↔ PlatformApiConfig (平台API配置)
+  - Store ↔ StoreDataConfig (店铺数据配置)
+
+一对多关系 (1:N):
+  - Order → OrderItem (订单商品)
+  - Order → OrderStep (订单步骤)
+  - Order → OrderTradeTerm (订单交易条款)
+  - OrderLogistics → OrderLogisticsItem (订单物流明细)
+  - Store → Order (订单)
+  - Store → DataPullTask (数据拉取任务)
+  - Store → StoreData (店铺数据记录)
+
+多对多关系 (M:N):
+  - Store ↔ User (店铺管理员)
+
+================================================================================

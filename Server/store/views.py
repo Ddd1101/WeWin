@@ -77,6 +77,21 @@ def get_stores(request):
                     'username': manager.username,
                     'real_name': manager.real_name
                 })
+            
+            api_config = None
+            try:
+                config_obj = PlatformApiConfig.objects.filter(store=store).first()
+                if config_obj:
+                    api_config = {
+                        'id': config_obj.id,
+                        'app_key': config_obj.app_key,
+                        'is_active': config_obj.is_active,
+                        'has_access_token': bool(config_obj.access_token),
+                        'has_refresh_token': bool(config_obj.refresh_token)
+                    }
+            except:
+                pass
+            
             store_list.append({
                 'id': store.id,
                 'name': store.name,
@@ -92,6 +107,7 @@ def get_stores(request):
                 'contact_name': store.contact_name,
                 'contact_phone': store.contact_phone,
                 'is_active': store.is_active,
+                'api_config': api_config,
                 'created_by_id': store.created_by_id,
                 'created_by_name': store.created_by.username if store.created_by else None,
                 'created_at': store.created_at.isoformat(),

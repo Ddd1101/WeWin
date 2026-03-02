@@ -15,21 +15,33 @@
         <el-table-column type="expand">
           <template #default="{ row }">
             <div class="expand-content">
-              <div class="expand-item">
-                <span class="expand-label">联系人：</span>
-                <span class="expand-value">{{ row.contact_name || '-' }}</span>
+              <div class="expand-column">
+                <div class="expand-item">
+                  <span class="expand-label">联系人：</span>
+                  <span class="expand-value">{{ row.contact_name || '-' }}</span>
+                </div>
+                <div v-if="row.shop_url" class="expand-item">
+                  <span class="expand-label">店铺链接：</span>
+                  <a :href="row.shop_url" target="_blank" class="expand-link">{{ row.shop_url }}</a>
+                </div>
+                <div class="expand-item">
+                  <span class="expand-label">App Key：</span>
+                  <span class="expand-value">{{ row.api_config?.app_key || '-' }}</span>
+                </div>
               </div>
-              <div class="expand-item">
-                <span class="expand-label">联系电话：</span>
-                <span class="expand-value">{{ row.contact_phone || '-' }}</span>
-              </div>
-              <div v-if="row.shop_url" class="expand-item">
-                <span class="expand-label">店铺链接：</span>
-                <a :href="row.shop_url" target="_blank" class="expand-link">{{ row.shop_url }}</a>
-              </div>
-              <div v-if="row.description" class="expand-item">
-                <span class="expand-label">店铺描述：</span>
-                <span class="expand-value">{{ row.description }}</span>
+              <div class="expand-column">
+                <div class="expand-item">
+                  <span class="expand-label">联系电话：</span>
+                  <span class="expand-value">{{ row.contact_phone || '-' }}</span>
+                </div>
+                <div v-if="row.description" class="expand-item">
+                  <span class="expand-label">店铺描述：</span>
+                  <span class="expand-value">{{ row.description }}</span>
+                </div>
+                <div class="expand-item">
+                  <span class="expand-label">Access Token：</span>
+                  <span class="expand-value">{{ row.api_config?.has_access_token ? '已配置' : '未配置' }}</span>
+                </div>
               </div>
             </div>
           </template>
@@ -432,16 +444,20 @@ onMounted(() => {
 
 .expand-content {
   padding: 20px;
+  display: flex;
+  gap: 40px;
+}
+
+.expand-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .expand-item {
-  margin-bottom: 12px;
   display: flex;
   align-items: flex-start;
-}
-
-.expand-item:last-child {
-  margin-bottom: 0;
 }
 
 .expand-label {
