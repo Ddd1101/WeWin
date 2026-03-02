@@ -119,6 +119,14 @@
                       <span class="info-value">{{ formatTime(order.baseInfo?.payTime) }}</span>
                     </div>
                     <div class="info-item">
+                      <span class="info-label">折扣前金额:</span>
+                      <span class="info-value original-price">¥{{ ((order.baseInfo?.totalAmount || 0) + (order.baseInfo?.discount || 0)).toFixed(2) }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">折扣金额:</span>
+                      <span class="info-value discount-price">-¥{{ (order.baseInfo?.discount || 0).toFixed(2) }}</span>
+                    </div>
+                    <div class="info-item">
                       <span class="info-label">订单金额:</span>
                       <span class="info-value price">¥{{ order.baseInfo?.totalAmount?.toFixed(2) || '0.00' }}</span>
                     </div>
@@ -489,6 +497,18 @@ onMounted(() => {
   color: #f56c6c;
   font-weight: 600;
   font-size: 16px;
+}
+
+.info-value.original-price {
+  color: #909399;
+  text-decoration: line-through;
+  font-size: 14px;
+}
+
+.info-value.discount-price {
+  color: #e6a23c;
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .product-list {
