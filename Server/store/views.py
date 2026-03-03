@@ -701,6 +701,64 @@ def get_orders(request, store_id):
 
 
 @require_http_methods(['GET'])
+def get_order_detail(request, store_id, platform_order_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        store = Store.objects.get(id=store_id)
+        
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
+            if current_user.company == store.company:
+                has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_USER:
+            if current_user in store.managers.all():
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限查看订单详情'}, status=403)
+
+        ServiceClass = BaseDataPullService.get_service_class(store.platform)
+        if not ServiceClass:
+            return JsonResponse({'error': f'不支持的平台: {store.platform}'}, status=400)
+
+        service = ServiceClass(store)
+        
+        order_detail = service.pull_order_detail(platform_order_id)
+        
+        if order_detail:
+            return JsonResponse({
+                'success': True,
+                'order_detail': order_detail
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': '未找到订单详情'
+            }, status=404)
+            
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Store.DoesNotExist:
+        return JsonResponse({'error': '店铺不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
 def get_pull_tasks(request, store_id):
     try:
         auth_header = request.headers.get('Authorization')

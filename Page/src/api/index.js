@@ -211,4 +211,8 @@ export const getPullTasks = (storeId) => {
   return storeApi.get(`/${storeId}/pull-tasks/`);
 };
 
+export const getOrderDetail = (storeId, platformOrderId) => {
+  return storeApi.get(`/${storeId}/orders/${platformOrderId}/detail/`);
+};
+
 export default api;

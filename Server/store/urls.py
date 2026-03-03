@@ -12,5 +12,6 @@ urlpatterns = [
     path('<int:store_id>/api-config/create-or-update/', views.create_or_update_api_config, name='create-or-update-api-config'),
     path('<int:store_id>/trigger-pull/', views.trigger_data_pull, name='trigger-data-pull'),
     path('<int:store_id>/orders/', views.get_orders, name='get-orders'),
+    path('<int:store_id>/orders/<str:platform_order_id>/detail/', views.get_order_detail, name='get-order-detail'),
     path('<int:store_id>/pull-tasks/', views.get_pull_tasks, name='get-pull-tasks'),
 ]
