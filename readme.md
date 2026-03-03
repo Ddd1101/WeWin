@@ -36,6 +36,30 @@ python3 manage.py createsuperuser
 pip install gunicorn
 gunicorn wewin.wsgi:application -b 0.0.0.0:8000
 
+# 进入Server目录
+
+cd Server
+
+# 激活虚拟环境
+
+source venv/bin/activate
+
+# 使用 nohup 在后台运行
+
+nohup gunicorn wewin.wsgi:application -b 0.0.0.0:8000 > gunicorn.log 2>&1 &
+
+# 查看进程
+
+ps aux | grep gunicorn
+
+# 查看日志
+
+tail -f gunicorn.log
+
+# 停止服务
+
+pkill -f gunicorn
+
 # 前端部署
 
 cd ~/workplace_shop/WeWin/Page
@@ -52,3 +76,25 @@ npm run build
 
 npm install -g serve
 serve -s dist -l 5173
+
+# 后台运行
+
+# 进入前端目录
+
+cd ~/workplace_shop/WeWin/Page
+
+# 使用 nohup 在后台运行
+
+nohup serve -s dist -l 5173 > serve.log 2>&1 &
+
+# 查看进程
+
+ps aux | grep serve
+
+# 查看日志
+
+tail -f serve.log
+
+# 停止服务
+
+pkill -f "serve -s dist"
