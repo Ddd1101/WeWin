@@ -1,6 +1,7 @@
 import axios from "axios";
 
 // 后端服务地址
+// const API_BASE_URL = "API_BASE_URL";
 const API_BASE_URL = "http://192.168.1.14:8000";
 
 const api = axios.create({

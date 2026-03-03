@@ -150,6 +150,9 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox, ElTable, ElTableColumn, ElButton, ElInput, ElForm, ElFormItem, ElSelect, ElOption, ElDescriptions, ElDescriptionsItem, ElTooltip } from 'element-plus'
 
+// API 基础 URL
+const API_BASE_URL = "http://192.168.1.14:8000"
+
 // 响应式数据
 const users = ref([])
 const loading = ref(false)
@@ -213,7 +216,7 @@ const loadUsers = async () => {
   loading.value = true
   try {
     const token = localStorage.getItem('token')
-    const response = await fetch('http://localhost:8000/api/account/users/', {
+    const response = await fetch(`${API_BASE_URL}/api/account/users/`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -263,7 +266,7 @@ const changeUserType = async (user) => {
     const newUserType = user.user_type
     
     const token = localStorage.getItem('token')
-    const response = await fetch(`http://localhost:8000/api/account/users/${user.id}/update-type/`, {
+    const response = await fetch(`${API_BASE_URL}/api/account/users/${user.id}/update-type/`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -301,7 +304,7 @@ const toggleUserStatus = async (user) => {
     const newStatus = user.is_active
     
     const token = localStorage.getItem('token')
-    const response = await fetch(`http://localhost:8000/api/account/users/${user.id}/status/`, {
+    const response = await fetch(`${API_BASE_URL}/api/account/users/${user.id}/status/`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -355,7 +358,7 @@ const batchUpdateUsers = async (isActive, actionText) => {
     })
 
     const promises = usersToUpdate.map(user => 
-      fetch(`http://localhost:8000/api/account/users/${user.id}/status/`, {
+      fetch(`${API_BASE_URL}/api/account/users/${user.id}/status/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

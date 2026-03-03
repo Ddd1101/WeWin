@@ -83,7 +83,7 @@ const handleRegister = async () => {
           phone: form.value.phone
         }
         
-        const response = await fetch('http://localhost:8000/api/account/register/', {
+        const response = await fetch('API_BASE_URL/api/account/register/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

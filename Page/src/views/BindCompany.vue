@@ -84,7 +84,7 @@ const handleCreateCompany = async () => {
       loading.value = true
       try {
         const token = localStorage.getItem('token')
-        const response = await fetch('http://localhost:8000/api/account/create-and-bind-company/', {
+        const response = await fetch('API_BASE_URL/api/account/create-and-bind-company/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ const handleBindCompany = async () => {
       loading.value = true
       try {
         const token = localStorage.getItem('token')
-        const response = await fetch('http://localhost:8000/api/account/bind-existing-company/', {
+        const response = await fetch('API_BASE_URL/api/account/bind-existing-company/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
