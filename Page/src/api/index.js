@@ -1,7 +1,10 @@
 import axios from "axios";
 
+// 后端服务地址
+const API_BASE_URL = "http://192.168.1.14:8000";
+
 const api = axios.create({
-  baseURL: "http://localhost:8000/api/account",
+  baseURL: `${API_BASE_URL}/api/account`,
   timeout: 10000,
 });
 
@@ -35,7 +38,7 @@ api.interceptors.response.use(
 export const login = (username, password) => {
   // 登录请求不使用拦截器添加的Authorization头
   return axios
-    .post("http://localhost:8000/api/account/login/", { username, password })
+    .post(`${API_BASE_URL}/api/account/login/`, { username, password })
     .then((response) => {
       console.log("Login API response:", response);
       return response;
@@ -81,12 +84,12 @@ export const changePassword = (data) => {
 // 企业管理相关API
 
 const companyApi = axios.create({
-  baseURL: "http://localhost:8000/api/company",
+  baseURL: `${API_BASE_URL}/api/company`,
   timeout: 10000,
 });
 
 const storeApi = axios.create({
-  baseURL: "http://localhost:8000/api/store",
+  baseURL: `${API_BASE_URL}/api/store`,
   timeout: 10000,
 });
 
