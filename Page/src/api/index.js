@@ -1,8 +1,19 @@
 import axios from "axios";
 
-// 后端服务地址
-// const API_BASE_URL = "API_BASE_URL";
-const API_BASE_URL = "http://192.168.1.14:8000";
+// 后端服务地址 - 根据当前访问的主机自动选择
+// 如果是本地开发环境(localhost/127.0.0.1)，使用 localhost:8000
+// 如果是局域网访问(192.168.x.x等)，使用 192.168.1.14:8000
+const getApiBaseUrl = () => {
+  const currentHost = window.location.hostname;
+  // 本地开发环境
+  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+    return "http://localhost:8000";
+  }
+  // 局域网环境 - 使用服务器IP
+  return "http://192.168.1.14:8000";
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/account`,
