@@ -35,3 +35,20 @@ python3 manage.py createsuperuser
 
 pip install gunicorn
 gunicorn wewin.wsgi:application -b 0.0.0.0:8000
+
+# 前端部署
+
+cd ~/workplace_shop/WeWin/Page
+
+# 安装依赖
+
+npm install
+
+# 构建生产版本
+
+npm run build
+
+# 使用 serve 运行（简单方式）
+
+npm install -g serve
+serve -s dist -l 5173
