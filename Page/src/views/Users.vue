@@ -150,17 +150,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox, ElTable, ElTableColumn, ElButton, ElInput, ElForm, ElFormItem, ElSelect, ElOption, ElDescriptions, ElDescriptionsItem, ElTooltip } from 'element-plus'
 
-// API 基础 URL - 根据当前访问的主机自动选择
-const getApiBaseUrl = () => {
-  const currentHost = window.location.hostname;
-  // 本地开发环境
-  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-    return "http://localhost:8000";
-  }
-  // 局域网环境 - 使用服务器IP
-  return "http://192.168.1.14:8000";
-};
-const API_BASE_URL = getApiBaseUrl();
+// API 基础 URL
+const API_BASE_URL = "http://192.168.1.14:8000"
 
 // 响应式数据
 const users = ref([])
