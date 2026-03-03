@@ -134,6 +134,57 @@
                   </div>
                 </div>
 
+                <!-- 收货信息 (receiverInfo) -->
+                <div v-if="order.baseInfo?.receiverInfo" class="order-section">
+                  <div class="section-title">收货信息</div>
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <span class="info-label">收货人:</span>
+                      <span class="info-value">{{ order.baseInfo.receiverInfo.toFullName || '-' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">电话:</span>
+                      <span class="info-value">{{ order.baseInfo.receiverInfo.toPhone || '-' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">手机:</span>
+                      <span class="info-value">{{ order.baseInfo.receiverInfo.toMobile || '-' }}</span>
+                    </div>
+                    <div class="info-item full-width">
+                      <span class="info-label">地址:</span>
+                      <span class="info-value">{{ order.baseInfo.receiverInfo.toArea || '-' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 收货信息 (receiveAddressInfo - 兼容旧格式) -->
+                <div v-else-if="order.baseInfo?.receiveAddressInfo" class="order-section">
+                  <div class="section-title">收货信息</div>
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <span class="info-label">收货人:</span>
+                      <span class="info-value">{{ order.baseInfo.receiveAddressInfo.fullName || '-' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">电话:</span>
+                      <span class="info-value">{{ order.baseInfo.receiveAddressInfo.phone || '-' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">手机:</span>
+                      <span class="info-value">{{ order.baseInfo.receiveAddressInfo.mobile || '-' }}</span>
+                    </div>
+                    <div class="info-item full-width">
+                      <span class="info-label">地址:</span>
+                      <span class="info-value">
+                        {{ order.baseInfo.receiveAddressInfo.province || '' }}
+                        {{ order.baseInfo.receiveAddressInfo.city || '' }}
+                        {{ order.baseInfo.receiveAddressInfo.area || '' }}
+                        {{ order.baseInfo.receiveAddressInfo.address || '' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- 基本信息 -->
                 <div class="order-section">
                   <div class="section-title">基本信息</div>
@@ -169,57 +220,6 @@
                     <div class="info-item">
                       <span class="info-label">运费:</span>
                       <span class="info-value">¥{{ order.baseInfo?.shippingFee?.toFixed(2) || '0.00' }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 收货信息 (receiverInfo) -->
-                <div v-if="order.baseInfo?.receiverInfo" class="order-section">
-                  <div class="section-title">收货信息</div>
-                  <div class="receiver-info">
-                    <div class="info-item">
-                      <span class="info-label">收货人:</span>
-                      <span class="info-value">{{ order.baseInfo.receiverInfo.toFullName || '-' }}</span>
-                    </div>
-                    <div class="info-item">
-                      <span class="info-label">电话:</span>
-                      <span class="info-value">{{ order.baseInfo.receiverInfo.toPhone || '-' }}</span>
-                    </div>
-                    <div class="info-item">
-                      <span class="info-label">手机:</span>
-                      <span class="info-value">{{ order.baseInfo.receiverInfo.toMobile || '-' }}</span>
-                    </div>
-                    <div class="info-item full-width">
-                      <span class="info-label">地址:</span>
-                      <span class="info-value">{{ order.baseInfo.receiverInfo.toArea || '-' }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 收货信息 (receiveAddressInfo - 兼容旧格式) -->
-                <div v-else-if="order.baseInfo?.receiveAddressInfo" class="order-section">
-                  <div class="section-title">收货信息</div>
-                  <div class="receiver-info">
-                    <div class="info-item">
-                      <span class="info-label">收货人:</span>
-                      <span class="info-value">{{ order.baseInfo.receiveAddressInfo.fullName || '-' }}</span>
-                    </div>
-                    <div class="info-item">
-                      <span class="info-label">电话:</span>
-                      <span class="info-value">{{ order.baseInfo.receiveAddressInfo.phone || '-' }}</span>
-                    </div>
-                    <div class="info-item">
-                      <span class="info-label">手机:</span>
-                      <span class="info-value">{{ order.baseInfo.receiveAddressInfo.mobile || '-' }}</span>
-                    </div>
-                    <div class="info-item full-width">
-                      <span class="info-label">地址:</span>
-                      <span class="info-value">
-                        {{ order.baseInfo.receiveAddressInfo.province || '' }}
-                        {{ order.baseInfo.receiveAddressInfo.city || '' }}
-                        {{ order.baseInfo.receiveAddressInfo.area || '' }}
-                        {{ order.baseInfo.receiveAddressInfo.address || '' }}
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -319,6 +319,61 @@
             </div>
           </div>
 
+          <!-- 收货信息 (receiverInfo) -->
+          <div v-if="currentOrderDetail.baseInfo?.receiverInfo" class="detail-section">
+            <div class="section-title">收货信息</div>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">收货人:</span>
+                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiverInfo.toFullName || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">电话:</span>
+                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiverInfo.toPhone || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">手机:</span>
+                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiverInfo.toMobile || '-' }}</span>
+              </div>
+              <div class="detail-item full-width">
+                <span class="detail-label">地址:</span>
+                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiverInfo.toArea || '-' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 收货信息 (receiveAddressInfo - 兼容旧格式) -->
+          <div v-else-if="currentOrderDetail.baseInfo?.receiveAddressInfo" class="detail-section">
+            <div class="section-title">收货信息</div>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">收货人:</span>
+                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiveAddressInfo.fullName || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">电话:</span>
+                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiveAddressInfo.phone || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">手机:</span>
+                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiveAddressInfo.mobile || '-' }}</span>
+              </div>
+              <div class="detail-item full-width">
+                <span class="detail-label">地址:</span>
+                <span class="detail-value">
+                  {{ currentOrderDetail.baseInfo.receiveAddressInfo.province || '' }}
+                  {{ currentOrderDetail.baseInfo.receiveAddressInfo.city || '' }}
+                  {{ currentOrderDetail.baseInfo.receiveAddressInfo.area || '' }}
+                  {{ currentOrderDetail.baseInfo.receiveAddressInfo.address || '' }}
+                </span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">邮编:</span>
+                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiveAddressInfo.zip || '-' }}</span>
+              </div>
+            </div>
+          </div>
+
           <!-- 基本信息 -->
           <div class="detail-section">
             <div class="section-title">基本信息</div>
@@ -374,73 +429,6 @@
               <div class="detail-item">
                 <span class="detail-label">折扣:</span>
                 <span class="detail-value discount">-¥{{ currentOrderDetail.baseInfo?.discount?.toFixed(2) || '0.00' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 收货信息 (receiverInfo) -->
-          <div v-if="currentOrderDetail.baseInfo?.receiverInfo" class="detail-section">
-            <div class="section-title">收货信息</div>
-            <div class="receiver-detail-info">
-              <div class="detail-item">
-                <span class="detail-label">收货人:</span>
-                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiverInfo.toFullName || '-' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">电话:</span>
-                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiverInfo.toPhone || '-' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">手机:</span>
-                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiverInfo.toMobile || '-' }}</span>
-              </div>
-              <div class="detail-item full-width">
-                <span class="detail-label">地址:</span>
-                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiverInfo.toArea || '-' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">邮编:</span>
-                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiverInfo.toPost || '-' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">地区编码:</span>
-                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiverInfo.toDivisionCode || '-' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">街道编码:</span>
-                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiverInfo.toTownCode || '-' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 收货信息 (receiveAddressInfo - 兼容旧格式) -->
-          <div v-else-if="currentOrderDetail.baseInfo?.receiveAddressInfo" class="detail-section">
-            <div class="section-title">收货信息</div>
-            <div class="receiver-detail-info">
-              <div class="detail-item">
-                <span class="detail-label">收货人:</span>
-                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiveAddressInfo.fullName || '-' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">电话:</span>
-                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiveAddressInfo.phone || '-' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">手机:</span>
-                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiveAddressInfo.mobile || '-' }}</span>
-              </div>
-              <div class="detail-item full-width">
-                <span class="detail-label">地址:</span>
-                <span class="detail-value">
-                  {{ currentOrderDetail.baseInfo.receiveAddressInfo.province || '' }}
-                  {{ currentOrderDetail.baseInfo.receiveAddressInfo.city || '' }}
-                  {{ currentOrderDetail.baseInfo.receiveAddressInfo.area || '' }}
-                  {{ currentOrderDetail.baseInfo.receiveAddressInfo.address || '' }}
-                </span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">邮编:</span>
-                <span class="detail-value">{{ currentOrderDetail.baseInfo.receiveAddressInfo.zip || '-' }}</span>
               </div>
             </div>
           </div>
