@@ -187,6 +187,16 @@ def create_store(request):
                 created_by=current_user
             )
 
+            PlatformApiConfig.objects.create(
+                store=store,
+                app_key='',
+                app_secret='',
+                access_token='',
+                refresh_token='',
+                extra_config={},
+                is_active=True
+            )
+
             if manager_ids:
                 managers = User.objects.filter(id__in=manager_ids, company=company)
                 store.managers.add(*managers)
