@@ -27,39 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-# CORS配置
-# 方式1: 允许所有来源(开发环境)
 CORS_ALLOW_ALL_ORIGINS = True
-
-# 方式2: 显式配置允许的来源(生产环境推荐)
-# CORS_ALLOW_ALL_ORIGINS = False
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:5173",
-#     "http://127.0.0.1:5173",
-#     "http://192.168.1.14:5173",  # 你的服务器IP
-#     "http://你的域名:5173",
-# ]
-
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
 
 
 # Application definition
