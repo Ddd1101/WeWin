@@ -1,8 +1,8 @@
 import axios from "axios";
 
 // 后端服务地址
-// const API_BASE_URL = "API_BASE_URL";
-const API_BASE_URL = "http://192.168.1.14:8000";
+// 使用相对路径，让请求通过Vite代理转发到后端
+const API_BASE_URL = "";
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/account`,
