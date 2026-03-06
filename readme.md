@@ -46,7 +46,7 @@ source venv/bin/activate
 
 # 使用 nohup 在后台运行
 
-nohup gunicorn wewin.wsgi:application -b 0.0.0.0:8000 > gunicorn.log 2>&1 &
+nohup gunicorn wewin.wsgi:application -b 127.0.0.1:8003 > gunicorn.log 2>&1 &
 
 # 查看进程
 
