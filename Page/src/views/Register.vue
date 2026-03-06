@@ -42,6 +42,7 @@ const userStore = useUserStore()
 const loading = ref(false)
 const formRef = ref(null)
 
+
 const validateConfirmPassword = (rule, value, callback) => {
   if (value === '') {
     callback(new Error('请再次输入密码'))
@@ -82,8 +83,11 @@ const handleRegister = async () => {
           email: form.value.email,
           phone: form.value.phone
         }
-        
-        const response = await fetch('http://localhost:8000/api/account/register/', {
+
+        console.log("11111")
+        console.log(data)
+        const API_BASE_URL = "http://192.168.1.14:8080";
+        const response = await fetch(`${API_BASE_URL}/api/account/register/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -94,6 +98,7 @@ const handleRegister = async () => {
         const result = await response.json()
         
         if (response.ok) {
+          console.log()
           ElMessage.success('注册成功，正在跳转...')
           userStore.setToken(result.token)
           userStore.setUserInfo(result.user)
@@ -104,6 +109,7 @@ const handleRegister = async () => {
           ElMessage.error(result.error || '注册失败')
         }
       } catch (error) {
+        console.log(error)
         ElMessage.error('注册失败，请重试')
       } finally {
         loading.value = false

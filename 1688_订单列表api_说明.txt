@@ -1,0 +1,377 @@
+# 1688 订单列表 getOrderList.sellerView API 返回结果字段详细说明
+
+```
+result (alibaba.openplatform.trade.model.TradeInfo[])
+└── [0]
+    ├── extAttributes []
+    │   └── [0]: 扩展属性数组
+    ├── baseInfo
+    │   ├── buyerUserId (Long): 买家用户ID
+    │   │   └── 示例值: 1623492085
+    │   ├── flowTemplateCode (String): 交易流程模板代码
+    │   │   └── 示例值: "assureTradeAlipay"
+    │   ├── receiverInfo
+    │   │   ├── toFullName (String): 收货人姓名
+    │   │   │   └── 示例值: "洪帮"
+    │   │   ├── toDivisionCode (String): 收货地址编码
+    │   │   │   └── 示例值: "330782"
+    │   │   ├── toPost (String): 邮政编码
+    │   │   │   └── 示例值: "322000"
+    │   │   └── toArea (String): 收货地区
+    │   │       └── 示例值: "浙江省 金华市 义乌市"
+    │   ├── stepPayAll (Boolean): 是否分步付款
+    │   │   └── 示例值: false
+    │   ├── payTime (String): 付款时间
+    │   │   └── 示例值: "20180604093242000+0800"
+    │   ├── buyerLoginId (String): 买家登录ID
+    │   │   └── 示例值: "alitestforisv01"
+    │   ├── modifyTime (String): 修改时间
+    │   │   └── 示例值: "20180604183311000+0800"
+    │   ├── sellerUserId (Long): 卖家用户ID
+    │   │   └── 示例值: 1624786331
+    │   ├── sellerAlipayId (String): 卖家支付宝ID
+    │   │   └── 示例值: "2088122317877473"
+    │   ├── alipayTradeId (String): 支付宝交易ID
+    │   │   └── 示例值: "2018060421001008530511413328"
+    │   ├── status (String): 订单状态
+    │   │   └── 示例值: "waitbuyerreceive"
+    │   ├── allDeliveredTime (String): 全部发货时间
+    │   │   └── 示例值: "20180604183312000+0800"
+    │   ├── sellerOrder (Boolean): 是否卖家订单
+    │   │   └── 示例值: false
+    │   ├── businessType (String): 业务类型
+    │   │   └── 示例值: "cn"
+    │   ├── sellerContact
+    │   │   ├── phone (String): 联系电话
+    │   │   │   └── 示例值: "86-028-85210000"
+    │   │   ├── imInPlatform (String): 平台即时通讯ID
+    │   │   │   └── 示例值: "alitestforisv03"
+    │   │   ├── name (String): 联系人姓名
+    │   │   │   └── 示例值: "暮星"
+    │   │   └── companyName (String): 公司名称
+    │   │       └── 示例值: "AOP对外测试账号03"
+    │   ├── discount (Number): 折扣金额
+    │   │   └── 示例值: -317597
+    │   ├── shippingFee (Number): 运费
+    │   │   └── 示例值: 0
+    │   ├── idOfStr (String): 订单ID字符串
+    │   │   └── 示例值: "171818499351498520"
+    │   ├── sellerLoginId (String): 卖家登录ID
+    │   │   └── 示例值: "alitestforisv03"
+    │   ├── tradeType (String): 交易类型
+    │   │   └── 示例值: "50060"
+    │   ├── createTime (String): 创建时间
+    │   │   └── 示例值: "20180604092517000+0800"
+    │   ├── sumProductPayment (Number): 商品总金额
+    │   │   └── 示例值: 3176
+    │   ├── buyerContact
+    │   │   ├── phone (String): 联系电话
+    │   │   │   └── 示例值: "86-0591-13805040134"
+    │   │   ├── imInPlatform (String): 平台即时通讯ID
+    │   │   │   └── 示例值: "alitestforisv01"
+    │   │   ├── name (String): 联系人姓名
+    │   │   │   └── 示例值: "测试账号一暮星"
+    │   │   └── companyName (String): 公司名称
+    │   │       └── 示例值: "AOP对外测试账号01"
+    │   ├── buyerID (String): 买家ID
+    │   │   └── 示例值: "b2b-1623492085"
+    │   ├── id (Long): 订单ID
+    │   │   └── 示例值: 171818499351498530
+    │   ├── sellerID (String): 卖家ID
+    │   │   └── 示例值: "b2b-1624786331"
+    │   ├── buyerLevel (String): 买家等级
+    │   │   └── 示例值: "L1"
+    │   ├── refund (Number): 退款金额
+    │   │   └── 示例值: 0
+    │   ├── totalAmount (Number): 订单总金额
+    │   │   └── 示例值: 0.03
+    │   ├── buyerAlipayId (String): 买家支付宝ID
+    │   │   └── 示例值: "2088611492691533"
+    │   ├── overSeaOrder (Boolean): 是否海外订单
+    │   │   └── 示例值: false
+    │   ├── refundPayment (Number): 退款支付金额
+    │   │   └── 示例值: 0
+    │   └── newStepOrderList []
+    │       └── [0]
+    │           ├── gmtStart (String): 开始时间
+    │           │   └── 示例值: "20180604092517000+0800"
+    │           ├── gmtPay (String): 付款时间
+    │           │   └── 示例值: "20180604093243000+0800"
+    │           ├── stepNo (Number): 步骤编号
+    │           │   └── 示例值: 1
+    │           ├── lastStep (Boolean): 是否最后一步
+    │           │   └── 示例值: true
+    │           ├── stepName (String): 步骤名称
+    │           │   └── 示例值: "全款交易"
+    │           ├── activeStatus (Number): 活动状态
+    │           │   └── 示例值: 1
+    │           ├── payStatus (Number): 付款状态
+    │           │   └── 示例值: 2
+    │           ├── logisticsStatus (Number): 物流状态
+    │           │   └── 示例值: 2
+    │           ├── payFee (Number): 付款费用
+    │           │   └── 示例值: 0.03
+    │           ├── paidFee (Number): 已付费用
+    │           │   └── 示例值: 0.03
+    │           ├── adjustFee (Number): 调整费用
+    │           │   └── 示例值: -3175.97
+    │           ├── discountFee (Number): 折扣费用
+    │           │   └── 示例值: 0
+    │           ├── postFee (Number):  postage费用
+    │           │   └── 示例值: 0
+    │           └── paidPostFee (Number): 已付 postage费用
+    │               └── 示例值: 0
+    ├── productItems []
+    │   └── [0]
+    │       ├── itemAmount (Number): 商品金额
+    │       │   └── 示例值: 0.01
+    │       ├── name (String): 商品名称
+    │       │   └── 示例值: "335-0117百搭秋冬丝绒套头卫衣新款女式连帽刺绣笑脸加厚时尚上衣"
+    │       ├── price (Number): 商品价格
+    │       │   └── 示例值: 98
+    │       ├── productID (Long): 商品ID
+    │       │   └── 示例值: 563036169881
+    │       ├── productImgUrl []: 商品图片URL
+    │       │   └── [0]: "http://cbu01.alicdn.com/img/order/trading/025/894/253994818171/7302045551_344566461.80x80.jpg"
+    │       ├── productSnapshotUrl (String): 商品快照URL
+    │       │   └── 示例值: "https://trade.1688.com/order/offer_snapshot.htm?order_entry_id=171818499352498520"
+    │       ├── quantity (Number): 数量
+    │       │   └── 示例值: 8
+    │       ├── refund (Number): 退款金额
+    │       │   └── 示例值: 0
+    │       ├── skuID (Long): SKU ID
+    │       │   └── 示例值: 3544249973933
+    │       ├── status (String): 状态
+    │       │   └── 示例值: "waitbuyerreceive"
+    │       ├── subItemID (Long): 子订单ID
+    │       │   └── 示例值: 171818499352498530
+    │       ├── type (String): 类型
+    │       │   └── 示例值: "common"
+    │       ├── productCargoNumber (String): 商品货号
+    │       │   └── 示例值: "335-0117"
+    │       ├── skuInfos []: SKU信息
+    │       │   └── [0]
+    │       │       ├── name (String): 属性名称
+    │       │       │   └── 示例值: "颜色"
+    │       │       └── value (String): 属性值
+    │       │           └── 示例值: "灰色"
+    │       ├── entryDiscount (Number): 入口折扣
+    │       │   └── 示例值: -78399
+    │       ├── specId (String): 规格ID
+    │       │   └── 示例值: "69725e1f0a17f9d0f02626717ad2a0be"
+    │       ├── quantityFactor (Number): 数量因子
+    │       │   └── 示例值: 1
+    │       ├── statusStr (String): 状态字符串
+    │       │   └── 示例值: "等待买家收货"
+    │       ├── logisticsStatus (Number): 物流状态
+    │       │   └── 示例值: 2
+    │       ├── gmtCreate (String): 创建时间
+    │       │   └── 示例值: "20180604092517000+0800"
+    │       ├── gmtModified (String): 修改时间
+    │       │   └── 示例值: "20180604183311000+0800"
+    │       └── subItemIDString (String): 子订单ID字符串
+    │           └── 示例值: "171818499352498520"
+    ├── orderBizInfo
+    │   ├── creditOrder (Boolean): 是否信用订单
+    │   │   └── 示例值: false
+    │   └── odsCyd (Boolean): 是否ODS CYD
+    │       └── 示例值: false
+    ├── orderRateInfo
+    │   ├── buyerRateStatus (Number): 买家评价状态
+    │   │   └── 示例值: 5
+    │   └── sellerRateStatus (Number): 卖家评价状态
+    │       └── 示例值: 5
+    ├── tradeTerms []
+    │   └── [0]
+    │       ├── payStatus (String): 付款状态
+    │       │   └── 示例值: "2"
+    │       ├── payTime (String): 付款时间
+    │       │   └── 示例值: "20180604093243000+0800"
+    │       ├── payWay (String): 付款方式
+    │       │   └── 示例值: "1"
+    │       ├── phasAmount (Number): 阶段金额
+    │       │   └── 示例值: 0.03
+    │       ├── phase (Number): 阶段
+    │       │   └── 示例值: 2487966435498520
+    │       ├── cardPay (Boolean): 是否卡支付
+    │       │   └── 示例值: false
+    │       └── expressPay (Boolean): 是否快捷支付
+    │           └── 示例值: false
+    └── nativeLogistics
+        ├── address (String): 地址
+        │   └── 示例值: "江东 街道 2号"
+        ├── area (String): 地区
+        │   └── 示例值: "义乌市"
+        ├── areaCode (String): 地区编码
+        │   └── 示例值: "330782"
+        ├── city (String): 城市
+        │   └── 示例值: "金华市"
+        ├── contactPerson (String): 联系人
+        │   └── 示例值: "洪帮"
+        ├── mobile (String): 手机号码
+        │   └── 示例值: "13817747226"
+        ├── province (String): 省份
+        │   └── 示例值: "浙江省"
+        ├── zip (String): 邮政编码
+        │   └── 示例值: "322000"
+        └── logisticsItems []
+            └── [0]
+                ├── deliveredTime (String): 发货时间
+                │   └── 示例值: "20180604183311000+0800"
+                ├── logisticsCode (String): 物流编码
+                │   └── 示例值: "BX112561141941435"
+                ├── type (String): 类型
+                │   └── 示例值: "2"
+                ├── id (Long): ID
+                │   └── 示例值: 112561141941435
+                ├── status (String): 状态
+                │   └── 示例值: "alreadysend"
+                ├── gmtModified (String): 修改时间
+                │   └── 示例值: "20180604183311000+0800"
+                ├── gmtCreate (String): 创建时间
+                │   └── 示例值: "20180604183311000+0800"
+                ├── fromCity (String): 出发城市
+                │   └── 示例值: "广州市"
+                ├── fromArea (String): 出发地区
+                │   └── 示例值: "白云区"
+                ├── fromAddress (String): 出发地址
+                │   └── 示例值: "大幅广告是对方付费"
+                ├── fromPhone (String): 出发地电话
+                │   └── 示例值: "86-028-85210000"
+                ├── fromPost (String): 出发地邮编
+                │   └── 示例值: "000000"
+                ├── logisticsCompanyId (Number): 物流公司ID
+                │   └── 示例值: 8
+                ├── logisticsCompanyNo (String): 物流公司编号
+                │   └── 示例值: "other"
+                ├── logisticsBillNo (String): 物流单号
+                │   └── 示例值: "不需要物流"
+                ├── subItemIds (String): 子订单ID列表
+                │   └── 示例值: "171818499352498520,171818499353498520,171818499354498520"
+                ├── toCity (String): 目的城市
+                │   └── 示例值: "金华市"
+                ├── toArea (String): 目的地区
+                │   └── 示例值: "义乌市"
+                ├── toAddress (String): 目的地址
+                │   └── 示例值: "江东 街道 2号"
+                ├── toPost (String): 目的邮编
+                │   └── 示例值: "322000"
+                ├── noLogisticsCondition (String): 无需物流条件
+                │   └── 示例值: "3"
+                ├── noLogisticsName (String): 无需物流名称
+                │   └── 示例值: "范振宗"
+                ├── noLogisticsTel (String): 无需物流电话
+                │   └── 示例值: "09123456789"
+                └── noLogisticsBillNo (String): 无需物流单号
+                    └── 示例值: ""
+
+# 其他返回字段
+- errorCode (String): 错误码
+  └── 示例值: "错误码"
+- errorMessage (String): 错误信息
+  └── 示例值: "错误信息"
+- totalRecord (Long): 总记录数
+  └── 示例值: 101
+- success (Boolean): 是否调用成功
+  └── 示例值: true
+- retCodes (String[]): 脱敏信息码
+  └── 示例值: ["xxx","xxx"]
+```
+
+=================================================================================================
+#返回值示例
+{
+  "result": [
+	 {
+      "nativeLogistics": {
+        "area": "东城区",
+        "areaCode": "110101",
+        "city": "北京市",
+        "contactPerson": "黎明",
+        "province": "北京",
+        "zip": "721000",
+        "townCode": "110101001",
+        "town": "东华门街道"
+      },
+      "productItems": [
+        {
+          "itemAmount": 69.3,
+          "name": "散装太空豆柱形橄榄形小小号大中小100个1盒",
+          "price": 9,
+          "productID": 570959966604,
+          "productImgUrl": [
+            "http://cbu01.alicdn.com/img/order/trading/118/969/342303144391/9163043580_1606139362.310x310.80x80.jpg",
+            "http://cbu01.alicdn.com/img/order/trading/118/969/342303144391/9163043580_1606139362.310x310.jpg"
+          ],
+          "productSnapshotUrl": "https://trade.1688.com/order/offer_snapshot.htm?order_entry_id=193441303243969811",
+          "quantity": 11,
+          "refund": 0,
+          "status": "waitbuyerpay",
+          "subItemID": 193441303243969820,
+          "type": "common",
+          "guaranteesTerms": [],
+          "entryDiscount": 0,
+          "quantityFactor": 1,
+          "statusStr": "等待买家付款",
+          "logisticsStatus": 1,
+          "gmtCreate": "20180721172607000+0800",
+          "gmtModified": "20180721172608000+0800",
+          "subItemIDString": "193441303243969811"
+        }
+      ],
+      "tradeTerms": [],
+      "orderRateInfo": {
+        "buyerRateStatus": 5,
+        "sellerRateStatus": 5
+      },
+      "baseInfo": {
+        "businessType": "cn",
+        "buyerID": "b2b-1624961198",
+        "createTime": "20180721172607000+0800",
+        "id": 193441303243969820,
+        "modifyTime": "20180721172608000+0800",
+        "refund": 0,
+        "sellerID": "b2b-1623492085",
+        "shippingFee": 1,
+        "status": "waitbuyerpay",
+        "totalAmount": 70.3,
+        "discount": 0,
+        "buyerContact": {
+          "phone": "86-0591-400-800-533",
+          "imInPlatform": "alitestforisv02",
+          "name": "测试账号暮星",
+          "companyName": "AOP对外测试账号02"
+        },
+        "sellerContact": {
+          "phone": "86-0591-13805040134",
+          "imInPlatform": "alitestforisv01",
+          "name": "测试账号一暮星",
+          "companyName": "AOP对外测试账号01"
+        },
+        "tradeType": "50060",
+        "refundPayment": 0,
+        "idOfStr": "193441303243969811",
+        "alipayTradeId": "UNCREATED",
+        "receiverInfo": {
+          "toFullName": "黎明",
+          "toDivisionCode": "110101",
+          "toPost": "721000",
+          "toTownCode": "110101001",
+          "toArea": "北京 北京市 东城区 东华门街道"
+        },
+        "buyerLoginId": "alitestforisv02",
+        "sellerLoginId": "alitestforisv01",
+        "buyerUserId": 16249****8,
+        "sellerUserId": 162349****5,
+        "buyerAlipayId": "208861149****764",
+        "sellerAlipayId": "208861149****533",
+        "sumProductPayment": 99,
+        "stepPayAll": false,
+        "overSeaOrder": false,
+        "sellerOrder": false,
+        "flowTemplateCode": "assureTradeAlipay"
+      }
+    }
+  ],
+  "totalRecord": 615
+}

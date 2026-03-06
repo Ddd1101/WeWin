@@ -1,0 +1,167 @@
+阿里巴巴开放平台 API 返回结果解释
+========================================
+
+API名称：加密场景订单详情查看(卖家视角)
+接口：com.alibaba.trade:alibaba.trade.ec.getOrder.sellerView-1
+
+返回结果字段说明：
+
+1. result
+   - 类型：alibaba.openplatform.trade.model.TradeInfo
+   - 描述：返回结果
+   - 示例值：{}
+
+2. errorCode
+   - 类型：String
+   - 描述：错误码
+   - 示例值：错误码
+
+3. errorMessage
+   - 类型：String
+   - 描述：错误信息
+   - 示例值：错误信息
+
+4. success
+   - 类型：String
+   - 描述：是否成功
+   - 示例值：true
+
+5. retCodes
+   - 类型：String[]
+   - 描述：脱敏信息码
+   - 示例值：["xxx","xxx"]
+
+字段长度存储说明：
+========================================
+
+1. productName
+   - 字段名：产品名称
+   - 长度说明：目前最长30个汉字
+
+2. attributeName
+   - 字段名：产品属性名
+   - 长度说明：目前最长12个汉字
+
+3. attributeValue
+   - 字段名：产品属性值
+   - 长度说明：目前最长50个汉字
+
+4. imgurl
+   - 字段名：产品图片
+   - 长度说明：varchar(200)
+
+5. address
+   - 字段名：街道地址
+   - 长度说明：目前最长64个汉字
+
+6. name
+   - 字段名：收货人
+   - 长度说明：目前最长25个汉字
+
+7. loginId
+   - 字段名：会员名
+   - 长度说明：目前最多25个汉字
+
+8. alipayTradeId
+   - 字段名：支付宝交易订单号
+   - 长度说明：varchar(32)
+
+9. toDivisionCode
+   - 字段名：收货地址编码
+   - 长度说明：正常是6位数字，建议使用varchar(10)
+
+10. companyName
+    - 字段名：公司名称
+    - 长度说明：目前长度60个汉字
+
+其他字段根据类型选择，数字建议使用bigint
+
+无需物流信息说明：
+========================================
+
+1. type值说明：
+   - 0：自行联系物流公司发货
+   - 1：在线发货
+   - 2：无需物流发货
+
+2. 无需物流类别 noLogisticsCondition：
+   - 1：表示其他第三方物流、小型物充商、车队等
+   - 2：表示补运费、差价
+   - 3：表示卖家配送
+   - 4：表示买家自提
+   - 5：表示其他原因
+
+非常重要：关于订单是否能发货的说明
+========================================
+
+只有当子订单状态为待发货状态（waitsellersend）时，且当前子订单下canSendGoods为true时，此子订单对应的商品才可以发货。
+
+如果子订单状态为待发货状态（waitsellersend），且当前子订单canSendGoods为false，则该子订单不可以发货，否则商家会造成资损。
+
+目前有拼团和C2M等业务都会有管种情况的订单。
+
+拼团的订单不能发货的原因（cantSendReason）是订单未成团。
+
+C2M业务不能发货的原因是该订单已经由系统自动安排签约的菜鸟仓发货。
+
+注意：对于发货场景，请求参数includeFields必须要传CanSendCheck才可以获取此信息。
+
+订单状态说明：
+========================================
+
+1. waitbuyerpay
+   - 含义：等待买家付款
+
+2. waitsellersend
+   - 含义：等待卖家发货
+
+3. waitbuyerreceive
+   - 含义：等待买家确认收货
+
+4. success
+   - 含义：交易成功
+
+5. cancel
+   - 含义：交易关闭
+
+6. paid_but_not_fund
+   - 含义：已支付，未到账
+
+7. confirm_goods
+   - 含义：已收货
+
+8. waitsellerconfirm
+   - 含义：等待卖家确认订单
+
+9. waitbuyerconfirm
+   - 含义：等待买家确认订单
+
+10. confirm_goods_but_not_fund
+    - 含义：已收货，未到账
+
+11. confirm_goods_and_has_subsidy
+    - 含义：已收货，已贴现
+
+12. send_goods_but_not_fund
+    - 含义：已发货，未到账
+
+13. waitlogisticstakein
+    - 含义：等待物流揽件
+
+14. waitbuyersign
+    - 含义：等待买家签收
+
+15. signinsuccess
+    - 含义：买家已签收
+
+16. signinfailed
+    - 含义：签收失败
+
+17. waitselleract
+    - 含义：等待卖家操作
+
+18. waitbuyerconfirmaction
+    - 含义：等待买家确认操作
+
+19. waitsellerpush
+    - 含义：等待卖家推进

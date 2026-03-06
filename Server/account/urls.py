@@ -17,11 +17,5 @@ urlpatterns = [
     path('users/<int:user_id>/status/', views.update_user_status, name='update-user-status'),
     path('users/<int:user_id>/delete/', views.delete_user, name='delete-user'),
     path('users/<int:user_id>/update-type/', views.update_user_type, name='update-user-type'),
-    path('companies/', views.get_companies, name='get-companies'),
-    path('companies/create/', views.create_company, name='create-company'),
-    path('companies/<int:company_id>/update/', views.update_company, name='update-company'),
-    path('companies/<int:company_id>/delete/', views.delete_company, name='delete-company'),
-    path('companies/<int:company_id>/users/', views.get_company_users, name='get-company-users'),
-    path('companies/batch-status/', views.batch_update_company_status, name='batch-update-company-status'),
     path('page-config/', views.get_page_config, name='get-page-config'),
 ]

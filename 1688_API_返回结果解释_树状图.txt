@@ -1,0 +1,106 @@
+阿里巴巴开放平台 API 返回结果解释（树状图）
+========================================
+
+API名称：加密场景订单详情查看(卖家视角)
+接口：com.alibaba.trade:alibaba.trade.ec.getOrder.sellerView-1
+
+返回结果字段说明：
+├── result
+│   ├── 类型：alibaba.openplatform.trade.model.TradeInfo
+│   ├── 描述：返回结果
+│   └── 示例值：{}
+├── errorCode
+│   ├── 类型：String
+│   ├── 描述：错误码
+│   └── 示例值：错误码
+├── errorMessage
+│   ├── 类型：String
+│   ├── 描述：错误信息
+│   └── 示例值：错误信息
+├── success
+│   ├── 类型：String
+│   ├── 描述：是否成功
+│   └── 示例值：true
+└── retCodes
+    ├── 类型：String[]
+    ├── 描述：脱敏信息码
+    └── 示例值：["xxx","xxx"]
+
+字段长度存储说明：
+├── productName
+│   ├── 字段名：产品名称
+│   └── 长度说明：目前最长30个汉字
+├── attributeName
+│   ├── 字段名：产品属性名
+│   └── 长度说明：目前最长12个汉字
+├── attributeValue
+│   ├── 字段名：产品属性值
+│   └── 长度说明：目前最长50个汉字
+├── imgurl
+│   ├── 字段名：产品图片
+│   └── 长度说明：varchar(200)
+├── address
+│   ├── 字段名：街道地址
+│   └── 长度说明：目前最长64个汉字
+├── name
+│   ├── 字段名：收货人
+│   └── 长度说明：目前最长25个汉字
+├── loginId
+│   ├── 字段名：会员名
+│   └── 长度说明：目前最多25个汉字
+├── alipayTradeId
+│   ├── 字段名：支付宝交易订单号
+│   └── 长度说明：varchar(32)
+├── toDivisionCode
+│   ├── 字段名：收货地址编码
+│   └── 长度说明：正常是6位数字，建议使用varchar(10)
+├── companyName
+│   ├── 字段名：公司名称
+│   └── 长度说明：目前长度60个汉字
+└── 其他字段
+    └── 建议：数字建议使用bigint
+
+无需物流信息说明：
+├── type值说明
+│   ├── 0：自行联系物流公司发货
+│   ├── 1：在线发货
+│   └── 2：无需物流发货
+└── 无需物流类别 (noLogisticsCondition)
+    ├── 1：表示其他第三方物流、小型物充商、车队等
+    ├── 2：表示补运费、差价
+    ├── 3：表示卖家配送
+    ├── 4：表示买家自提
+    └── 5：表示其他原因
+
+非常重要：关于订单是否能发货的说明
+├── 发货条件
+│   └── 子订单状态为待发货状态（waitsellersend）且 canSendGoods = true
+├── 不可发货情况
+│   ├── 子订单状态为待发货状态（waitsellersend）且 canSendGoods = false
+│   ├── 后果：商家会造成资损
+│   ├── 场景：拼团和C2M等业务
+│   ├── 拼团不能发货原因：订单未成团 (cantSendReason)
+│   └── C2M不能发货原因：已由系统自动安排签约的菜鸟仓发货
+└── 注意事项
+    └── 发货场景请求参数 includeFields 必须传 CanSendCheck
+
+订单状态说明：
+├── waitbuyerpay：等待买家付款
+├── waitsellersend：等待卖家发货
+├── waitbuyerreceive：等待买家确认收货
+├── success：交易成功
+├── cancel：交易关闭
+├── paid_but_not_fund：已支付，未到账
+├── confirm_goods：已收货
+├── waitsellerconfirm：等待卖家确认订单
+├── waitbuyerconfirm：等待买家确认订单
+├── confirm_goods_but_not_fund：已收货，未到账
+├── confirm_goods_and_has_subsidy：已收货，已贴现
+├── send_goods_but_not_fund：已发货，未到账
+├── waitlogisticstakein：等待物流揽件
+├── waitbuyersign：等待买家签收
+├── signinsuccess：买家已签收
+├── signinfailed：签收失败
+├── waitselleract：等待卖家操作
+├── waitbuyerconfirmaction：等待买家确认操作
+└── waitsellerpush：等待卖家推进

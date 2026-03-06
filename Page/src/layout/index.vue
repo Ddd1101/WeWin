@@ -11,18 +11,31 @@
         text-color="#bfcbd9"
         active-text-color="#409EFF"
       >
-        <el-menu-item v-for="route in menuRoutes" :key="route.path" :index="route.path">
-          <el-icon><component :is="route.meta.icon" /></el-icon>
-          <span>{{ route.meta.title }}</span>
-        </el-menu-item>
+        <template v-for="route in menuRoutes" :key="route.path">
+          <el-sub-menu v-if="route.children && route.children.length > 0" :index="route.path">
+            <template #title>
+              <el-icon><component :is="route.meta.icon" /></el-icon>
+              <span>{{ route.meta.title }}</span>
+            </template>
+            <el-menu-item 
+              v-for="child in route.children" 
+              :key="child.path" 
+              :index="`/${route.path}/${child.path}`"
+            >
+              <el-icon><component :is="child.meta.icon" /></el-icon>
+              <span>{{ child.meta.title }}</span>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-menu-item v-else :index="`/${route.path}`">
+            <el-icon><component :is="route.meta.icon" /></el-icon>
+            <span>{{ route.meta.title }}</span>
+          </el-menu-item>
+        </template>
       </el-menu>
     </el-aside>
     <el-container class="main-container">
       <el-header class="header">
         <div class="header-left">
-          <el-select v-model="selectedStore" placeholder="选择店铺" @change="handleStoreChange" style="width: 200px">
-            <el-option v-for="store in stores" :key="store.id" :label="store.name" :value="store" />
-          </el-select>
         </div>
         <div class="header-right">
           <el-dropdown @command="handleCommand">
@@ -64,28 +77,19 @@ const menuRoutes = computed(() => {
   const layoutRoute = router.options.routes.find(r => r.path === '/')
   if (!layoutRoute) return []
   
-  return layoutRoute.children.filter(child => {
-    // 检查是否需要管理员权限
-    if (child.meta.requiresAdmin) {
-      // 只有超级管理员和网站管理员可以看到
-      return userStore.userInfo.user_type === 'super_admin' || userStore.userInfo.user_type === 'site_admin'
+  const result = []
+  
+  for (const child of layoutRoute.children) {
+    if (child.meta?.requiresAdmin) {
+      if (!(userStore.userInfo.user_type === 'super_admin' || userStore.userInfo.user_type === 'site_admin')) {
+        continue
+      }
     }
-    return true
-  })
+    result.push(child)
+  }
+  
+  return result
 })
-
-const stores = ref([
-  { id: 1, name: '旗舰店' },
-  { id: 2, name: '专卖店' },
-  { id: 3, name: '折扣店' }
-])
-
-const selectedStore = ref(userStore.currentStore)
-
-const handleStoreChange = (store) => {
-  userStore.setCurrentStore(store)
-  ElMessage.success(`已切换到 ${store.name}`)
-}
 
 const handleCommand = async (command) => {
   if (command === 'logout') {
