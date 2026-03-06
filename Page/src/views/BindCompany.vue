@@ -56,6 +56,7 @@ const activeTab = ref('create')
 const loading = ref(false)
 const createFormRef = ref(null)
 const bindFormRef = ref(null)
+const API_BASE_URL = "http://192.168.1.14:8080";
 
 const createForm = ref({
   company_name: '',
@@ -84,7 +85,7 @@ const handleCreateCompany = async () => {
       loading.value = true
       try {
         const token = localStorage.getItem('token')
-        const response = await fetch('API_BASE_URL/api/account/create-and-bind-company/', {
+        const response = await fetch(`${API_BASE_URL}/api/account/create-and-bind-company/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -122,7 +123,7 @@ const handleBindCompany = async () => {
       loading.value = true
       try {
         const token = localStorage.getItem('token')
-        const response = await fetch('API_BASE_URL/api/account/bind-existing-company/', {
+        const response = await fetch(`${API_BASE_URL}/api/account/bind-existing-company/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
