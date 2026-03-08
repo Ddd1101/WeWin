@@ -113,6 +113,24 @@ class Ali1688DataPullService(BaseDataPullService):
             response = requests.post(url, data=data)
             response.raise_for_status()
             result = response.json()
+            # 检查并处理图片URL
+            if "result" in result:
+                for order_detail in result["result"]:
+                    if "productItems" in order_detail:
+                        for item in order_detail["productItems"]:
+                            if "productImgUrl" in item:
+                                product_img_url = item["productImgUrl"]
+                                # 如果是数组，检查每个URL是否完整
+                                if isinstance(product_img_url, list):
+                                    for i, img_url in enumerate(product_img_url):
+                                        if not img_url.startswith("http"):
+                                            # 补全完整的URL
+                                            product_img_url[i] = f"http://cbu01.alicdn.com/img/order/trading/{img_url}"
+                                # 如果是字符串，检查是否完整
+                                elif isinstance(product_img_url, str):
+                                    if not product_img_url.startswith("http"):
+                                        # 补全完整的URL
+                                        item["productImgUrl"] = f"http://cbu01.alicdn.com/img/order/trading/{product_img_url}"
             request_info["response"] = result
             request_info["status_code"] = response.status_code
             self.request_logs.append(request_info)
@@ -157,7 +175,24 @@ class Ali1688DataPullService(BaseDataPullService):
             response.raise_for_status()
             result = response.json()
             if result.get("success") and result.get("result"):
-                return result["result"]
+                # 检查并处理图片URL
+                order_detail = result["result"]
+                if "productItems" in order_detail:
+                    for item in order_detail["productItems"]:
+                        if "productImgUrl" in item:
+                            product_img_url = item["productImgUrl"]
+                            # 如果是数组，检查每个URL是否完整
+                            if isinstance(product_img_url, list):
+                                for i, img_url in enumerate(product_img_url):
+                                    if not img_url.startswith("http"):
+                                        # 补全完整的URL
+                                        product_img_url[i] = f"http://cbu01.alicdn.com/img/order/trading/{img_url}"
+                            # 如果是字符串，检查是否完整
+                            elif isinstance(product_img_url, str):
+                                if not product_img_url.startswith("http"):
+                                    # 补全完整的URL
+                                    item["productImgUrl"] = f"http://cbu01.alicdn.com/img/order/trading/{product_img_url}"
+                return order_detail
             return None
         except Exception as e:
             raise Exception(f"获取订单详情失败: {str(e)}")
