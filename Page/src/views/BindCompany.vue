@@ -56,7 +56,7 @@ const activeTab = ref('create')
 const loading = ref(false)
 const createFormRef = ref(null)
 const bindFormRef = ref(null)
-const API_BASE_URL = "http://43.155.107.92:8080";
+const API_BASE_URL = "http://192.168.1.14:8080";
 
 const createForm = ref({
   company_name: '',
