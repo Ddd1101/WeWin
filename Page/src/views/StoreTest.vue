@@ -236,6 +236,13 @@
                           class="product-img"
                           referrerpolicy="no-referrer"
                         >
+                          <template #placeholder>
+                            <img
+                              :src="item.productImgUrl[1]"
+                              referrerpolicy="no-referrer"
+                              fit="cover"
+                            >
+                          </template>
                           <template #error>
                             <div class="image-error">
                               <el-icon><Picture /></el-icon>

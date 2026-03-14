@@ -151,7 +151,7 @@ import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox, ElTable, ElTableColumn, ElButton, ElInput, ElForm, ElFormItem, ElSelect, ElOption, ElDescriptions, ElDescriptionsItem, ElTooltip } from 'element-plus'
 
 // API 基础 URL
-const API_BASE_URL = "http://192.168.1.14:8080"
+const API_BASE_URL = "http://43.155.107.92:8080"
 
 // 响应式数据
 const users = ref([])

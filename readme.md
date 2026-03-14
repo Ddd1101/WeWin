@@ -34,7 +34,9 @@ python3 manage.py createsuperuser
 # 使用 gunicorn
 
 pip install gunicorn
-gunicorn wewin.wsgi:application -b 0.0.0.0:8000
+gunicorn wewin.wsgi:application -b 127.0.0.1:8003
+
+gunicorn wewin.wsgi:application -b 0.0.0.0:8003
 
 # 进入Server目录
 
