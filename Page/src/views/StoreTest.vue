@@ -310,8 +310,13 @@
                       <span class="request-value">{{ order.requestInfo?.status_code || '-' }}</span>
                     </div>
                     <div class="request-item">
-                      <span class="request-label">订单信息:</span>
-                      <pre class="json-display">{{ JSON.stringify(order, null, 2) }}</pre>
+                      <div class="request-label-container">
+                        <span class="request-label">订单信息:</span>
+                        <el-button type="primary" size="small" @click="copyOrderInfo(order)">
+                          复制
+                        </el-button>
+                      </div>
+                      <pre class="json-display">{{ JSON.stringify(getPureOrderData(order), null, 2) }}</pre>
                     </div>
                   </div>
                 </el-collapse-item>
@@ -688,6 +693,24 @@ const handleCurrentChange = (val) => {
 const handleSizeChange = (val) => {
   pageSize.value = val
   currentPage.value = 1
+}
+
+// 移除订单对象中的requestInfo字段，只保留纯订单数据
+const getPureOrderData = (order) => {
+  const { requestInfo, ...pureOrder } = order
+  return pureOrder
+}
+
+const copyOrderInfo = async (order) => {
+  try {
+    const pureOrder = getPureOrderData(order)
+    const orderInfo = JSON.stringify(pureOrder, null, 2)
+    await navigator.clipboard.writeText(orderInfo)
+    ElMessage.success('订单信息已复制到剪贴板')
+  } catch (error) {
+    console.error('复制失败:', error)
+    ElMessage.error('复制失败，请手动复制')
+  }
 }
 
 const formatTime = (timeStr) => {
@@ -1279,6 +1302,13 @@ onMounted(() => {
   font-weight: 600;
   color: #606266;
   display: block;
+  margin-bottom: 8px;
+}
+
+.request-label-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 8px;
 }
 </style>
