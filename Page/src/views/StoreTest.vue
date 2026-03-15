@@ -3,7 +3,7 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>店铺测试页面</span>
+          <span>订单总览</span>
         </div>
       </template>
       <div class="content">
@@ -92,14 +92,33 @@
         
         <div v-if="allOrders.length > 0" class="response-section">
           <div class="response-header">
-            <span>订单可视化 ({{ allOrders.length }} 个订单)</span>
+            <span>订单可视化 ({{ filteredOrders.length }} 个订单)</span>
+            <el-form :model="filterForm" inline style="margin-left: 20px;">
+              <el-form-item label="订单号">
+                <el-input v-model="filterForm.orderId" placeholder="请输入订单号" style="width: 200px;" />
+              </el-form-item>
+              <el-form-item label="订单状态">
+                <el-select v-model="filterForm.status" placeholder="请选择订单状态" style="width: 150px;">
+                  <el-option label="全部" value="" />
+                  <el-option v-for="(text, value) in orderStatusMap" :key="value" :label="text" :value="value" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="金额范围">
+                <el-input-number v-model="filterForm.minAmount" placeholder="最小金额" :min="0" style="width: 100px;" />
+                <span style="margin: 0 10px;">至</span>
+                <el-input-number v-model="filterForm.maxAmount" placeholder="最大金额" :min="0" style="width: 100px;" />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="resetFilter">重置</el-button>
+              </el-form-item>
+            </el-form>
           </div>
           <div class="orders-list">
-            <el-card v-for="(order, orderIndex) in allOrders" :key="orderIndex" class="order-card">
+            <el-card v-for="(order, orderIndex) in paginatedOrders" :key="orderIndex" class="order-card">
               <template #header>
                 <div class="order-header">
                   <span class="order-id clickable" @click="handleOrderClick(order)">订单号: {{ order.baseInfo?.idOfStr || order.baseInfo?.id || '-' }}</span>
-                  <el-tag :type="getOrderStatusType(order.baseInfo?.status)">{{ order.baseInfo?.status || '-' }}</el-tag>
+                  <el-tag :type="getOrderStatusType(order.baseInfo?.status)">{{ getOrderStatusText(order.baseInfo?.status) || '-' }}</el-tag>
                 </div>
               </template>
               <div class="order-content">
@@ -202,24 +221,24 @@
                       <span class="info-value">{{ formatTime(order.baseInfo?.payTime) }}</span>
                     </div>
                     <div class="info-item">
-                      <span class="info-label">折扣前金额:</span>
-                      <span class="info-value original-price">¥{{ ((order.baseInfo?.totalAmount || 0) + (order.baseInfo?.discount || 0)).toFixed(2) }}</span>
+                      <span class="info-label">原始总价:</span>
+                      <span class="info-value original-price">¥{{ order.baseInfo?.sumProductPayment?.toFixed(2) || '0.00' }}</span>
                     </div>
                     <div class="info-item">
-                      <span class="info-label">折扣金额:</span>
-                      <span class="info-value discount-price">-¥{{ (order.baseInfo?.discount || 0).toFixed(2) }}</span>
-                    </div>
-                    <div class="info-item">
-                      <span class="info-label">订单金额:</span>
-                      <span class="info-value price">¥{{ order.baseInfo?.totalAmount?.toFixed(2) || '0.00' }}</span>
-                    </div>
-                    <div class="info-item">
-                      <span class="info-label">商品金额:</span>
-                      <span class="info-value">¥{{ order.baseInfo?.sumProductPayment?.toFixed(2) || '0.00' }}</span>
+                      <span class="info-label">折扣后金额:</span>
+                      <span class="info-value">¥{{ ((order.baseInfo?.totalAmount || 0) - (order.baseInfo?.shippingFee || 0)).toFixed(2) }}</span>
                     </div>
                     <div class="info-item">
                       <span class="info-label">运费:</span>
                       <span class="info-value">¥{{ order.baseInfo?.shippingFee?.toFixed(2) || '0.00' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">订单总价:</span>
+                      <span class="info-value price">¥{{ order.baseInfo?.totalAmount?.toFixed(2) || '0.00' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">退款金额:</span>
+                      <span class="info-value discount-price">-¥{{ order.baseInfo?.refund?.toFixed(2) || '0.00' }}</span>
                     </div>
                   </div>
                 </div>
@@ -274,7 +293,47 @@
                   </div>
                 </div>
               </div>
+              <!-- 订单请求响应信息 -->
+              <el-collapse v-model="order.collapseActive">
+                <el-collapse-item title="订单返回信息" name="1">
+                  <div class="request-info-section">
+                    <div class="request-item">
+                      <span class="request-label">请求URL:</span>
+                      <span class="request-value">{{ order.requestInfo?.url || '-' }}</span>
+                    </div>
+                    <div class="request-item">
+                      <span class="request-label">请求方法:</span>
+                      <span class="request-value">{{ order.requestInfo?.method || '-' }}</span>
+                    </div>
+                    <div class="request-item">
+                      <span class="request-label">状态码:</span>
+                      <span class="request-value">{{ order.requestInfo?.status_code || '-' }}</span>
+                    </div>
+                    <div class="request-item">
+                      <div class="request-label-container">
+                        <span class="request-label">订单信息:</span>
+                        <el-button type="primary" size="small" @click="copyOrderInfo(order)">
+                          复制
+                        </el-button>
+                      </div>
+                      <pre class="json-display">{{ JSON.stringify(getPureOrderData(order), null, 2) }}</pre>
+                    </div>
+                  </div>
+                </el-collapse-item>
+              </el-collapse>
             </el-card>
+          </div>
+          <!-- 分页组件 -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="currentPage"
+              v-model:page-size="pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="total"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
           </div>
         </div>
         
@@ -398,7 +457,7 @@
                 <span class="detail-label">订单状态:</span>
                 <span class="detail-value">
                   <el-tag :type="getOrderStatusType(currentOrderDetail.baseInfo?.status)">
-                    {{ currentOrderDetail.baseInfo?.status || '-' }}
+                    {{ getOrderStatusText(currentOrderDetail.baseInfo?.status) || '-' }}
                   </el-tag>
                 </span>
               </div>
@@ -423,20 +482,24 @@
                 <span class="detail-value">{{ formatTime(currentOrderDetail.baseInfo?.payTime) }}</span>
               </div>
               <div class="detail-item">
-                <span class="detail-label">订单金额:</span>
-                <span class="detail-value price">¥{{ currentOrderDetail.baseInfo?.totalAmount?.toFixed(2) || '0.00' }}</span>
+                <span class="detail-label">原始总价:</span>
+                <span class="detail-value original-price">¥{{ currentOrderDetail.baseInfo?.sumProductPayment?.toFixed(2) || '0.00' }}</span>
               </div>
               <div class="detail-item">
-                <span class="detail-label">商品金额:</span>
-                <span class="detail-value">¥{{ currentOrderDetail.baseInfo?.sumProductPayment?.toFixed(2) || '0.00' }}</span>
+                <span class="detail-label">折扣后金额:</span>
+                <span class="detail-value">¥{{ ((currentOrderDetail.baseInfo?.totalAmount || 0) - (currentOrderDetail.baseInfo?.shippingFee || 0)).toFixed(2) }}</span>
               </div>
               <div class="detail-item">
                 <span class="detail-label">运费:</span>
                 <span class="detail-value">¥{{ currentOrderDetail.baseInfo?.shippingFee?.toFixed(2) || '0.00' }}</span>
               </div>
               <div class="detail-item">
-                <span class="detail-label">折扣:</span>
-                <span class="detail-value discount">-¥{{ currentOrderDetail.baseInfo?.discount?.toFixed(2) || '0.00' }}</span>
+                <span class="detail-label">订单总价:</span>
+                <span class="detail-value price">¥{{ currentOrderDetail.baseInfo?.totalAmount?.toFixed(2) || '0.00' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">退款金额:</span>
+                <span class="detail-value discount">-¥{{ currentOrderDetail.baseInfo?.refund?.toFixed(2) || '0.00' }}</span>
               </div>
             </div>
           </div>
@@ -536,6 +599,13 @@ const orderDetailLoading = ref(false)
 const currentOrderDetail = ref(null)
 const currentOrderId = ref('')
 
+const filterForm = ref({
+  orderId: '',
+  status: '',
+  minAmount: null,
+  maxAmount: null
+})
+
 const allOrders = computed(() => {
   if (!response.value || !response.value.request_logs) {
     return []
@@ -543,13 +613,109 @@ const allOrders = computed(() => {
   
   const orders = []
   response.value.request_logs.forEach(log => {
-    if (log.response && log.response.result) {
-      orders.push(...log.response.result)
+    // 检查请求参数中是否包含page字段，包含page字段的请求是获取订单的请求
+    const hasPageParam = log.params && 'page' in log.params
+    
+    if (hasPageParam && log.response && log.response.result) {
+      // 检查result是否是数组，并且每个元素是否包含baseInfo属性（判断是否为订单数据）
+      if (Array.isArray(log.response.result) && log.response.result.length > 0 && log.response.result[0].baseInfo) {
+        // 为每个订单添加请求和响应信息
+        log.response.result.forEach(order => {
+          orders.push({
+            ...order,
+            requestInfo: {
+              url: log.url,
+              method: log.method,
+              params: log.params,
+              status_code: log.status_code,
+              response: log.response
+            }
+          })
+        })
+      }
     }
   })
   
   return orders
 })
+
+const filteredOrders = computed(() => {
+  return allOrders.value.filter(order => {
+    // 订单号筛选
+    if (filterForm.value.orderId) {
+      const orderId = order.baseInfo?.idOfStr || order.baseInfo?.id || ''
+      if (!orderId.includes(filterForm.value.orderId)) {
+        return false
+      }
+    }
+    
+    // 订单状态筛选
+    if (filterForm.value.status) {
+      if (order.baseInfo?.status !== filterForm.value.status) {
+        return false
+      }
+    }
+    
+    // 金额范围筛选
+    const orderAmount = order.baseInfo?.totalAmount || 0
+    if (filterForm.value.minAmount !== null && orderAmount < filterForm.value.minAmount) {
+      return false
+    }
+    if (filterForm.value.maxAmount !== null && orderAmount > filterForm.value.maxAmount) {
+      return false
+    }
+    
+    return true
+  })
+})
+
+const resetFilter = () => {
+  filterForm.value = {
+    orderId: '',
+    status: '',
+    minAmount: null,
+    maxAmount: null
+  }
+}
+
+// 分页相关数据
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = computed(() => filteredOrders.value.length)
+
+// 分页后的订单数据
+const paginatedOrders = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredOrders.value.slice(start, end)
+})
+
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+}
+
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  currentPage.value = 1
+}
+
+// 移除订单对象中的requestInfo字段，只保留纯订单数据
+const getPureOrderData = (order) => {
+  const { requestInfo, ...pureOrder } = order
+  return pureOrder
+}
+
+const copyOrderInfo = async (order) => {
+  try {
+    const pureOrder = getPureOrderData(order)
+    const orderInfo = JSON.stringify(pureOrder, null, 2)
+    await navigator.clipboard.writeText(orderInfo)
+    ElMessage.success('订单信息已复制到剪贴板')
+  } catch (error) {
+    console.error('复制失败:', error)
+    ElMessage.error('复制失败，请手动复制')
+  }
+}
 
 const formatTime = (timeStr) => {
   if (!timeStr) return '-'
@@ -566,6 +732,27 @@ const formatTime = (timeStr) => {
   }
 }
 
+const orderStatusMap = {
+  'WAIT_BUYER_PAY': '待买家付款',
+  'WAIT_SELLER_SEND_GOODS': '待卖家发货',
+  'WAIT_BUYER_CONFIRM_GOODS': '待买家确认收货',
+  'TRADE_BUYER_SIGNED': '买家已签收',
+  'TRADE_FINISHED': '交易完成',
+  'TRADE_CLOSED': '交易关闭',
+  'TRADE_CLOSED_BY_TAOBAO': '交易被淘宝关闭',
+  'waitbuyerreceive': '待买家收货',
+  'waitbuyerpay': '待买家付款',
+  'waitpay': '待付款',
+  'waitsend': '待发货',
+  'waitreceive': '待收货',
+  'success': '交易成功',
+  'closed': '交易关闭'
+}
+
+const getOrderStatusText = (status) => {
+  return orderStatusMap[status] || status
+}
+
 const getOrderStatusType = (status) => {
   const statusMap = {
     'WAIT_BUYER_PAY': 'warning',
@@ -574,7 +761,14 @@ const getOrderStatusType = (status) => {
     'TRADE_BUYER_SIGNED': 'success',
     'TRADE_FINISHED': 'success',
     'TRADE_CLOSED': 'danger',
-    'TRADE_CLOSED_BY_TAOBAO': 'danger'
+    'TRADE_CLOSED_BY_TAOBAO': 'danger',
+    'waitbuyerreceive': 'info',
+    'waitbuyerpayseller': 'warning',
+    'waitpay': 'warning',
+    'waitsend': 'primary',
+    'waitreceive': 'info',
+    'success': 'success',
+    'closed': 'danger'
   }
   return statusMap[status] || 'info'
 }
@@ -691,6 +885,11 @@ onMounted(() => {
   font-weight: 600;
   margin-bottom: 15px;
   color: #303133;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .request-logs {
@@ -1079,5 +1278,41 @@ onMounted(() => {
 
 .order-id.clickable:hover {
   color: #66b1ff;
+}
+
+.pagination-container {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.request-info-section {
+  padding: 15px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  margin-top: 15px;
+}
+
+.request-item {
+  margin-bottom: 15px;
+}
+
+.request-item:last-child {
+  margin-bottom: 0;
+}
+
+.request-label {
+  font-weight: 600;
+  color: #606266;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.request-label-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 </style>
