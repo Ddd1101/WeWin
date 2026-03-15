@@ -221,24 +221,24 @@
                       <span class="info-value">{{ formatTime(order.baseInfo?.payTime) }}</span>
                     </div>
                     <div class="info-item">
-                      <span class="info-label">折扣前金额:</span>
-                      <span class="info-value original-price">¥{{ ((order.baseInfo?.totalAmount || 0) + (order.baseInfo?.discount || 0)).toFixed(2) }}</span>
+                      <span class="info-label">原始总价:</span>
+                      <span class="info-value original-price">¥{{ order.baseInfo?.sumProductPayment?.toFixed(2) || '0.00' }}</span>
                     </div>
                     <div class="info-item">
-                      <span class="info-label">折扣金额:</span>
-                      <span class="info-value discount-price">-¥{{ (order.baseInfo?.discount || 0).toFixed(2) }}</span>
-                    </div>
-                    <div class="info-item">
-                      <span class="info-label">订单金额:</span>
-                      <span class="info-value price">¥{{ order.baseInfo?.totalAmount?.toFixed(2) || '0.00' }}</span>
-                    </div>
-                    <div class="info-item">
-                      <span class="info-label">商品金额:</span>
-                      <span class="info-value">¥{{ order.baseInfo?.sumProductPayment?.toFixed(2) || '0.00' }}</span>
+                      <span class="info-label">折扣后金额:</span>
+                      <span class="info-value">¥{{ ((order.baseInfo?.totalAmount || 0) - (order.baseInfo?.shippingFee || 0)).toFixed(2) }}</span>
                     </div>
                     <div class="info-item">
                       <span class="info-label">运费:</span>
                       <span class="info-value">¥{{ order.baseInfo?.shippingFee?.toFixed(2) || '0.00' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">订单总价:</span>
+                      <span class="info-value price">¥{{ order.baseInfo?.totalAmount?.toFixed(2) || '0.00' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">退款金额:</span>
+                      <span class="info-value discount-price">-¥{{ order.baseInfo?.refund?.toFixed(2) || '0.00' }}</span>
                     </div>
                   </div>
                 </div>
@@ -482,20 +482,24 @@
                 <span class="detail-value">{{ formatTime(currentOrderDetail.baseInfo?.payTime) }}</span>
               </div>
               <div class="detail-item">
-                <span class="detail-label">订单金额:</span>
-                <span class="detail-value price">¥{{ currentOrderDetail.baseInfo?.totalAmount?.toFixed(2) || '0.00' }}</span>
+                <span class="detail-label">原始总价:</span>
+                <span class="detail-value original-price">¥{{ currentOrderDetail.baseInfo?.sumProductPayment?.toFixed(2) || '0.00' }}</span>
               </div>
               <div class="detail-item">
-                <span class="detail-label">商品金额:</span>
-                <span class="detail-value">¥{{ currentOrderDetail.baseInfo?.sumProductPayment?.toFixed(2) || '0.00' }}</span>
+                <span class="detail-label">折扣后金额:</span>
+                <span class="detail-value">¥{{ ((currentOrderDetail.baseInfo?.totalAmount || 0) - (currentOrderDetail.baseInfo?.shippingFee || 0)).toFixed(2) }}</span>
               </div>
               <div class="detail-item">
                 <span class="detail-label">运费:</span>
                 <span class="detail-value">¥{{ currentOrderDetail.baseInfo?.shippingFee?.toFixed(2) || '0.00' }}</span>
               </div>
               <div class="detail-item">
-                <span class="detail-label">折扣:</span>
-                <span class="detail-value discount">-¥{{ currentOrderDetail.baseInfo?.discount?.toFixed(2) || '0.00' }}</span>
+                <span class="detail-label">订单总价:</span>
+                <span class="detail-value price">¥{{ currentOrderDetail.baseInfo?.totalAmount?.toFixed(2) || '0.00' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">退款金额:</span>
+                <span class="detail-value discount">-¥{{ currentOrderDetail.baseInfo?.refund?.toFixed(2) || '0.00' }}</span>
               </div>
             </div>
           </div>
