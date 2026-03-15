@@ -230,11 +230,19 @@
                     <div v-for="(item, itemIndex) in order.productItems" :key="itemIndex" class="product-item">
                       <div v-if="item.productImgUrl && item.productImgUrl.length > 0" class="product-image">
                         <el-image 
-                          :src="item.productImgUrl[0]" 
+                          :src="item.productImgUrl[1]" 
                           :preview-src-list="item.productImgUrl"
                           fit="cover"
                           class="product-img"
+                          referrerpolicy="no-referrer"
                         >
+                          <template #placeholder>
+                            <img
+                              :src="item.productImgUrl[1]"
+                              referrerpolicy="no-referrer"
+                              fit="cover"
+                            >
+                          </template>
                           <template #error>
                             <div class="image-error">
                               <el-icon><Picture /></el-icon>
@@ -444,6 +452,7 @@
                     :preview-src-list="item.productImgUrl"
                     fit="cover"
                     class="product-detail-img"
+                    referrerpolicy="no-referrer"
                   >
                     <template #error>
                       <div class="image-error">
