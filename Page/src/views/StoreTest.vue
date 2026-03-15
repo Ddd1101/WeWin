@@ -293,6 +293,29 @@
                   </div>
                 </div>
               </div>
+              <!-- 订单请求响应信息 -->
+              <el-collapse v-model="order.collapseActive">
+                <el-collapse-item title="订单返回信息" name="1">
+                  <div class="request-info-section">
+                    <div class="request-item">
+                      <span class="request-label">请求URL:</span>
+                      <span class="request-value">{{ order.requestInfo?.url || '-' }}</span>
+                    </div>
+                    <div class="request-item">
+                      <span class="request-label">请求方法:</span>
+                      <span class="request-value">{{ order.requestInfo?.method || '-' }}</span>
+                    </div>
+                    <div class="request-item">
+                      <span class="request-label">状态码:</span>
+                      <span class="request-value">{{ order.requestInfo?.status_code || '-' }}</span>
+                    </div>
+                    <div class="request-item">
+                      <span class="request-label">订单信息:</span>
+                      <pre class="json-display">{{ JSON.stringify(order, null, 2) }}</pre>
+                    </div>
+                  </div>
+                </el-collapse-item>
+              </el-collapse>
             </el-card>
           </div>
           <!-- 分页组件 -->
@@ -587,7 +610,19 @@ const allOrders = computed(() => {
     if (hasPageParam && log.response && log.response.result) {
       // 检查result是否是数组，并且每个元素是否包含baseInfo属性（判断是否为订单数据）
       if (Array.isArray(log.response.result) && log.response.result.length > 0 && log.response.result[0].baseInfo) {
-        orders.push(...log.response.result)
+        // 为每个订单添加请求和响应信息
+        log.response.result.forEach(order => {
+          orders.push({
+            ...order,
+            requestInfo: {
+              url: log.url,
+              method: log.method,
+              params: log.params,
+              status_code: log.status_code,
+              response: log.response
+            }
+          })
+        })
       }
     }
   })
@@ -1223,5 +1258,27 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.request-info-section {
+  padding: 15px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  margin-top: 15px;
+}
+
+.request-item {
+  margin-bottom: 15px;
+}
+
+.request-item:last-child {
+  margin-bottom: 0;
+}
+
+.request-label {
+  font-weight: 600;
+  color: #606266;
+  display: block;
+  margin-bottom: 8px;
 }
 </style>
