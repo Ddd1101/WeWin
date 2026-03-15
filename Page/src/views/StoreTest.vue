@@ -114,7 +114,7 @@
             </el-form>
           </div>
           <div class="orders-list">
-            <el-card v-for="(order, orderIndex) in filteredOrders" :key="orderIndex" class="order-card">
+            <el-card v-for="(order, orderIndex) in paginatedOrders" :key="orderIndex" class="order-card">
               <template #header>
                 <div class="order-header">
                   <span class="order-id clickable" @click="handleOrderClick(order)">订单号: {{ order.baseInfo?.idOfStr || order.baseInfo?.id || '-' }}</span>
@@ -294,6 +294,18 @@
                 </div>
               </div>
             </el-card>
+          </div>
+          <!-- 分页组件 -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="currentPage"
+              v-model:page-size="pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="total"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
           </div>
         </div>
         
@@ -620,6 +632,27 @@ const resetFilter = () => {
     minAmount: null,
     maxAmount: null
   }
+}
+
+// 分页相关数据
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = computed(() => filteredOrders.value.length)
+
+// 分页后的订单数据
+const paginatedOrders = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredOrders.value.slice(start, end)
+})
+
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+}
+
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  currentPage.value = 1
 }
 
 const formatTime = (timeStr) => {
@@ -1183,5 +1216,12 @@ onMounted(() => {
 
 .order-id.clickable:hover {
   color: #66b1ff;
+}
+
+.pagination-container {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 </style>
