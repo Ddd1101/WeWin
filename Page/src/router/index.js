@@ -44,7 +44,7 @@ const routes = [
             path: "test",
             name: "StoreTest",
             component: () => import("../views/StoreTest.vue"),
-            meta: { title: "测试页面", icon: "Document" },
+            meta: { title: "订单总览", icon: "Document" },
           },
         ],
       },

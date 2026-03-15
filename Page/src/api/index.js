@@ -2,7 +2,7 @@ import axios from "axios";
 
 // 后端服务地址
 // const API_BASE_URL = "API_BASE_URL";
-const API_BASE_URL = "http://43.155.107.92:8080";
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/account`,
