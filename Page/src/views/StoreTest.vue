@@ -99,7 +99,7 @@
               <template #header>
                 <div class="order-header">
                   <span class="order-id clickable" @click="handleOrderClick(order)">订单号: {{ order.baseInfo?.idOfStr || order.baseInfo?.id || '-' }}</span>
-                  <el-tag :type="getOrderStatusType(order.baseInfo?.status)">{{ order.baseInfo?.status || '-' }}</el-tag>
+                  <el-tag :type="getOrderStatusType(order.baseInfo?.status)">{{ getOrderStatusText(order.baseInfo?.status) || '-' }}</el-tag>
                 </div>
               </template>
               <div class="order-content">
@@ -398,7 +398,7 @@
                 <span class="detail-label">订单状态:</span>
                 <span class="detail-value">
                   <el-tag :type="getOrderStatusType(currentOrderDetail.baseInfo?.status)">
-                    {{ currentOrderDetail.baseInfo?.status || '-' }}
+                    {{ getOrderStatusText(currentOrderDetail.baseInfo?.status) || '-' }}
                   </el-tag>
                 </span>
               </div>
@@ -566,6 +566,27 @@ const formatTime = (timeStr) => {
   }
 }
 
+const orderStatusMap = {
+  'WAIT_BUYER_PAY': '待买家付款',
+  'WAIT_SELLER_SEND_GOODS': '待卖家发货',
+  'WAIT_BUYER_CONFIRM_GOODS': '待买家确认收货',
+  'TRADE_BUYER_SIGNED': '买家已签收',
+  'TRADE_FINISHED': '交易完成',
+  'TRADE_CLOSED': '交易关闭',
+  'TRADE_CLOSED_BY_TAOBAO': '交易被淘宝关闭',
+  'waitbuyerreceive': '待买家收货',
+  'waitbuyerpay': '待买家付款',
+  'waitpay': '待付款',
+  'waitsend': '待发货',
+  'waitreceive': '待收货',
+  'success': '交易成功',
+  'closed': '交易关闭'
+}
+
+const getOrderStatusText = (status) => {
+  return orderStatusMap[status] || status
+}
+
 const getOrderStatusType = (status) => {
   const statusMap = {
     'WAIT_BUYER_PAY': 'warning',
@@ -574,7 +595,14 @@ const getOrderStatusType = (status) => {
     'TRADE_BUYER_SIGNED': 'success',
     'TRADE_FINISHED': 'success',
     'TRADE_CLOSED': 'danger',
-    'TRADE_CLOSED_BY_TAOBAO': 'danger'
+    'TRADE_CLOSED_BY_TAOBAO': 'danger',
+    'waitbuyerreceive': 'info',
+    'waitbuyerpayseller': 'warning',
+    'waitpay': 'warning',
+    'waitsend': 'primary',
+    'waitreceive': 'info',
+    'success': 'success',
+    'closed': 'danger'
   }
   return statusMap[status] || 'info'
 }
