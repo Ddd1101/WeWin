@@ -92,10 +92,29 @@
         
         <div v-if="allOrders.length > 0" class="response-section">
           <div class="response-header">
-            <span>订单可视化 ({{ allOrders.length }} 个订单)</span>
+            <span>订单可视化 ({{ filteredOrders.length }} 个订单)</span>
+            <el-form :model="filterForm" inline style="margin-left: 20px;">
+              <el-form-item label="订单号">
+                <el-input v-model="filterForm.orderId" placeholder="请输入订单号" style="width: 200px;" />
+              </el-form-item>
+              <el-form-item label="订单状态">
+                <el-select v-model="filterForm.status" placeholder="请选择订单状态" style="width: 150px;">
+                  <el-option label="全部" value="" />
+                  <el-option v-for="(text, value) in orderStatusMap" :key="value" :label="text" :value="value" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="金额范围">
+                <el-input-number v-model="filterForm.minAmount" placeholder="最小金额" :min="0" style="width: 100px;" />
+                <span style="margin: 0 10px;">至</span>
+                <el-input-number v-model="filterForm.maxAmount" placeholder="最大金额" :min="0" style="width: 100px;" />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="resetFilter">重置</el-button>
+              </el-form-item>
+            </el-form>
           </div>
           <div class="orders-list">
-            <el-card v-for="(order, orderIndex) in allOrders" :key="orderIndex" class="order-card">
+            <el-card v-for="(order, orderIndex) in filteredOrders" :key="orderIndex" class="order-card">
               <template #header>
                 <div class="order-header">
                   <span class="order-id clickable" @click="handleOrderClick(order)">订单号: {{ order.baseInfo?.idOfStr || order.baseInfo?.id || '-' }}</span>
@@ -536,6 +555,13 @@ const orderDetailLoading = ref(false)
 const currentOrderDetail = ref(null)
 const currentOrderId = ref('')
 
+const filterForm = ref({
+  orderId: '',
+  status: '',
+  minAmount: null,
+  maxAmount: null
+})
+
 const allOrders = computed(() => {
   if (!response.value || !response.value.request_logs) {
     return []
@@ -550,6 +576,45 @@ const allOrders = computed(() => {
   
   return orders
 })
+
+const filteredOrders = computed(() => {
+  return allOrders.value.filter(order => {
+    // 订单号筛选
+    if (filterForm.value.orderId) {
+      const orderId = order.baseInfo?.idOfStr || order.baseInfo?.id || ''
+      if (!orderId.includes(filterForm.value.orderId)) {
+        return false
+      }
+    }
+    
+    // 订单状态筛选
+    if (filterForm.value.status) {
+      if (order.baseInfo?.status !== filterForm.value.status) {
+        return false
+      }
+    }
+    
+    // 金额范围筛选
+    const orderAmount = order.baseInfo?.totalAmount || 0
+    if (filterForm.value.minAmount !== null && orderAmount < filterForm.value.minAmount) {
+      return false
+    }
+    if (filterForm.value.maxAmount !== null && orderAmount > filterForm.value.maxAmount) {
+      return false
+    }
+    
+    return true
+  })
+})
+
+const resetFilter = () => {
+  filterForm.value = {
+    orderId: '',
+    status: '',
+    minAmount: null,
+    maxAmount: null
+  }
+}
 
 const formatTime = (timeStr) => {
   if (!timeStr) return '-'
@@ -719,6 +784,11 @@ onMounted(() => {
   font-weight: 600;
   margin-bottom: 15px;
   color: #303133;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .request-logs {
