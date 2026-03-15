@@ -569,8 +569,14 @@ const allOrders = computed(() => {
   
   const orders = []
   response.value.request_logs.forEach(log => {
-    if (log.response && log.response.result) {
-      orders.push(...log.response.result)
+    // 检查请求参数中是否包含page字段，包含page字段的请求是获取订单的请求
+    const hasPageParam = log.params && 'page' in log.params
+    
+    if (hasPageParam && log.response && log.response.result) {
+      // 检查result是否是数组，并且每个元素是否包含baseInfo属性（判断是否为订单数据）
+      if (Array.isArray(log.response.result) && log.response.result.length > 0 && log.response.result[0].baseInfo) {
+        orders.push(...log.response.result)
+      }
     }
   })
   
