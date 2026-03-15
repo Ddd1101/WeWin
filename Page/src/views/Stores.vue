@@ -165,9 +165,6 @@
         <el-form-item label="Access Token">
           <el-input v-model="apiConfigForm.access_token" type="textarea" :rows="2" placeholder="请输入Access Token" />
         </el-form-item>
-        <el-form-item label="Refresh Token">
-          <el-input v-model="apiConfigForm.refresh_token" type="textarea" :rows="2" placeholder="请输入Refresh Token（可选）" />
-        </el-form-item>
         <el-form-item label="是否启用">
           <el-switch v-model="apiConfigForm.is_active" />
         </el-form-item>
@@ -222,7 +219,6 @@ const apiConfigForm = ref({
   app_key: '',
   app_secret: '',
   access_token: '',
-  refresh_token: '',
   is_active: true
 })
 
@@ -390,7 +386,6 @@ const fetchApiConfig = async (storeId) => {
         app_key: response.data.config.app_key || '',
         app_secret: response.data.config.app_secret || '',
         access_token: response.data.config.access_token || '',
-        refresh_token: response.data.config.refresh_token || '',
         is_active: response.data.config.is_active !== false
       }
     } else {
@@ -406,7 +401,6 @@ const resetApiConfigForm = () => {
     app_key: '',
     app_secret: '',
     access_token: '',
-    refresh_token: '',
     is_active: true
   }
   if (apiConfigFormRef.value) {
