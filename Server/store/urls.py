@@ -14,4 +14,14 @@ urlpatterns = [
     path('<int:store_id>/orders/', views.get_orders, name='get-orders'),
     path('<int:store_id>/orders/<str:platform_order_id>/detail/', views.get_order_detail, name='get-order-detail'),
     path('<int:store_id>/pull-tasks/', views.get_pull_tasks, name='get-pull-tasks'),
+    
+    # 商品相关路由
+    path('products/types/', views.get_product_types, name='get-product-types'),
+    path('products/', views.get_products, name='get-products'),
+    path('products/create/', views.create_product, name='create-product'),
+    path('products/<int:product_id>/update/', views.update_product, name='update-product'),
+    path('products/<int:product_id>/delete/', views.delete_product, name='delete-product'),
+    path('products/<int:product_id>/detail/', views.get_product_detail, name='get-product-detail'),
+    path('products/accessories/', views.get_accessories, name='get-accessories'),
+    path('products/beads/', views.get_beads, name='get-beads'),
 ]

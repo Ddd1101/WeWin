@@ -219,4 +219,37 @@ export const getOrderDetail = (storeId, platformOrderId) => {
   return storeApi.get(`/${storeId}/orders/${platformOrderId}/detail/`);
 };
 
+// 商品相关API
+export const getProductTypes = () => {
+  return storeApi.get("/products/types/");
+};
+
+export const getProducts = (params = {}) => {
+  return storeApi.get("/products/", { params });
+};
+
+export const createProduct = (data) => {
+  return storeApi.post("/products/create/", data);
+};
+
+export const updateProduct = (id, data) => {
+  return storeApi.put(`/products/${id}/update/`, data);
+};
+
+export const deleteProduct = (id) => {
+  return storeApi.delete(`/products/${id}/delete/`);
+};
+
+export const getProductDetail = (id) => {
+  return storeApi.get(`/products/${id}/detail/`);
+};
+
+export const getAccessories = () => {
+  return storeApi.get("/products/accessories/");
+};
+
+export const getBeads = () => {
+  return storeApi.get("/products/beads/");
+};
+
 export default api;

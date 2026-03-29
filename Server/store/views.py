@@ -12,7 +12,8 @@ from account.models import User, UserType
 from company.models import Company
 from .models import (
     Store, Platform, Category, Order, OrderItem, OrderReceiver,
-    PlatformApiConfig, DataPullTask, StoreDataConfig, DataPullStatus
+    PlatformApiConfig, DataPullTask, StoreDataConfig, DataPullStatus,
+    Product, ProductType, Bead, Accessory, FinishedProduct, FinishedProductBead, FinishedProductAccessory
 )
 from .services import BaseDataPullService, Ali1688DataPullService
 
@@ -813,5 +814,684 @@ def get_pull_tasks(request, store_id):
         return JsonResponse({'error': '用户不存在'}, status=404)
     except Store.DoesNotExist:
         return JsonResponse({'error': '店铺不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_product_types(request):
+    try:
+        product_types = []
+        for choice in ProductType.choices:
+            product_types.append({'value': choice[0], 'label': choice[1]})
+        return JsonResponse({'product_types': product_types})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_products(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        
+        products = []
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            products = Product.objects.all()
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]:
+            if current_user.company:
+                products = Product.objects.filter(company=current_user.company)
+
+        # 筛选条件
+        product_type = request.GET.get('product_type')
+        if product_type:
+            products = products.filter(product_type=product_type)
+
+        is_active = request.GET.get('is_active')
+        if is_active is not None:
+            products = products.filter(is_active=is_active == 'true')
+
+        # 分页
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 20))
+        offset = (page - 1) * page_size
+        
+        total_count = products.count()
+        products = products[offset:offset + page_size]
+
+        product_list = []
+        for product in products:
+            product_data = {
+                'id': product.id,
+                'code': product.code,
+                'name': product.name,
+                'product_type': product.product_type,
+                'product_type_display': product.get_product_type_display(),
+                'cost_price': float(product.cost_price),
+                'selling_price': float(product.selling_price),
+                'location': product.location,
+                'supplier': product.supplier,
+                'company_id': product.company_id,
+                'company_name': product.company.name,
+                'is_active': product.is_active,
+                'created_by_id': product.created_by_id,
+                'created_by_name': product.created_by.username if product.created_by else None,
+                'created_at': product.created_at.isoformat(),
+                'updated_at': product.updated_at.isoformat()
+            }
+
+            # 添加串珠、配件或成品特有属性
+            if product.product_type == ProductType.BEAD:
+                try:
+                    bead = Bead.objects.get(product=product)
+                    product_data['bead'] = {
+                        'material': bead.material,
+                        'size': bead.size,
+                        'color': bead.color
+                    }
+                except Bead.DoesNotExist:
+                    pass
+            elif product.product_type == ProductType.ACCESSORY:
+                try:
+                    accessory = Accessory.objects.get(product=product)
+                    product_data['accessory'] = {
+                        'material': accessory.material,
+                        'size': accessory.size,
+                        'color': accessory.color
+                    }
+                except Accessory.DoesNotExist:
+                    pass
+            elif product.product_type == ProductType.FINISHED:
+                try:
+                    finished = FinishedProduct.objects.get(product=product)
+                    product_data['finished'] = {
+                        'beads': [],
+                        'accessories': []
+                    }
+                    # 获取成品的串珠组成
+                    for fpb in finished.beads.all():
+                        product_data['finished']['beads'].append({
+                            'bead_id': fpb.bead.product.id,
+                            'bead_code': fpb.bead.product.code,
+                            'bead_name': fpb.bead.product.name,
+                            'quantity': fpb.quantity
+                        })
+                    # 获取成品的配件组成
+                    for fpa in finished.accessories.all():
+                        product_data['finished']['accessories'].append({
+                            'accessory_id': fpa.accessory.product.id,
+                            'accessory_code': fpa.accessory.product.code,
+                            'accessory_name': fpa.accessory.product.name,
+                            'quantity': fpa.quantity
+                        })
+                except FinishedProduct.DoesNotExist:
+                    pass
+
+            product_list.append(product_data)
+
+        return JsonResponse({
+            'products': product_list,
+            'total_count': total_count,
+            'page': page,
+            'page_size': page_size
+        })
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def create_product(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
+            if current_user.company:
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限创建商品'}, status=403)
+
+        data = json.loads(request.body)
+        code = data.get('code')
+        name = data.get('name')
+        product_type = data.get('product_type')
+        cost_price = data.get('cost_price')
+        selling_price = data.get('selling_price')
+        location = data.get('location', '')
+        supplier = data.get('supplier', '')
+        company_id = data.get('company_id')
+
+        if not all([code, name, product_type, cost_price, selling_price]):
+            return JsonResponse({'error': '必填字段不能为空'}, status=400)
+
+        company = None
+        if company_id:
+            try:
+                company = Company.objects.get(id=company_id)
+            except Company.DoesNotExist:
+                return JsonResponse({'error': '企业不存在'}, status=404)
+        elif current_user.company:
+            company = current_user.company
+        else:
+            return JsonResponse({'error': '请选择所属企业'}, status=400)
+
+        # 检查货号是否已存在
+        if Product.objects.filter(code=code, company=company).exists():
+            return JsonResponse({'error': '货号已存在'}, status=400)
+
+        with transaction.atomic():
+            product = Product.objects.create(
+                code=code,
+                name=name,
+                product_type=product_type,
+                cost_price=cost_price,
+                selling_price=selling_price,
+                location=location,
+                supplier=supplier,
+                company=company,
+                created_by=current_user
+            )
+
+            # 创建串珠、配件或成品
+            if product_type == ProductType.BEAD:
+                Bead.objects.create(
+                    product=product,
+                    material=data.get('material', ''),
+                    size=data.get('size', ''),
+                    color=data.get('color', '')
+                )
+            elif product_type == ProductType.ACCESSORY:
+                Accessory.objects.create(
+                    product=product,
+                    material=data.get('material', ''),
+                    size=data.get('size', ''),
+                    color=data.get('color', '')
+                )
+            elif product_type == ProductType.FINISHED:
+                finished = FinishedProduct.objects.create(
+                    product=product
+                )
+                # 添加串珠组成
+                beads = data.get('beads', [])
+                for bead_data in beads:
+                    try:
+                        bead_product = Product.objects.get(
+                            id=bead_data['bead_id'],
+                            product_type=ProductType.BEAD,
+                            company=company
+                        )
+                        bead = Bead.objects.get(product=bead_product)
+                        FinishedProductBead.objects.create(
+                            finished_product=finished,
+                            bead=bead,
+                            quantity=bead_data['quantity']
+                        )
+                    except (Product.DoesNotExist, Bead.DoesNotExist):
+                        pass
+                # 添加配件组成
+                accessories = data.get('accessories', [])
+                for acc in accessories:
+                    try:
+                        accessory_product = Product.objects.get(
+                            id=acc['accessory_id'],
+                            product_type=ProductType.ACCESSORY,
+                            company=company
+                        )
+                        accessory = Accessory.objects.get(product=accessory_product)
+                        FinishedProductAccessory.objects.create(
+                            finished_product=finished,
+                            accessory=accessory,
+                            quantity=acc['quantity']
+                        )
+                    except (Product.DoesNotExist, Accessory.DoesNotExist):
+                        pass
+
+        # 构建响应数据
+        product_data = {
+            'id': product.id,
+            'code': product.code,
+            'name': product.name,
+            'product_type': product.product_type,
+            'product_type_display': product.get_product_type_display(),
+            'cost_price': float(product.cost_price),
+            'selling_price': float(product.selling_price),
+            'location': product.location,
+            'supplier': product.supplier,
+            'company_id': product.company_id,
+            'company_name': product.company.name,
+            'is_active': product.is_active,
+            'created_by_id': product.created_by_id,
+            'created_by_name': product.created_by.username if product.created_by else None,
+            'created_at': product.created_at.isoformat(),
+            'updated_at': product.updated_at.isoformat()
+        }
+
+        return JsonResponse(product_data, status=201)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['PUT'])
+def update_product(request, product_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        product = Product.objects.get(id=product_id)
+        
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
+            if current_user.company == product.company:
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限更新商品'}, status=403)
+
+        data = json.loads(request.body)
+
+        # 更新商品基本信息
+        if 'name' in data:
+            product.name = data['name']
+
+        if 'cost_price' in data:
+            product.cost_price = data['cost_price']
+
+        if 'selling_price' in data:
+            product.selling_price = data['selling_price']
+
+        if 'location' in data:
+            product.location = data['location']
+
+        if 'supplier' in data:
+            product.supplier = data['supplier']
+
+        if 'is_active' in data:
+            product.is_active = data['is_active']
+
+        product.save()
+
+        # 更新串珠、配件或成品信息
+        if product.product_type == ProductType.BEAD:
+            try:
+                bead = Bead.objects.get(product=product)
+                if 'material' in data:
+                    bead.material = data['material']
+                if 'size' in data:
+                    bead.size = data['size']
+                if 'color' in data:
+                    bead.color = data['color']
+                bead.save()
+            except Bead.DoesNotExist:
+                pass
+        elif product.product_type == ProductType.ACCESSORY:
+            try:
+                accessory = Accessory.objects.get(product=product)
+                if 'material' in data:
+                    accessory.material = data['material']
+                if 'size' in data:
+                    accessory.size = data['size']
+                if 'color' in data:
+                    accessory.color = data['color']
+                accessory.save()
+            except Accessory.DoesNotExist:
+                pass
+        elif product.product_type == ProductType.FINISHED:
+            try:
+                finished = FinishedProduct.objects.get(product=product)
+                finished.save()
+
+                # 更新串珠组成
+                if 'beads' in data:
+                    # 先删除现有的串珠组成
+                    FinishedProductBead.objects.filter(finished_product=finished).delete()
+                    # 添加新的串珠组成
+                    beads = data['beads']
+                    for bead_data in beads:
+                        try:
+                            bead_product = Product.objects.get(
+                                id=bead_data['bead_id'],
+                                product_type=ProductType.BEAD,
+                                company=product.company
+                            )
+                            bead = Bead.objects.get(product=bead_product)
+                            FinishedProductBead.objects.create(
+                                finished_product=finished,
+                                bead=bead,
+                                quantity=bead_data['quantity']
+                            )
+                        except (Product.DoesNotExist, Bead.DoesNotExist):
+                            pass
+
+                # 更新配件组成
+                if 'accessories' in data:
+                    # 先删除现有的配件组成
+                    FinishedProductAccessory.objects.filter(finished_product=finished).delete()
+                    # 添加新的配件组成
+                    accessories = data['accessories']
+                    for acc in accessories:
+                        try:
+                            accessory_product = Product.objects.get(
+                                id=acc['accessory_id'],
+                                product_type=ProductType.ACCESSORY,
+                                company=product.company
+                            )
+                            accessory = Accessory.objects.get(product=accessory_product)
+                            FinishedProductAccessory.objects.create(
+                                finished_product=finished,
+                                accessory=accessory,
+                                quantity=acc['quantity']
+                            )
+                        except (Product.DoesNotExist, Accessory.DoesNotExist):
+                            pass
+            except FinishedProduct.DoesNotExist:
+                pass
+
+        # 构建响应数据
+        product_data = {
+            'id': product.id,
+            'code': product.code,
+            'name': product.name,
+            'product_type': product.product_type,
+            'product_type_display': product.get_product_type_display(),
+            'cost_price': float(product.cost_price),
+            'selling_price': float(product.selling_price),
+            'location': product.location,
+            'supplier': product.supplier,
+            'company_id': product.company_id,
+            'company_name': product.company.name,
+            'is_active': product.is_active,
+            'created_by_id': product.created_by_id,
+            'created_by_name': product.created_by.username if product.created_by else None,
+            'created_at': product.created_at.isoformat(),
+            'updated_at': product.updated_at.isoformat()
+        }
+
+        return JsonResponse(product_data)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Product.DoesNotExist:
+        return JsonResponse({'error': '商品不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['DELETE'])
+def delete_product(request, product_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        product = Product.objects.get(id=product_id)
+        
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
+            if current_user.company == product.company:
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限删除商品'}, status=403)
+
+        product.delete()
+        return JsonResponse({'message': '商品删除成功'})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Product.DoesNotExist:
+        return JsonResponse({'error': '商品不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_product_detail(request, product_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        product = Product.objects.get(id=product_id)
+        
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]:
+            if current_user.company == product.company:
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限查看商品详情'}, status=403)
+
+        product_data = {
+            'id': product.id,
+            'code': product.code,
+            'name': product.name,
+            'product_type': product.product_type,
+            'product_type_display': product.get_product_type_display(),
+            'cost_price': float(product.cost_price),
+            'selling_price': float(product.selling_price),
+            'location': product.location,
+            'supplier': product.supplier,
+            'company_id': product.company_id,
+            'company_name': product.company.name,
+            'is_active': product.is_active,
+            'created_by_id': product.created_by_id,
+            'created_by_name': product.created_by.username if product.created_by else None,
+            'created_at': product.created_at.isoformat(),
+            'updated_at': product.updated_at.isoformat()
+        }
+
+        # 添加串珠、配件或成品特有属性
+        if product.product_type == ProductType.BEAD:
+            try:
+                bead = Bead.objects.get(product=product)
+                product_data['bead'] = {
+                    'material': bead.material,
+                    'size': bead.size,
+                    'color': bead.color
+                }
+            except Bead.DoesNotExist:
+                pass
+        elif product.product_type == ProductType.ACCESSORY:
+            try:
+                accessory = Accessory.objects.get(product=product)
+                product_data['accessory'] = {
+                    'material': accessory.material,
+                    'size': accessory.size,
+                    'color': accessory.color
+                }
+            except Accessory.DoesNotExist:
+                pass
+        elif product.product_type == ProductType.FINISHED:
+            try:
+                finished = FinishedProduct.objects.get(product=product)
+                product_data['finished'] = {
+                    'beads': [],
+                    'accessories': []
+                }
+                # 获取成品的串珠组成
+                for fpb in finished.beads.all():
+                    product_data['finished']['beads'].append({
+                        'bead_id': fpb.bead.product.id,
+                        'bead_code': fpb.bead.product.code,
+                        'bead_name': fpb.bead.product.name,
+                        'quantity': fpb.quantity
+                    })
+                # 获取成品的配件组成
+                for fpa in finished.accessories.all():
+                    product_data['finished']['accessories'].append({
+                        'accessory_id': fpa.accessory.product.id,
+                        'accessory_code': fpa.accessory.product.code,
+                        'accessory_name': fpa.accessory.product.name,
+                        'quantity': fpa.quantity
+                    })
+            except FinishedProduct.DoesNotExist:
+                pass
+
+        return JsonResponse(product_data)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Product.DoesNotExist:
+        return JsonResponse({'error': '商品不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_accessories(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        
+        accessories = []
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            accessories = Accessory.objects.all()
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]:
+            if current_user.company:
+                accessories = Accessory.objects.filter(product__company=current_user.company)
+
+        accessory_list = []
+        for accessory in accessories:
+            product = accessory.product
+            accessory_list.append({
+                'id': product.id,
+                'code': product.code,
+                'name': product.name,
+                'cost_price': float(product.cost_price),
+                'location': product.location,
+                'supplier': product.supplier,
+                'material': accessory.material,
+                'size': accessory.size,
+                'color': accessory.color
+            })
+
+        return JsonResponse({'accessories': accessory_list})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_beads(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        
+        beads = []
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            beads = Bead.objects.all()
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]:
+            if current_user.company:
+                beads = Bead.objects.filter(product__company=current_user.company)
+
+        bead_list = []
+        for bead in beads:
+            product = bead.product
+            bead_list.append({
+                'id': product.id,
+                'code': product.code,
+                'name': product.name,
+                'cost_price': float(product.cost_price),
+                'location': product.location,
+                'supplier': product.supplier,
+                'material': bead.material,
+                'size': bead.size,
+                'color': bead.color
+            })
+
+        return JsonResponse({'beads': bead_list})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
