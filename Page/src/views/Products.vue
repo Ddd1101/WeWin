@@ -36,6 +36,18 @@
       </div>
       
       <el-table :data="products" style="width: 100%">
+        <el-table-column label="图片" width="80">
+          <template #default="scope">
+            <el-image
+              v-if="scope.row.image_url"
+              :src="scope.row.image_url"
+              style="width: 50px; height: 50px"
+              fit="cover"
+              :preview-src-list="[scope.row.image_url]"
+            />
+            <span v-else style="color: #999">无图</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="code" label="货号" width="180" />
         <el-table-column prop="name" label="商品名称" />
         <el-table-column prop="product_type_display" label="商品类型" width="120" />
@@ -105,6 +117,40 @@
         </el-form-item>
         <el-form-item label="供应商">
           <el-input v-model="form.supplier" placeholder="请输入供应商" />
+        </el-form-item>
+        <el-form-item label="商品图片">
+          <div class="image-upload-container">
+            <div
+              v-if="!form.imagePreview && !form.image_url"
+              class="image-uploader"
+              @click="triggerImageUpload"
+            >
+              <el-icon class="image-uploader-icon"><Plus /></el-icon>
+            </div>
+            <div v-else class="image-preview">
+              <el-image
+                :src="form.imagePreview || form.image_url"
+                style="width: 100px; height: 100px"
+                fit="cover"
+                :preview-src-list="[form.imagePreview || form.image_url]"
+              />
+              <el-button
+                size="small"
+                type="danger"
+                @click="handleRemoveImage"
+                style="margin-top: 8px"
+              >
+                删除图片
+              </el-button>
+            </div>
+            <input
+              ref="imageInputRef"
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+              style="display: none"
+              @change="handleImageSelect"
+            />
+          </div>
         </el-form-item>
         
         <!-- 串珠特有属性 -->
@@ -230,6 +276,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import { getProductTypes, getProducts, createProduct, updateProduct, deleteProduct, getProductDetail, getAccessories, getBeads } from '@/api'
 
 // 商品类型
@@ -290,7 +337,11 @@ const form = reactive({
   size: '',
   color: '',
   beads: [],
-  accessories: []
+  accessories: [],
+  image: null,
+  imagePreview: '',
+  image_url: '',
+  remove_image: false
 })
 // 表单验证规则
 const rules = {
@@ -302,6 +353,8 @@ const rules = {
 }
 // 表单引用
 const formRef = ref(null)
+// 图片上传输入框引用
+const imageInputRef = ref(null)
 // 配件搜索
 const accessorySearch = ref('')
 // 串珠搜索
@@ -404,9 +457,60 @@ const handleAddProduct = () => {
     size: '',
     color: '',
     beads: [],
-    accessories: []
+    accessories: [],
+    image: null,
+    imagePreview: '',
+    image_url: '',
+    remove_image: false
   })
   dialogVisible.value = true
+}
+
+// 触发图片上传
+const triggerImageUpload = () => {
+  // 重置输入框值，允许重复选择同一文件
+  if (imageInputRef.value) {
+    imageInputRef.value.value = ''
+    imageInputRef.value.click()
+  }
+}
+
+// 处理图片选择
+const handleImageSelect = (event) => {
+  const files = event.target.files
+  if (!files || files.length === 0) return
+  
+  const file = files[0]
+  // 验证文件类型
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    ElMessage.error('只支持 PNG、JPEG、GIF 和 WEBP 格式的图片')
+    return
+  }
+  
+  // 验证文件大小 (最大 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过 5MB')
+    return
+  }
+  
+  form.image = file
+  form.remove_image = false
+  
+  // 生成预览
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    form.imagePreview = e.target.result
+  }
+  reader.readAsDataURL(file)
+}
+
+// 处理删除图片
+const handleRemoveImage = () => {
+  form.image = null
+  form.imagePreview = ''
+  form.image_url = ''
+  form.remove_image = true
 }
 
 // 处理编辑商品
@@ -428,7 +532,11 @@ const handleEditProduct = async (row) => {
       size: product.bead?.size || product.accessory?.size || '',
       color: product.bead?.color || product.accessory?.color || '',
       beads: product.finished?.beads || [],
-      accessories: product.finished?.accessories || []
+      accessories: product.finished?.accessories || [],
+      image: null,
+      imagePreview: '',
+      image_url: product.image_url || '',
+      remove_image: false
     })
     dialogVisible.value = true
   } catch (error) {
@@ -530,6 +638,14 @@ const handleSubmit = async () => {
           data.accessories = form.accessories
         }
 
+        // 处理图片
+        if (form.image) {
+          data.image = form.image
+        }
+        if (form.id && form.remove_image) {
+          data.remove_image = true
+        }
+
         if (form.id) {
           // 编辑商品
           await updateProduct(form.id, data)
@@ -575,7 +691,38 @@ onMounted(() => {
 
 .dialog-footer {
   width: 100%;
+}
+
+.image-upload-container {
+  width: 100%;
+}
+
+.image-uploader {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: var(--el-transition-duration-fast);
+  width: 100px;
+  height: 100px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
+  align-items: center;
+}
+
+.image-uploader:hover {
+  border-color: var(--el-color-primary);
+}
+
+.image-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+}
+
+.image-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 </style>

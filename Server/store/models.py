@@ -29,6 +29,12 @@ class Product(models.Model):
         related_name='products',
         verbose_name='所属企业'
     )
+    image = models.ImageField(
+        upload_to='products/%Y/%m/%d/',
+        blank=True,
+        null=True,
+        verbose_name='商品图片'
+    )
     is_active = models.BooleanField(default=True, verbose_name='是否启用')
     created_by = models.ForeignKey(
         User,

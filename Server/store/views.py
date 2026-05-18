@@ -884,6 +884,7 @@ def get_products(request):
                 'supplier': product.supplier,
                 'company_id': product.company_id,
                 'company_name': product.company.name,
+                'image_url': request.build_absolute_uri(product.image.url) if product.image else None,
                 'is_active': product.is_active,
                 'created_by_id': product.created_by_id,
                 'created_by_name': product.created_by.username if product.created_by else None,
@@ -980,15 +981,37 @@ def create_product(request):
         if not has_permission:
             return JsonResponse({'error': '无权限创建商品'}, status=403)
 
-        data = json.loads(request.body)
-        code = data.get('code')
-        name = data.get('name')
-        product_type = data.get('product_type')
-        cost_price = data.get('cost_price')
-        selling_price = data.get('selling_price')
-        location = data.get('location', '')
-        supplier = data.get('supplier', '')
-        company_id = data.get('company_id')
+        # 支持 multipart/form-data 和 application/json 两种格式
+        data_dict = {}
+        image = None
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # 从 POST 中获取普通字段数据
+            for key in request.POST:
+                data_dict[key] = request.POST[key]
+            # 处理 JSON 字段，特别是 beads 和 accessories
+            if 'beads' in request.POST:
+                try:
+                    data_dict['beads'] = json.loads(request.POST['beads'])
+                except (json.JSONDecodeError, TypeError):
+                    data_dict['beads'] = []
+            if 'accessories' in request.POST:
+                try:
+                    data_dict['accessories'] = json.loads(request.POST['accessories'])
+                except (json.JSONDecodeError, TypeError):
+                    data_dict['accessories'] = []
+            image = request.FILES.get('image')
+        else:
+            data_dict = json.loads(request.body)
+            image = None
+
+        code = data_dict.get('code')
+        name = data_dict.get('name')
+        product_type = data_dict.get('product_type')
+        cost_price = data_dict.get('cost_price')
+        selling_price = data_dict.get('selling_price')
+        location = data_dict.get('location', '')
+        supplier = data_dict.get('supplier', '')
+        company_id = data_dict.get('company_id')
 
         if not all([code, name, product_type, cost_price, selling_price]):
             return JsonResponse({'error': '必填字段不能为空'}, status=400)
@@ -1018,6 +1041,7 @@ def create_product(request):
                 location=location,
                 supplier=supplier,
                 company=company,
+                image=image,
                 created_by=current_user
             )
 
@@ -1025,23 +1049,23 @@ def create_product(request):
             if product_type == ProductType.BEAD:
                 Bead.objects.create(
                     product=product,
-                    material=data.get('material', ''),
-                    size=data.get('size', ''),
-                    color=data.get('color', '')
+                    material=data_dict.get('material', ''),
+                    size=data_dict.get('size', ''),
+                    color=data_dict.get('color', '')
                 )
             elif product_type == ProductType.ACCESSORY:
                 Accessory.objects.create(
                     product=product,
-                    material=data.get('material', ''),
-                    size=data.get('size', ''),
-                    color=data.get('color', '')
+                    material=data_dict.get('material', ''),
+                    size=data_dict.get('size', ''),
+                    color=data_dict.get('color', '')
                 )
             elif product_type == ProductType.FINISHED:
                 finished = FinishedProduct.objects.create(
                     product=product
                 )
                 # 添加串珠组成
-                beads = data.get('beads', [])
+                beads = data_dict.get('beads', [])
                 for bead_data in beads:
                     try:
                         bead_product = Product.objects.get(
@@ -1058,7 +1082,7 @@ def create_product(request):
                     except (Product.DoesNotExist, Bead.DoesNotExist):
                         pass
                 # 添加配件组成
-                accessories = data.get('accessories', [])
+                accessories = data_dict.get('accessories', [])
                 for acc in accessories:
                     try:
                         accessory_product = Product.objects.get(
@@ -1088,6 +1112,7 @@ def create_product(request):
             'supplier': product.supplier,
             'company_id': product.company_id,
             'company_name': product.company.name,
+            'image_url': request.build_absolute_uri(product.image.url) if product.image else None,
             'is_active': product.is_active,
             'created_by_id': product.created_by_id,
             'created_by_name': product.created_by.username if product.created_by else None,
@@ -1105,7 +1130,7 @@ def create_product(request):
 
 
 @csrf_exempt
-@require_http_methods(['PUT'])
+@require_http_methods(['PUT', 'POST'])
 def update_product(request, product_id):
     try:
         auth_header = request.headers.get('Authorization')
@@ -1133,26 +1158,62 @@ def update_product(request, product_id):
         if not has_permission:
             return JsonResponse({'error': '无权限更新商品'}, status=403)
 
-        data = json.loads(request.body)
+        # 支持 multipart/form-data 和 application/json 两种格式
+        data_dict = {}
+        image = None
+        remove_image = False
+        
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # 从 POST 中获取普通字段数据
+            for key in request.POST:
+                data_dict[key] = request.POST[key]
+            # 处理 JSON 字段，特别是 beads 和 accessories
+            if 'beads' in request.POST:
+                try:
+                    data_dict['beads'] = json.loads(request.POST['beads'])
+                except (json.JSONDecodeError, TypeError):
+                    data_dict['beads'] = []
+            if 'accessories' in request.POST:
+                try:
+                    data_dict['accessories'] = json.loads(request.POST['accessories'])
+                except (json.JSONDecodeError, TypeError):
+                    data_dict['accessories'] = []
+            image = request.FILES.get('image')
+            remove_image_val = request.POST.get('remove_image', 'false').lower() == 'true'
+        else:
+            data_dict = json.loads(request.body)
+            image = None
+            remove_image = data_dict.get('remove_image', False)
 
         # 更新商品基本信息
-        if 'name' in data:
-            product.name = data['name']
+        if 'name' in data_dict:
+            product.name = data_dict['name']
 
-        if 'cost_price' in data:
-            product.cost_price = data['cost_price']
+        if 'cost_price' in data_dict:
+            product.cost_price = data_dict['cost_price']
 
-        if 'selling_price' in data:
-            product.selling_price = data['selling_price']
+        if 'selling_price' in data_dict:
+            product.selling_price = data_dict['selling_price']
 
-        if 'location' in data:
-            product.location = data['location']
+        if 'location' in data_dict:
+            product.location = data_dict['location']
 
-        if 'supplier' in data:
-            product.supplier = data['supplier']
+        if 'supplier' in data_dict:
+            product.supplier = data_dict['supplier']
 
-        if 'is_active' in data:
-            product.is_active = data['is_active']
+        if 'is_active' in data_dict:
+            product.is_active = data_dict['is_active']
+
+        # 处理图片
+        use_remove_image = remove_image_val if request.content_type and 'multipart/form-data' in request.content_type else remove_image
+        if use_remove_image:
+            if product.image:
+                product.image.delete()
+                product.image = None
+        elif image:
+            if product.image:
+                product.image.delete()
+            product.image = image
 
         product.save()
 
@@ -1160,24 +1221,24 @@ def update_product(request, product_id):
         if product.product_type == ProductType.BEAD:
             try:
                 bead = Bead.objects.get(product=product)
-                if 'material' in data:
-                    bead.material = data['material']
-                if 'size' in data:
-                    bead.size = data['size']
-                if 'color' in data:
-                    bead.color = data['color']
+                if 'material' in data_dict:
+                    bead.material = data_dict['material']
+                if 'size' in data_dict:
+                    bead.size = data_dict['size']
+                if 'color' in data_dict:
+                    bead.color = data_dict['color']
                 bead.save()
             except Bead.DoesNotExist:
                 pass
         elif product.product_type == ProductType.ACCESSORY:
             try:
                 accessory = Accessory.objects.get(product=product)
-                if 'material' in data:
-                    accessory.material = data['material']
-                if 'size' in data:
-                    accessory.size = data['size']
-                if 'color' in data:
-                    accessory.color = data['color']
+                if 'material' in data_dict:
+                    accessory.material = data_dict['material']
+                if 'size' in data_dict:
+                    accessory.size = data_dict['size']
+                if 'color' in data_dict:
+                    accessory.color = data_dict['color']
                 accessory.save()
             except Accessory.DoesNotExist:
                 pass
@@ -1187,11 +1248,11 @@ def update_product(request, product_id):
                 finished.save()
 
                 # 更新串珠组成
-                if 'beads' in data:
+                if 'beads' in data_dict:
                     # 先删除现有的串珠组成
                     FinishedProductBead.objects.filter(finished_product=finished).delete()
                     # 添加新的串珠组成
-                    beads = data['beads']
+                    beads = data_dict['beads']
                     for bead_data in beads:
                         try:
                             bead_product = Product.objects.get(
@@ -1209,11 +1270,11 @@ def update_product(request, product_id):
                             pass
 
                 # 更新配件组成
-                if 'accessories' in data:
+                if 'accessories' in data_dict:
                     # 先删除现有的配件组成
                     FinishedProductAccessory.objects.filter(finished_product=finished).delete()
                     # 添加新的配件组成
-                    accessories = data['accessories']
+                    accessories = data_dict['accessories']
                     for acc in accessories:
                         try:
                             accessory_product = Product.objects.get(
@@ -1245,6 +1306,7 @@ def update_product(request, product_id):
             'supplier': product.supplier,
             'company_id': product.company_id,
             'company_name': product.company.name,
+            'image_url': request.build_absolute_uri(product.image.url) if product.image else None,
             'is_active': product.is_active,
             'created_by_id': product.created_by_id,
             'created_by_name': product.created_by.username if product.created_by else None,
@@ -1342,6 +1404,7 @@ def get_product_detail(request, product_id):
             'supplier': product.supplier,
             'company_id': product.company_id,
             'company_name': product.company.name,
+            'image_url': request.build_absolute_uri(product.image.url) if product.image else None,
             'is_active': product.is_active,
             'created_by_id': product.created_by_id,
             'created_by_name': product.created_by.username if product.created_by else None,

@@ -229,10 +229,46 @@ export const getProducts = (params = {}) => {
 };
 
 export const createProduct = (data) => {
+  // 如果数据包含图片文件，则使用 FormData
+  if (data.image) {
+    const formData = new FormData();
+    for (const key in data) {
+      if (data[key] !== undefined && data[key] !== null) {
+        if (key === 'beads' || key === 'accessories') {
+            formData.append(key, JSON.stringify(data[key]));
+        } else {
+            formData.append(key, data[key]);
+        }
+      }
+    }
+    return storeApi.post("/products/create/", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  }
   return storeApi.post("/products/create/", data);
 };
 
 export const updateProduct = (id, data) => {
+  // 如果数据包含图片文件或删除图片请求，则使用 FormData
+  if (data.image || data.remove_image) {
+    const formData = new FormData();
+    for (const key in data) {
+      if (data[key] !== undefined && data[key] !== null) {
+        if (key === 'beads' || key === 'accessories') {
+            formData.append(key, JSON.stringify(data[key]));
+        } else {
+            formData.append(key, data[key]);
+        }
+      }
+    }
+    return storeApi.post(`/products/${id}/update/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  }
   return storeApi.put(`/products/${id}/update/`, data);
 };
 
