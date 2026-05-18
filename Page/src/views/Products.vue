@@ -58,8 +58,17 @@
                     </template>
                   </el-table-column>
                   <el-table-column prop="bead_name" label="名称" />
-                  <el-table-column label="单价" width="100">
+                  <el-table-column label="单价(元/克)" width="100">
                     <template #default="scope">¥{{ scope.row.bead_cost_price.toFixed(2) }}</template>
+                  </el-table-column>
+                  <el-table-column label="单颗克重" width="90">
+                    <template #default="scope">{{ scope.row.bead_weight?.toFixed(3) || '-' }}</template>
+                  </el-table-column>
+                  <el-table-column label="品质等级" width="80">
+                    <template #default="scope">{{ scope.row.bead_quality_level || '-' }}</template>
+                  </el-table-column>
+                  <el-table-column label="备注" min-width="100">
+                    <template #default="scope">{{ scope.row.bead_remark || '-' }}</template>
                   </el-table-column>
                   <el-table-column label="数量" width="80">
                     <template #default="scope">{{ scope.row.quantity }}</template>
@@ -253,6 +262,15 @@
           <el-form-item label="颜色">
             <el-input v-model="form.color" placeholder="请输入颜色" />
           </el-form-item>
+          <el-form-item label="单颗克重">
+            <el-input-number v-model="form.weight" :min="0" :step="0.01" :precision="3" />
+          </el-form-item>
+          <el-form-item label="品质等级(1-10)">
+            <el-input-number v-model="form.quality_level" :min="1" :max="10" :step="1" />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="请输入备注" />
+          </el-form-item>
         </template>
 
         <!-- 配件特有属性 -->
@@ -431,6 +449,9 @@ const form = reactive({
   material: '',
   size: '',
   color: '',
+  weight: 0,
+  quality_level: 5,
+  remark: '',
   beads: [],
   accessories: [],
   labor_cost: 0,
@@ -553,6 +574,9 @@ const handleAddProduct = () => {
     material: '',
     size: '',
     color: '',
+    weight: 0,
+    quality_level: 5,
+    remark: '',
     beads: [],
     accessories: [],
     labor_cost: 0,
@@ -630,6 +654,9 @@ const handleEditProduct = async (row) => {
       material: product.bead?.material || product.accessory?.material || '',
       size: product.bead?.size || product.accessory?.size || '',
       color: product.bead?.color || product.accessory?.color || '',
+      weight: product.bead?.weight || 0,
+      quality_level: product.bead?.quality_level || 5,
+      remark: product.bead?.remark || '',
       beads: product.finished?.beads || [],
       accessories: product.finished?.accessories || [],
       labor_cost: product.finished?.labor_cost || 0,
@@ -747,6 +774,9 @@ const handleSubmit = async () => {
           data.material = form.material
           data.size = form.size
           data.color = form.color
+          data.weight = form.weight
+          data.quality_level = form.quality_level
+          data.remark = form.remark
         } else if (form.product_type === 'accessory') {
           data.material = form.material
           data.size = form.size

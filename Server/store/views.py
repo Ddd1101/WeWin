@@ -899,7 +899,10 @@ def get_products(request):
                     product_data['bead'] = {
                         'material': bead.material,
                         'size': bead.size,
-                        'color': bead.color
+                        'color': bead.color,
+                        'weight': float(bead.weight),
+                        'quality_level': bead.quality_level,
+                        'remark': bead.remark
                     }
                 except Bead.DoesNotExist:
                     pass
@@ -925,13 +928,17 @@ def get_products(request):
                     # 获取成品的串珠组成
                     for fpb in finished.beads.all():
                         bead_product = fpb.bead.product
+                        bead = fpb.bead
                         product_data['finished']['beads'].append({
                             'bead_id': bead_product.id,
                             'bead_code': bead_product.code,
                             'bead_name': bead_product.name,
                             'bead_cost_price': float(bead_product.cost_price),
                             'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
-                            'quantity': fpb.quantity
+                            'quantity': fpb.quantity,
+                            'bead_weight': float(bead.weight),
+                            'bead_quality_level': bead.quality_level,
+                            'bead_remark': bead.remark
                         })
                     # 获取成品的配件组成
                     for fpa in finished.accessories.all():
@@ -1059,7 +1066,10 @@ def create_product(request):
                     product=product,
                     material=data_dict.get('material', ''),
                     size=data_dict.get('size', ''),
-                    color=data_dict.get('color', '')
+                    color=data_dict.get('color', ''),
+                    weight=data_dict.get('weight', 0),
+                    quality_level=data_dict.get('quality_level', 5),
+                    remark=data_dict.get('remark', '')
                 )
             elif product_type == ProductType.ACCESSORY:
                 Accessory.objects.create(
@@ -1237,6 +1247,12 @@ def update_product(request, product_id):
                     bead.size = data_dict['size']
                 if 'color' in data_dict:
                     bead.color = data_dict['color']
+                if 'weight' in data_dict:
+                    bead.weight = data_dict['weight']
+                if 'quality_level' in data_dict:
+                    bead.quality_level = data_dict['quality_level']
+                if 'remark' in data_dict:
+                    bead.remark = data_dict['remark']
                 bead.save()
             except Bead.DoesNotExist:
                 pass
@@ -1434,7 +1450,10 @@ def get_product_detail(request, product_id):
                 product_data['bead'] = {
                     'material': bead.material,
                     'size': bead.size,
-                    'color': bead.color
+                    'color': bead.color,
+                    'weight': float(bead.weight),
+                    'quality_level': bead.quality_level,
+                    'remark': bead.remark
                 }
             except Bead.DoesNotExist:
                 pass
@@ -1460,13 +1479,17 @@ def get_product_detail(request, product_id):
                 # 获取成品的串珠组成
                 for fpb in finished.beads.all():
                     bead_product = fpb.bead.product
+                    bead = fpb.bead
                     product_data['finished']['beads'].append({
                         'bead_id': bead_product.id,
                         'bead_code': bead_product.code,
                         'bead_name': bead_product.name,
                         'bead_cost_price': float(bead_product.cost_price),
                         'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
-                        'quantity': fpb.quantity
+                        'quantity': fpb.quantity,
+                        'bead_weight': float(bead.weight),
+                        'bead_quality_level': bead.quality_level,
+                        'bead_remark': bead.remark
                     })
                 # 获取成品的配件组成
                 for fpa in finished.accessories.all():
@@ -1573,7 +1596,10 @@ def get_beads(request):
                 'supplier': product.supplier,
                 'material': bead.material,
                 'size': bead.size,
-                'color': bead.color
+                'color': bead.color,
+                'weight': float(bead.weight),
+                'quality_level': bead.quality_level,
+                'remark': bead.remark
             })
 
         return JsonResponse({'beads': bead_list})
