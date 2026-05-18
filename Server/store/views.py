@@ -918,22 +918,30 @@ def get_products(request):
                     finished = FinishedProduct.objects.get(product=product)
                     product_data['finished'] = {
                         'beads': [],
-                        'accessories': []
+                        'accessories': [],
+                        'labor_cost': float(finished.labor_cost),
+                        'elastic_cost': float(finished.elastic_cost)
                     }
                     # 获取成品的串珠组成
                     for fpb in finished.beads.all():
+                        bead_product = fpb.bead.product
                         product_data['finished']['beads'].append({
-                            'bead_id': fpb.bead.product.id,
-                            'bead_code': fpb.bead.product.code,
-                            'bead_name': fpb.bead.product.name,
+                            'bead_id': bead_product.id,
+                            'bead_code': bead_product.code,
+                            'bead_name': bead_product.name,
+                            'bead_cost_price': float(bead_product.cost_price),
+                            'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
                             'quantity': fpb.quantity
                         })
                     # 获取成品的配件组成
                     for fpa in finished.accessories.all():
+                        acc_product = fpa.accessory.product
                         product_data['finished']['accessories'].append({
-                            'accessory_id': fpa.accessory.product.id,
-                            'accessory_code': fpa.accessory.product.code,
-                            'accessory_name': fpa.accessory.product.name,
+                            'accessory_id': acc_product.id,
+                            'accessory_code': acc_product.code,
+                            'accessory_name': acc_product.name,
+                            'accessory_cost_price': float(acc_product.cost_price),
+                            'accessory_image_url': request.build_absolute_uri(acc_product.image.url) if acc_product.image else None,
                             'quantity': fpa.quantity
                         })
                 except FinishedProduct.DoesNotExist:
@@ -1062,7 +1070,9 @@ def create_product(request):
                 )
             elif product_type == ProductType.FINISHED:
                 finished = FinishedProduct.objects.create(
-                    product=product
+                    product=product,
+                    labor_cost=data_dict.get('labor_cost', 0),
+                    elastic_cost=data_dict.get('elastic_cost', 0)
                 )
                 # 添加串珠组成
                 beads = data_dict.get('beads', [])
@@ -1245,6 +1255,11 @@ def update_product(request, product_id):
         elif product.product_type == ProductType.FINISHED:
             try:
                 finished = FinishedProduct.objects.get(product=product)
+                # 更新工费和弹性成本
+                if 'labor_cost' in data_dict:
+                    finished.labor_cost = data_dict['labor_cost']
+                if 'elastic_cost' in data_dict:
+                    finished.elastic_cost = data_dict['elastic_cost']
                 finished.save()
 
                 # 更新串珠组成
@@ -1438,22 +1453,30 @@ def get_product_detail(request, product_id):
                 finished = FinishedProduct.objects.get(product=product)
                 product_data['finished'] = {
                     'beads': [],
-                    'accessories': []
+                    'accessories': [],
+                    'labor_cost': float(finished.labor_cost),
+                    'elastic_cost': float(finished.elastic_cost)
                 }
                 # 获取成品的串珠组成
                 for fpb in finished.beads.all():
+                    bead_product = fpb.bead.product
                     product_data['finished']['beads'].append({
-                        'bead_id': fpb.bead.product.id,
-                        'bead_code': fpb.bead.product.code,
-                        'bead_name': fpb.bead.product.name,
+                        'bead_id': bead_product.id,
+                        'bead_code': bead_product.code,
+                        'bead_name': bead_product.name,
+                        'bead_cost_price': float(bead_product.cost_price),
+                        'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
                         'quantity': fpb.quantity
                     })
                 # 获取成品的配件组成
                 for fpa in finished.accessories.all():
+                    acc_product = fpa.accessory.product
                     product_data['finished']['accessories'].append({
-                        'accessory_id': fpa.accessory.product.id,
-                        'accessory_code': fpa.accessory.product.code,
-                        'accessory_name': fpa.accessory.product.name,
+                        'accessory_id': acc_product.id,
+                        'accessory_code': acc_product.code,
+                        'accessory_name': acc_product.name,
+                        'accessory_cost_price': float(acc_product.cost_price),
+                        'accessory_image_url': request.build_absolute_uri(acc_product.image.url) if acc_product.image else None,
                         'quantity': fpa.quantity
                     })
             except FinishedProduct.DoesNotExist:

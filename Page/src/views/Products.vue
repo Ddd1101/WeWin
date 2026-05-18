@@ -35,7 +35,96 @@
         </el-form>
       </div>
       
-      <el-table :data="products" style="width: 100%">
+      <el-table :data="products" style="width: 100%" row-key="id">
+        <el-table-column type="expand">
+          <template #default="scope">
+            <div v-if="scope.row.product_type === 'finished' && scope.row.finished" class="finished-details">
+              <h4>成品组成明细</h4>
+              
+              <!-- 串珠列表 -->
+              <div class="section" v-if="scope.row.finished.beads.length > 0">
+                <h5>串珠</h5>
+                <el-table :data="scope.row.finished.beads" size="small" style="width: 100%">
+                  <el-table-column label="缩略图" width="80">
+                    <template #default="scope">
+                      <el-image
+                        v-if="scope.row.bead_image_url"
+                        :src="scope.row.bead_image_url"
+                        style="width: 40px; height: 40px"
+                        fit="cover"
+                        :preview-src-list="[scope.row.bead_image_url]"
+                      />
+                      <span v-else style="color: #999">无图</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="bead_name" label="名称" />
+                  <el-table-column label="单价" width="100">
+                    <template #default="scope">¥{{ scope.row.bead_cost_price.toFixed(2) }}</template>
+                  </el-table-column>
+                  <el-table-column label="数量" width="80">
+                    <template #default="scope">{{ scope.row.quantity }}</template>
+                  </el-table-column>
+                  <el-table-column label="小计" width="100">
+                    <template #default="scope">
+                      ¥{{ (scope.row.bead_cost_price * scope.row.quantity).toFixed(2) }}
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              
+              <!-- 配件列表 -->
+              <div class="section" v-if="scope.row.finished.accessories.length > 0">
+                <h5>配件</h5>
+                <el-table :data="scope.row.finished.accessories" size="small" style="width: 100%">
+                  <el-table-column label="缩略图" width="80">
+                    <template #default="scope">
+                      <el-image
+                        v-if="scope.row.accessory_image_url"
+                        :src="scope.row.accessory_image_url"
+                        style="width: 40px; height: 40px"
+                        fit="cover"
+                        :preview-src-list="[scope.row.accessory_image_url]"
+                      />
+                      <span v-else style="color: #999">无图</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="accessory_name" label="名称" />
+                  <el-table-column label="单价" width="100">
+                    <template #default="scope">¥{{ scope.row.accessory_cost_price.toFixed(2) }}</template>
+                  </el-table-column>
+                  <el-table-column label="数量" width="80">
+                    <template #default="scope">{{ scope.row.quantity }}</template>
+                  </el-table-column>
+                  <el-table-column label="小计" width="100">
+                    <template #default="scope">
+                      ¥{{ (scope.row.accessory_cost_price * scope.row.quantity).toFixed(2) }}
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              
+              <!-- 工费和弹性成本 -->
+              <div class="section">
+                <h5>其他成本</h5>
+                <div class="cost-item">
+                  <span>工费：</span>
+                  <span class="amount">¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
+                </div>
+                <div class="cost-item">
+                  <span>弹性成本：</span>
+                  <span class="amount">¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
+                </div>
+              </div>
+              
+              <!-- 总成本 -->
+              <div class="total-cost">
+                <span>总成本：</span>
+                <span class="amount">¥{{ calculateTotalCost(scope.row.finished).toFixed(2) }}</span>
+              </div>
+            </div>
+            <div v-else>无明细</div>
+          </template>
+        </el-table-column>
         <el-table-column label="图片" width="80">
           <template #default="scope">
             <el-image
@@ -181,6 +270,12 @@
 
         <!-- 成品特有属性 -->
         <template v-if="form.product_type === 'finished'">
+          <el-form-item label="工费">
+            <el-input-number v-model="form.labor_cost" :min="0" :step="0.01" :precision="2" />
+          </el-form-item>
+          <el-form-item label="弹性成本">
+            <el-input-number v-model="form.elastic_cost" :min="0" :step="0.01" :precision="2" />
+          </el-form-item>
           <el-form-item label="串珠组成">
             <el-button type="primary" size="small" @click="handleAddBead">添加串珠</el-button>
             <el-table :data="form.beads" style="width: 100%; margin-top: 10px">
@@ -338,6 +433,8 @@ const form = reactive({
   color: '',
   beads: [],
   accessories: [],
+  labor_cost: 0,
+  elastic_cost: 0,
   image: null,
   imagePreview: '',
   image_url: '',
@@ -458,6 +555,8 @@ const handleAddProduct = () => {
     color: '',
     beads: [],
     accessories: [],
+    labor_cost: 0,
+    elastic_cost: 0,
     image: null,
     imagePreview: '',
     image_url: '',
@@ -533,6 +632,8 @@ const handleEditProduct = async (row) => {
       color: product.bead?.color || product.accessory?.color || '',
       beads: product.finished?.beads || [],
       accessories: product.finished?.accessories || [],
+      labor_cost: product.finished?.labor_cost || 0,
+      elastic_cost: product.finished?.elastic_cost || 0,
       image: null,
       imagePreview: '',
       image_url: product.image_url || '',
@@ -609,6 +710,23 @@ const handleSelectAccessory = (accessory) => {
   accessoryDialogVisible.value = false
 }
 
+// 计算成品总成本
+const calculateTotalCost = (finished) => {
+  let total = 0
+  // 计算串珠成本
+  finished.beads.forEach((bead) => {
+    total += bead.bead_cost_price * bead.quantity
+  })
+  // 计算配件成本
+  finished.accessories.forEach((acc) => {
+    total += acc.accessory_cost_price * acc.quantity
+  })
+  // 加上工费和弹性成本
+  total += finished.labor_cost
+  total += finished.elastic_cost
+  return total
+}
+
 // 处理表单提交
 const handleSubmit = async () => {
   if (!formRef.value) return
@@ -636,6 +754,8 @@ const handleSubmit = async () => {
         } else if (form.product_type === 'finished') {
           data.beads = form.beads
           data.accessories = form.accessories
+          data.labor_cost = form.labor_cost
+          data.elastic_cost = form.elastic_cost
         }
 
         // 处理图片
@@ -724,5 +844,55 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+}
+
+/* 成品详情样式 */
+.finished-details {
+  padding: 20px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+}
+
+.finished-details h4 {
+  margin: 0 0 15px 0;
+  color: #303133;
+  font-size: 16px;
+}
+
+.finished-details h5 {
+  margin: 20px 0 10px 0;
+  color: #606266;
+  font-size: 14px;
+  border-left: 3px solid #409eff;
+  padding-left: 8px;
+}
+
+.finished-details .section {
+  margin-bottom: 15px;
+}
+
+.finished-details .cost-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #606266;
+}
+
+.finished-details .total-cost {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #303133;
+  border-top: 1px solid #dcdfe6;
+  margin-top: 10px;
+  padding-top: 15px;
+}
+
+.finished-details .amount {
+  font-weight: bold;
+  color: #409eff;
 }
 </style>

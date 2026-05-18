@@ -106,7 +106,18 @@ class FinishedProduct(models.Model):
         primary_key=True,
         verbose_name='关联商品'
     )
-    # 成本由配件价格组合计算
+    labor_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='工费'
+    )
+    elastic_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='弹性成本'
+    )
 
     class Meta:
         db_table = 'finished_product'
