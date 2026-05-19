@@ -9,7 +9,7 @@
       </template>
       
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-        <el-tab-pane label="串珠" name="bead">
+        <el-tab-pane label="手串成品" name="finished">
           <div class="filter-container">
             <el-form :inline="true" :model="filterForm" class="demo-form-inline">
               <el-form-item label="状态">
@@ -172,7 +172,7 @@
           </div>
         </el-tab-pane>
         
-        <el-tab-pane label="手串成品" name="finished">
+        <el-tab-pane label="串珠" name="bead">
           <div class="filter-container">
             <el-form :inline="true" :model="filterForm" class="demo-form-inline">
               <el-form-item label="状态">
@@ -873,7 +873,7 @@ const accessorySearch = ref('')
 // 串珠搜索
 const beadSearch = ref('')
 // 当前选中的标签页
-const activeTab = ref('bead')
+const activeTab = ref('finished')
 
 // 获取商品类型
 const fetchProductTypes = async () => {
