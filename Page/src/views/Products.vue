@@ -138,7 +138,7 @@
                   :min="0" 
                   :step="0.01" 
                   :precision="4" 
-                  style="width: 200px" 
+                  style="width: 140px" 
                   @change="calculateCostPrice"
                 />
                 <span class="unit-text">元/克</span>
