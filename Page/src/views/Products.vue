@@ -131,7 +131,14 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="成本价格" prop="cost_price">
-              <el-input-number v-model="form.cost_price" :min="0" :step="0.01" :precision="2" style="width: 100%" />
+              <el-input-number 
+                v-model="form.cost_price" 
+                :min="0" 
+                :step="0.01" 
+                :precision="2" 
+                :disabled="form.product_type === 'finished'"
+                style="width: 100%" 
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -523,7 +530,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, defineAsyncComponent } from 'vue'
+import { ref, reactive, onMounted, computed, defineAsyncComponent, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Picture, Document, Grid, CircleCheck, Box, Delete, Check } from '@element-plus/icons-vue'
 import { getProductTypes, getProducts, createProduct, updateProduct, deleteProduct, getProductDetail, getAccessories, getBeads } from '@/api'
@@ -611,7 +618,22 @@ const rules = {
   code: [{ required: true, message: '请输入货号', trigger: 'blur' }],
   name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
   product_type: [{ required: true, message: '请选择商品类型', trigger: 'change' }],
-  cost_price: [{ required: true, message: '请输入成本价格', trigger: 'blur' }],
+  cost_price: [
+    { 
+      required: true, 
+      message: '请输入成本价格', 
+      trigger: 'blur',
+      validator: (rule, value, callback) => {
+        if (form.product_type === 'finished') {
+          callback()
+        } else if (value === null || value === undefined || value === '') {
+          callback(new Error('请输入成本价格'))
+        } else {
+          callback()
+        }
+      }
+    }
+  ],
   selling_price: [{ required: true, message: '请输入售卖价格', trigger: 'blur' }]
 }
 // 表单引用
@@ -670,6 +692,18 @@ const profitRate = computed(() => {
   if (form.selling_price <= 0) return 0
   return (profit.value / form.selling_price) * 100
 })
+
+// 监听成品组成变化，自动计算成本价格
+watch([
+  () => form.beads,
+  () => form.labor_cost,
+  () => form.elastic_cost,
+  () => form.accessories
+], () => {
+  if (form.product_type === 'finished') {
+    form.cost_price = totalCost.value
+  }
+}, { deep: true, immediate: true })
 
 // 获取商品类型
 const fetchProductTypes = async () => {
@@ -869,8 +903,14 @@ const handleEditProduct = async (row) => {
       weight: product.bead?.weight || 0,
       quality_level: product.bead?.quality_level || 5,
       remark: product.bead?.remark || '',
-      beads: product.finished?.beads || [],
-      accessories: product.finished?.accessories || [],
+      beads: (product.finished?.beads || []).map(bead => ({
+        ...bead,
+        cost_price: bead.cost_price
+      })),
+      accessories: (product.finished?.accessories || []).map(acc => ({
+        ...acc,
+        cost_price: acc.cost_price
+      })),
       labor_cost: product.finished?.labor_cost || 0,
       elastic_cost: product.finished?.elastic_cost || 0,
       image: null,
@@ -947,6 +987,7 @@ const handleSelectBead = (bead) => {
     bead_id: bead.id,
     bead_code: bead.code,
     bead_name: bead.name,
+    cost_price: bead.cost_price,
     quantity: 1
   })
   beadDialogVisible.value = false
@@ -969,6 +1010,7 @@ const handleSelectAccessory = (accessory) => {
     accessory_id: accessory.id,
     accessory_code: accessory.code,
     accessory_name: accessory.name,
+    cost_price: accessory.cost_price,
     quantity: 1
   })
   accessoryDialogVisible.value = false
