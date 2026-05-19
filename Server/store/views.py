@@ -9,6 +9,15 @@ from django.conf import settings
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from account.models import User, UserType
+from company.models import Company
+from .models import (
+    Store, Platform, Category, Order, OrderItem, OrderReceiver,
+    PlatformApiConfig, DataPullTask, StoreDataConfig, DataPullStatus,
+    Product, ProductType, Bead, Accessory, FinishedProduct, FinishedProductBead, FinishedProductAccessory
+)
+from .services import BaseDataPullService, Ali1688DataPullService
+
 
 def calculate_finished_product_cost(finished):
     """
@@ -30,15 +39,6 @@ def calculate_finished_product_cost(finished):
     total_cost += finished.elastic_cost
     
     return total_cost
-
-from account.models import User, UserType
-from company.models import Company
-from .models import (
-    Store, Platform, Category, Order, OrderItem, OrderReceiver,
-    PlatformApiConfig, DataPullTask, StoreDataConfig, DataPullStatus,
-    Product, ProductType, Bead, Accessory, FinishedProduct, FinishedProductBead, FinishedProductAccessory
-)
-from .services import BaseDataPullService, Ali1688DataPullService
 
 
 SECRET_KEY = settings.SECRET_KEY
