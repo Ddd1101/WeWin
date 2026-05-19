@@ -8,177 +8,496 @@
         </div>
       </template>
       
-      <div class="filter-container">
-        <el-form :inline="true" :model="filterForm" class="demo-form-inline">
-          <el-form-item label="商品类型">
-            <el-select v-model="filterForm.product_type" placeholder="选择商品类型" style="width: 150px">
-              <el-option label="全部" value="" />
-              <el-option 
-                v-for="type in productTypes" 
-                :key="type.value" 
-                :label="type.label" 
-                :value="type.value" 
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="filterForm.is_active" placeholder="选择状态" style="width: 120px">
-              <el-option label="全部" value="" />
-              <el-option label="启用" :value="true" />
-              <el-option label="禁用" :value="false" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="handleFilter">查询</el-button>
-            <el-button @click="resetFilter">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-      
-      <el-table :data="products" style="width: 100%" row-key="id">
-        <el-table-column type="expand">
-          <template #default="scope">
-            <div v-if="scope.row.product_type === 'finished' && scope.row.finished" class="finished-details">
-              <h4>成品组成明细</h4>
-              
-              <!-- 串珠列表 -->
-              <div class="section" v-if="scope.row.finished.beads.length > 0">
-                <h5>串珠</h5>
-                <el-table :data="scope.row.finished.beads" size="small" style="width: 100%">
-                  <el-table-column label="缩略图" width="80">
-                    <template #default="scope">
-                      <el-image
-                        v-if="scope.row.bead_image_url"
-                        :src="scope.row.bead_image_url"
-                        style="width: 40px; height: 40px"
-                        fit="cover"
-                        :preview-src-list="[scope.row.bead_image_url]"
-                      />
-                      <span v-else style="color: #999">无图</span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="bead_name" label="名称" />
-                  <el-table-column label="单价(元/克)" width="100">
-                    <template #default="scope">¥{{ scope.row.bead_cost_price.toFixed(2) }}</template>
-                  </el-table-column>
-                  <el-table-column label="单颗克重" width="90">
-                    <template #default="scope">{{ scope.row.bead_weight?.toFixed(3) || '-' }}</template>
-                  </el-table-column>
-                  <el-table-column label="品质等级" width="80">
-                    <template #default="scope">{{ scope.row.bead_quality_level || '-' }}</template>
-                  </el-table-column>
-                  <el-table-column label="备注" min-width="100">
-                    <template #default="scope">{{ scope.row.bead_remark || '-' }}</template>
-                  </el-table-column>
-                  <el-table-column label="数量" width="80">
-                    <template #default="scope">{{ scope.row.quantity }}</template>
-                  </el-table-column>
-                  <el-table-column label="小计" width="100">
-                    <template #default="scope">
-                      ¥{{ (scope.row.bead_cost_price * scope.row.quantity).toFixed(2) }}
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </div>
-              
-              <!-- 配件列表 -->
-              <div class="section" v-if="scope.row.finished.accessories.length > 0">
-                <h5>配件</h5>
-                <el-table :data="scope.row.finished.accessories" size="small" style="width: 100%">
-                  <el-table-column label="缩略图" width="80">
-                    <template #default="scope">
-                      <el-image
-                        v-if="scope.row.accessory_image_url"
-                        :src="scope.row.accessory_image_url"
-                        style="width: 40px; height: 40px"
-                        fit="cover"
-                        :preview-src-list="[scope.row.accessory_image_url]"
-                      />
-                      <span v-else style="color: #999">无图</span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="accessory_name" label="名称" />
-                  <el-table-column label="单价" width="100">
-                    <template #default="scope">¥{{ scope.row.accessory_cost_price.toFixed(2) }}</template>
-                  </el-table-column>
-                  <el-table-column label="数量" width="80">
-                    <template #default="scope">{{ scope.row.quantity }}</template>
-                  </el-table-column>
-                  <el-table-column label="小计" width="100">
-                    <template #default="scope">
-                      ¥{{ (scope.row.accessory_cost_price * scope.row.quantity).toFixed(2) }}
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </div>
-              
-              <!-- 工费和弹性成本 -->
-              <div class="section">
-                <h5>其他成本</h5>
-                <div class="cost-item">
-                  <span>工费：</span>
-                  <span class="amount">¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
+      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+        <el-tab-pane label="串珠" name="bead">
+          <div class="filter-container">
+            <el-form :inline="true" :model="filterForm" class="demo-form-inline">
+              <el-form-item label="状态">
+                <el-select v-model="filterForm.is_active" placeholder="选择状态" style="width: 120px">
+                  <el-option label="全部" value="" />
+                  <el-option label="启用" :value="true" />
+                  <el-option label="禁用" :value="false" />
+                </el-select>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="handleFilter">查询</el-button>
+                <el-button @click="resetFilter">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+          
+          <el-table :data="products" style="width: 100%" row-key="id">
+            <el-table-column type="expand">
+              <template #default="scope">
+                <div v-if="scope.row.product_type === 'finished' && scope.row.finished" class="finished-details">
+                  <h4>成品组成明细</h4>
+                  
+                  <!-- 串珠列表 -->
+                  <div class="section" v-if="scope.row.finished.beads.length > 0">
+                    <h5>串珠</h5>
+                    <el-table :data="scope.row.finished.beads" size="small" style="width: 100%">
+                      <el-table-column label="缩略图" width="80">
+                        <template #default="scope">
+                          <el-image
+                            v-if="scope.row.bead_image_url"
+                            :src="scope.row.bead_image_url"
+                            style="width: 40px; height: 40px"
+                            fit="cover"
+                            :preview-src-list="[scope.row.bead_image_url]"
+                          />
+                          <span v-else style="color: #999">无图</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="bead_name" label="名称" />
+                      <el-table-column label="单价(元/克)" width="100">
+                        <template #default="scope">¥{{ scope.row.bead_cost_price.toFixed(2) }}</template>
+                      </el-table-column>
+                      <el-table-column label="单颗克重" width="90">
+                        <template #default="scope">{{ scope.row.bead_weight?.toFixed(3) || '-' }}</template>
+                      </el-table-column>
+                      <el-table-column label="品质等级" width="80">
+                        <template #default="scope">{{ scope.row.bead_quality_level || '-' }}</template>
+                      </el-table-column>
+                      <el-table-column label="备注" min-width="100">
+                        <template #default="scope">{{ scope.row.bead_remark || '-' }}</template>
+                      </el-table-column>
+                      <el-table-column label="数量" width="80">
+                        <template #default="scope">{{ scope.row.quantity }}</template>
+                      </el-table-column>
+                      <el-table-column label="小计" width="100">
+                        <template #default="scope">
+                          ¥{{ (scope.row.bead_cost_price * scope.row.quantity).toFixed(2) }}
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                  
+                  <!-- 配件列表 -->
+                  <div class="section" v-if="scope.row.finished.accessories.length > 0">
+                    <h5>配件</h5>
+                    <el-table :data="scope.row.finished.accessories" size="small" style="width: 100%">
+                      <el-table-column label="缩略图" width="80">
+                        <template #default="scope">
+                          <el-image
+                            v-if="scope.row.accessory_image_url"
+                            :src="scope.row.accessory_image_url"
+                            style="width: 40px; height: 40px"
+                            fit="cover"
+                            :preview-src-list="[scope.row.accessory_image_url]"
+                          />
+                          <span v-else style="color: #999">无图</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="accessory_name" label="名称" />
+                      <el-table-column label="单价" width="100">
+                        <template #default="scope">¥{{ scope.row.accessory_cost_price.toFixed(2) }}</template>
+                      </el-table-column>
+                      <el-table-column label="数量" width="80">
+                        <template #default="scope">{{ scope.row.quantity }}</template>
+                      </el-table-column>
+                      <el-table-column label="小计" width="100">
+                        <template #default="scope">
+                          ¥{{ (scope.row.accessory_cost_price * scope.row.quantity).toFixed(2) }}
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                  
+                  <!-- 工费和弹性成本 -->
+                  <div class="section">
+                    <h5>其他成本</h5>
+                    <div class="cost-item">
+                      <span>工费：</span>
+                      <span class="amount">¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
+                    </div>
+                    <div class="cost-item">
+                      <span>弹性成本：</span>
+                      <span class="amount">¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- 总成本 -->
+                  <div class="total-cost">
+                    <span>总成本：</span>
+                    <span class="amount">¥{{ calculateTotalCost(scope.row.finished).toFixed(2) }}</span>
+                  </div>
                 </div>
-                <div class="cost-item">
-                  <span>弹性成本：</span>
-                  <span class="amount">¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
-                </div>
-              </div>
-              
-              <!-- 总成本 -->
-              <div class="total-cost">
-                <span>总成本：</span>
-                <span class="amount">¥{{ calculateTotalCost(scope.row.finished).toFixed(2) }}</span>
-              </div>
-            </div>
-            <div v-else>无明细</div>
-          </template>
-        </el-table-column>
-        <el-table-column label="图片" width="80">
-          <template #default="scope">
-            <el-image
-              v-if="scope.row.image_url"
-              :src="scope.row.image_url"
-              style="width: 50px; height: 50px"
-              fit="cover"
-              :preview-src-list="[scope.row.image_url]"
+                <div v-else>无明细</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="图片" width="80">
+              <template #default="scope">
+                <el-image
+                  v-if="scope.row.image_url"
+                  :src="scope.row.image_url"
+                  style="width: 50px; height: 50px"
+                  fit="cover"
+                  :preview-src-list="[scope.row.image_url]"
+                />
+                <span v-else style="color: #999">无图</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="code" label="货号" width="180" />
+            <el-table-column prop="name" label="商品名称" />
+            <el-table-column prop="product_type_display" label="商品类型" width="120" />
+            <el-table-column prop="cost_price" label="成本价格" width="100" />
+            <el-table-column prop="selling_price" label="售卖价格" width="100" />
+            <el-table-column prop="location" label="库位" width="120" />
+            <el-table-column prop="supplier" label="供应商" />
+            <el-table-column prop="is_active" label="状态" width="80">
+              <template #default="scope">
+                <el-tag :type="scope.row.is_active ? 'success' : 'danger'">
+                  {{ scope.row.is_active ? '启用' : '禁用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="150" fixed="right">
+              <template #default="scope">
+                <el-button size="small" @click="handleEditProduct(scope.row)">编辑</el-button>
+                <el-button size="small" type="danger" @click="handleDeleteProduct(scope.row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="pagination.currentPage"
+              v-model:page-size="pagination.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="pagination.total"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
             />
-            <span v-else style="color: #999">无图</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="code" label="货号" width="180" />
-        <el-table-column prop="name" label="商品名称" />
-        <el-table-column prop="product_type_display" label="商品类型" width="120" />
-        <el-table-column prop="cost_price" label="成本价格" width="100" />
-        <el-table-column prop="selling_price" label="售卖价格" width="100" />
-        <el-table-column prop="location" label="库位" width="120" />
-        <el-table-column prop="supplier" label="供应商" />
-        <el-table-column prop="is_active" label="状态" width="80">
-          <template #default="scope">
-            <el-tag :type="scope.row.is_active ? 'success' : 'danger'">
-              {{ scope.row.is_active ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
-          <template #default="scope">
-            <el-button size="small" @click="handleEditProduct(scope.row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDeleteProduct(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="pagination.currentPage"
-          v-model:page-size="pagination.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="pagination.total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
+          </div>
+        </el-tab-pane>
+        
+        <el-tab-pane label="手串成品" name="finished">
+          <div class="filter-container">
+            <el-form :inline="true" :model="filterForm" class="demo-form-inline">
+              <el-form-item label="状态">
+                <el-select v-model="filterForm.is_active" placeholder="选择状态" style="width: 120px">
+                  <el-option label="全部" value="" />
+                  <el-option label="启用" :value="true" />
+                  <el-option label="禁用" :value="false" />
+                </el-select>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="handleFilter">查询</el-button>
+                <el-button @click="resetFilter">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+          
+          <el-table :data="products" style="width: 100%" row-key="id">
+            <el-table-column type="expand">
+              <template #default="scope">
+                <div v-if="scope.row.product_type === 'finished' && scope.row.finished" class="finished-details">
+                  <h4>成品组成明细</h4>
+                  
+                  <!-- 串珠列表 -->
+                  <div class="section" v-if="scope.row.finished.beads.length > 0">
+                    <h5>串珠</h5>
+                    <el-table :data="scope.row.finished.beads" size="small" style="width: 100%">
+                      <el-table-column label="缩略图" width="80">
+                        <template #default="scope">
+                          <el-image
+                            v-if="scope.row.bead_image_url"
+                            :src="scope.row.bead_image_url"
+                            style="width: 40px; height: 40px"
+                            fit="cover"
+                            :preview-src-list="[scope.row.bead_image_url]"
+                          />
+                          <span v-else style="color: #999">无图</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="bead_name" label="名称" />
+                      <el-table-column label="单价(元/克)" width="100">
+                        <template #default="scope">¥{{ scope.row.bead_cost_price.toFixed(2) }}</template>
+                      </el-table-column>
+                      <el-table-column label="单颗克重" width="90">
+                        <template #default="scope">{{ scope.row.bead_weight?.toFixed(3) || '-' }}</template>
+                      </el-table-column>
+                      <el-table-column label="品质等级" width="80">
+                        <template #default="scope">{{ scope.row.bead_quality_level || '-' }}</template>
+                      </el-table-column>
+                      <el-table-column label="备注" min-width="100">
+                        <template #default="scope">{{ scope.row.bead_remark || '-' }}</template>
+                      </el-table-column>
+                      <el-table-column label="数量" width="80">
+                        <template #default="scope">{{ scope.row.quantity }}</template>
+                      </el-table-column>
+                      <el-table-column label="小计" width="100">
+                        <template #default="scope">
+                          ¥{{ (scope.row.bead_cost_price * scope.row.quantity).toFixed(2) }}
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                  
+                  <!-- 配件列表 -->
+                  <div class="section" v-if="scope.row.finished.accessories.length > 0">
+                    <h5>配件</h5>
+                    <el-table :data="scope.row.finished.accessories" size="small" style="width: 100%">
+                      <el-table-column label="缩略图" width="80">
+                        <template #default="scope">
+                          <el-image
+                            v-if="scope.row.accessory_image_url"
+                            :src="scope.row.accessory_image_url"
+                            style="width: 40px; height: 40px"
+                            fit="cover"
+                            :preview-src-list="[scope.row.accessory_image_url]"
+                          />
+                          <span v-else style="color: #999">无图</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="accessory_name" label="名称" />
+                      <el-table-column label="单价" width="100">
+                        <template #default="scope">¥{{ scope.row.accessory_cost_price.toFixed(2) }}</template>
+                      </el-table-column>
+                      <el-table-column label="数量" width="80">
+                        <template #default="scope">{{ scope.row.quantity }}</template>
+                      </el-table-column>
+                      <el-table-column label="小计" width="100">
+                        <template #default="scope">
+                          ¥{{ (scope.row.accessory_cost_price * scope.row.quantity).toFixed(2) }}
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                  
+                  <!-- 工费和弹性成本 -->
+                  <div class="section">
+                    <h5>其他成本</h5>
+                    <div class="cost-item">
+                      <span>工费：</span>
+                      <span class="amount">¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
+                    </div>
+                    <div class="cost-item">
+                      <span>弹性成本：</span>
+                      <span class="amount">¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- 总成本 -->
+                  <div class="total-cost">
+                    <span>总成本：</span>
+                    <span class="amount">¥{{ calculateTotalCost(scope.row.finished).toFixed(2) }}</span>
+                  </div>
+                </div>
+                <div v-else>无明细</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="图片" width="80">
+              <template #default="scope">
+                <el-image
+                  v-if="scope.row.image_url"
+                  :src="scope.row.image_url"
+                  style="width: 50px; height: 50px"
+                  fit="cover"
+                  :preview-src-list="[scope.row.image_url]"
+                />
+                <span v-else style="color: #999">无图</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="code" label="货号" width="180" />
+            <el-table-column prop="name" label="商品名称" />
+            <el-table-column prop="product_type_display" label="商品类型" width="120" />
+            <el-table-column prop="cost_price" label="成本价格" width="100" />
+            <el-table-column prop="selling_price" label="售卖价格" width="100" />
+            <el-table-column prop="location" label="库位" width="120" />
+            <el-table-column prop="supplier" label="供应商" />
+            <el-table-column prop="is_active" label="状态" width="80">
+              <template #default="scope">
+                <el-tag :type="scope.row.is_active ? 'success' : 'danger'">
+                  {{ scope.row.is_active ? '启用' : '禁用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="150" fixed="right">
+              <template #default="scope">
+                <el-button size="small" @click="handleEditProduct(scope.row)">编辑</el-button>
+                <el-button size="small" type="danger" @click="handleDeleteProduct(scope.row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="pagination.currentPage"
+              v-model:page-size="pagination.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="pagination.total"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
+          </div>
+        </el-tab-pane>
+        
+        <el-tab-pane label="手串配件" name="accessory">
+          <div class="filter-container">
+            <el-form :inline="true" :model="filterForm" class="demo-form-inline">
+              <el-form-item label="状态">
+                <el-select v-model="filterForm.is_active" placeholder="选择状态" style="width: 120px">
+                  <el-option label="全部" value="" />
+                  <el-option label="启用" :value="true" />
+                  <el-option label="禁用" :value="false" />
+                </el-select>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="handleFilter">查询</el-button>
+                <el-button @click="resetFilter">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+          
+          <el-table :data="products" style="width: 100%" row-key="id">
+            <el-table-column type="expand">
+              <template #default="scope">
+                <div v-if="scope.row.product_type === 'finished' && scope.row.finished" class="finished-details">
+                  <h4>成品组成明细</h4>
+                  
+                  <!-- 串珠列表 -->
+                  <div class="section" v-if="scope.row.finished.beads.length > 0">
+                    <h5>串珠</h5>
+                    <el-table :data="scope.row.finished.beads" size="small" style="width: 100%">
+                      <el-table-column label="缩略图" width="80">
+                        <template #default="scope">
+                          <el-image
+                            v-if="scope.row.bead_image_url"
+                            :src="scope.row.bead_image_url"
+                            style="width: 40px; height: 40px"
+                            fit="cover"
+                            :preview-src-list="[scope.row.bead_image_url]"
+                          />
+                          <span v-else style="color: #999">无图</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="bead_name" label="名称" />
+                      <el-table-column label="单价(元/克)" width="100">
+                        <template #default="scope">¥{{ scope.row.bead_cost_price.toFixed(2) }}</template>
+                      </el-table-column>
+                      <el-table-column label="单颗克重" width="90">
+                        <template #default="scope">{{ scope.row.bead_weight?.toFixed(3) || '-' }}</template>
+                      </el-table-column>
+                      <el-table-column label="品质等级" width="80">
+                        <template #default="scope">{{ scope.row.bead_quality_level || '-' }}</template>
+                      </el-table-column>
+                      <el-table-column label="备注" min-width="100">
+                        <template #default="scope">{{ scope.row.bead_remark || '-' }}</template>
+                      </el-table-column>
+                      <el-table-column label="数量" width="80">
+                        <template #default="scope">{{ scope.row.quantity }}</template>
+                      </el-table-column>
+                      <el-table-column label="小计" width="100">
+                        <template #default="scope">
+                          ¥{{ (scope.row.bead_cost_price * scope.row.quantity).toFixed(2) }}
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                  
+                  <!-- 配件列表 -->
+                  <div class="section" v-if="scope.row.finished.accessories.length > 0">
+                    <h5>配件</h5>
+                    <el-table :data="scope.row.finished.accessories" size="small" style="width: 100%">
+                      <el-table-column label="缩略图" width="80">
+                        <template #default="scope">
+                          <el-image
+                            v-if="scope.row.accessory_image_url"
+                            :src="scope.row.accessory_image_url"
+                            style="width: 40px; height: 40px"
+                            fit="cover"
+                            :preview-src-list="[scope.row.accessory_image_url]"
+                          />
+                          <span v-else style="color: #999">无图</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="accessory_name" label="名称" />
+                      <el-table-column label="单价" width="100">
+                        <template #default="scope">¥{{ scope.row.accessory_cost_price.toFixed(2) }}</template>
+                      </el-table-column>
+                      <el-table-column label="数量" width="80">
+                        <template #default="scope">{{ scope.row.quantity }}</template>
+                      </el-table-column>
+                      <el-table-column label="小计" width="100">
+                        <template #default="scope">
+                          ¥{{ (scope.row.accessory_cost_price * scope.row.quantity).toFixed(2) }}
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                  
+                  <!-- 工费和弹性成本 -->
+                  <div class="section">
+                    <h5>其他成本</h5>
+                    <div class="cost-item">
+                      <span>工费：</span>
+                      <span class="amount">¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
+                    </div>
+                    <div class="cost-item">
+                      <span>弹性成本：</span>
+                      <span class="amount">¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- 总成本 -->
+                  <div class="total-cost">
+                    <span>总成本：</span>
+                    <span class="amount">¥{{ calculateTotalCost(scope.row.finished).toFixed(2) }}</span>
+                  </div>
+                </div>
+                <div v-else>无明细</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="图片" width="80">
+              <template #default="scope">
+                <el-image
+                  v-if="scope.row.image_url"
+                  :src="scope.row.image_url"
+                  style="width: 50px; height: 50px"
+                  fit="cover"
+                  :preview-src-list="[scope.row.image_url]"
+                />
+                <span v-else style="color: #999">无图</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="code" label="货号" width="180" />
+            <el-table-column prop="name" label="商品名称" />
+            <el-table-column prop="product_type_display" label="商品类型" width="120" />
+            <el-table-column prop="cost_price" label="成本价格" width="100" />
+            <el-table-column prop="selling_price" label="售卖价格" width="100" />
+            <el-table-column prop="location" label="库位" width="120" />
+            <el-table-column prop="supplier" label="供应商" />
+            <el-table-column prop="is_active" label="状态" width="80">
+              <template #default="scope">
+                <el-tag :type="scope.row.is_active ? 'success' : 'danger'">
+                  {{ scope.row.is_active ? '启用' : '禁用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="150" fixed="right">
+              <template #default="scope">
+                <el-button size="small" @click="handleEditProduct(scope.row)">编辑</el-button>
+                <el-button size="small" type="danger" @click="handleDeleteProduct(scope.row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="pagination.currentPage"
+              v-model:page-size="pagination.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="pagination.total"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </el-card>
     
     <!-- 添加/编辑商品对话框 -->
@@ -477,6 +796,8 @@ const imageInputRef = ref(null)
 const accessorySearch = ref('')
 // 串珠搜索
 const beadSearch = ref('')
+// 当前选中的标签页
+const activeTab = ref('bead')
 
 // 获取商品类型
 const fetchProductTypes = async () => {
@@ -496,9 +817,8 @@ const fetchProducts = async () => {
       page: pagination.currentPage,
       page_size: pagination.pageSize
     }
-    if (filterForm.product_type) {
-      params.product_type = filterForm.product_type
-    }
+    // 使用当前标签页作为商品类型筛选
+    params.product_type = activeTab.value
     if (filterForm.is_active !== '') {
       params.is_active = filterForm.is_active
     }
@@ -509,6 +829,13 @@ const fetchProducts = async () => {
     ElMessage.error('获取商品列表失败')
     console.error(error)
   }
+}
+
+// 监听标签页切换
+const handleTabChange = () => {
+  pagination.currentPage = 1
+  filterForm.is_active = ''
+  fetchProducts()
 }
 
 // 获取配件列表
@@ -541,7 +868,6 @@ const handleFilter = () => {
 
 // 重置筛选
 const resetFilter = () => {
-  filterForm.product_type = ''
   filterForm.is_active = ''
   pagination.currentPage = 1
   fetchProducts()
@@ -566,7 +892,7 @@ const handleAddProduct = () => {
     id: '',
     code: '',
     name: '',
-    product_type: '',
+    product_type: activeTab.value, // 默认使用当前标签页的商品类型
     cost_price: 0,
     selling_price: 0,
     location: '',
