@@ -5,6 +5,185 @@ import uuid
 import json
 
 
+class ProductType(models.TextChoices):
+    BEAD = 'bead', '串珠'
+    ACCESSORY = 'accessory', '手串配件'
+    FINISHED = 'finished', '手串成品'
+
+
+class Product(models.Model):
+    code = models.CharField(max_length=100, unique=True, verbose_name='货号')
+    name = models.CharField(max_length=200, verbose_name='商品名称')
+    product_type = models.CharField(
+        max_length=20,
+        choices=ProductType.choices,
+        verbose_name='商品类型'
+    )
+    purchase_cost = models.DecimalField(max_digits=12, decimal_places=4, default=0, verbose_name='采购成本(元/克)')
+    cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='单颗成本')
+    selling_price = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='售卖价格')
+    location = models.CharField(max_length=100, blank=True, null=True, verbose_name='库位')
+    supplier = models.CharField(max_length=200, blank=True, null=True, verbose_name='供应商')
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='products',
+        verbose_name='所属企业'
+    )
+    image = models.ImageField(
+        upload_to='products/%Y/%m/%d/',
+        blank=True,
+        null=True,
+        verbose_name='商品图片'
+    )
+    is_active = models.BooleanField(default=True, verbose_name='是否启用')
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_products',
+        verbose_name='创建人'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'product'
+        verbose_name = '商品'
+        verbose_name_plural = '商品'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.code} - {self.name}'
+
+
+class Bead(models.Model):
+    product = models.OneToOneField(
+        Product,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        verbose_name='关联商品'
+    )
+    # 串珠特有属性
+    material = models.CharField(max_length=100, blank=True, null=True, verbose_name='材质')
+    size = models.CharField(max_length=100, blank=True, null=True, verbose_name='尺寸')
+    color = models.CharField(max_length=100, blank=True, null=True, verbose_name='颜色')
+    weight = models.DecimalField(max_digits=10, decimal_places=3, default=0, verbose_name='单颗克重')
+    quality_level = models.IntegerField(default=5, verbose_name='品质等级(1-10)')
+    remark = models.TextField(blank=True, null=True, verbose_name='备注')
+
+    class Meta:
+        db_table = 'bead'
+        verbose_name = '串珠'
+        verbose_name_plural = '串珠'
+
+    def __str__(self):
+        return f'串珠: {self.product.name}'
+
+
+class Accessory(models.Model):
+    product = models.OneToOneField(
+        Product,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        verbose_name='关联商品'
+    )
+    # 配件特有属性
+    material = models.CharField(max_length=100, blank=True, null=True, verbose_name='材质')
+    size = models.CharField(max_length=100, blank=True, null=True, verbose_name='尺寸')
+    color = models.CharField(max_length=100, blank=True, null=True, verbose_name='颜色')
+
+    class Meta:
+        db_table = 'accessory'
+        verbose_name = '手串配件'
+        verbose_name_plural = '手串配件'
+
+    def __str__(self):
+        return f'配件: {self.product.name}'
+
+
+class FinishedProduct(models.Model):
+    product = models.OneToOneField(
+        Product,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        verbose_name='关联商品'
+    )
+    labor_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='工费'
+    )
+    elastic_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='弹性成本'
+    )
+
+    class Meta:
+        db_table = 'finished_product'
+        verbose_name = '手串成品'
+        verbose_name_plural = '手串成品'
+
+    def __str__(self):
+        return f'成品: {self.product.name}'
+
+
+class FinishedProductBead(models.Model):
+    finished_product = models.ForeignKey(
+        FinishedProduct,
+        on_delete=models.CASCADE,
+        related_name='beads',
+        verbose_name='所属成品'
+    )
+    bead = models.ForeignKey(
+        Bead,
+        on_delete=models.CASCADE,
+        related_name='finished_products',
+        verbose_name='串珠'
+    )
+    quantity = models.IntegerField(verbose_name='数量')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+
+    class Meta:
+        db_table = 'finished_product_bead'
+        verbose_name = '成品串珠组成'
+        verbose_name_plural = '成品串珠组成'
+        unique_together = ['finished_product', 'bead']
+
+    def __str__(self):
+        return f'{self.finished_product.product.name} - {self.bead.product.name} x {self.quantity}'
+
+
+class FinishedProductAccessory(models.Model):
+    finished_product = models.ForeignKey(
+        FinishedProduct,
+        on_delete=models.CASCADE,
+        related_name='accessories',
+        verbose_name='所属成品'
+    )
+    accessory = models.ForeignKey(
+        Accessory,
+        on_delete=models.CASCADE,
+        related_name='finished_products',
+        verbose_name='配件'
+    )
+    quantity = models.IntegerField(verbose_name='数量')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+
+    class Meta:
+        db_table = 'finished_product_accessory'
+        verbose_name = '成品配件组成'
+        verbose_name_plural = '成品配件组成'
+        unique_together = ['finished_product', 'accessory']
+
+    def __str__(self):
+        return f'{self.finished_product.product.name} - {self.accessory.product.name} x {self.quantity}'
+
+
 class Platform(models.TextChoices):
     TAOBAO = 'taobao', '淘宝'
     TMALL = 'tmall', '天猫'
