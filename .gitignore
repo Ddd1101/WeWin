@@ -67,6 +67,3 @@ Thumbs.db
 *.jpeg
 *.JPEG
 
-# Trae temporary files
-.trae/
-
