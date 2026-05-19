@@ -19,7 +19,8 @@ class Product(models.Model):
         choices=ProductType.choices,
         verbose_name='商品类型'
     )
-    cost_price = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='成本价格')
+    purchase_cost = models.DecimalField(max_digits=12, decimal_places=4, default=0, verbose_name='采购成本(元/克)')
+    cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='单颗成本')
     selling_price = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='售卖价格')
     location = models.CharField(max_length=100, blank=True, null=True, verbose_name='库位')
     supplier = models.CharField(max_length=200, blank=True, null=True, verbose_name='供应商')

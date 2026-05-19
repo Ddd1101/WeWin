@@ -901,6 +901,7 @@ def get_products(request):
                 'name': product.name,
                 'product_type': product.product_type,
                 'product_type_display': product.get_product_type_display(),
+                'purchase_cost': float(product.purchase_cost),
                 'cost_price': float(product.cost_price),
                 'selling_price': float(product.selling_price),
                 'location': product.location,
@@ -1045,13 +1046,14 @@ def create_product(request):
         code = data_dict.get('code')
         name = data_dict.get('name')
         product_type = data_dict.get('product_type')
-        cost_price = data_dict.get('cost_price')
+        purchase_cost = data_dict.get('purchase_cost', 0)
+        cost_price = data_dict.get('cost_price', 0)
         selling_price = data_dict.get('selling_price')
         location = data_dict.get('location', '')
         supplier = data_dict.get('supplier', '')
         company_id = data_dict.get('company_id')
 
-        if not all([code, name, product_type, cost_price, selling_price]):
+        if not all([code, name, product_type, selling_price]):
             return JsonResponse({'error': '必填字段不能为空'}, status=400)
 
         company = None
@@ -1070,10 +1072,19 @@ def create_product(request):
             return JsonResponse({'error': '货号已存在'}, status=400)
 
         with transaction.atomic():
+            # 计算单颗成本（仅对串珠有效）
+            if product_type == ProductType.BEAD:
+                weight = Decimal(str(data_dict.get('weight', 0)))
+                cost_price = Decimal(str(purchase_cost)) * weight
+            else:
+                # 配件和成品直接使用传入的 cost_price
+                cost_price = data_dict.get('cost_price', 0)
+            
             product = Product.objects.create(
                 code=code,
                 name=name,
                 product_type=product_type,
+                purchase_cost=purchase_cost,
                 cost_price=cost_price,
                 selling_price=selling_price,
                 location=location,
@@ -1153,6 +1164,7 @@ def create_product(request):
             'name': product.name,
             'product_type': product.product_type,
             'product_type_display': product.get_product_type_display(),
+            'purchase_cost': float(product.purchase_cost),
             'cost_price': float(product.cost_price),
             'selling_price': float(product.selling_price),
             'location': product.location,
@@ -1236,8 +1248,13 @@ def update_product(request, product_id):
         if 'name' in data_dict:
             product.name = data_dict['name']
 
+        if 'purchase_cost' in data_dict:
+            product.purchase_cost = data_dict['purchase_cost']
+
         if 'cost_price' in data_dict:
-            product.cost_price = data_dict['cost_price']
+            # 对串珠不直接更新 cost_price，会在后面根据 weight 和 purchase_cost 计算
+            if product.product_type != ProductType.BEAD:
+                product.cost_price = data_dict['cost_price']
 
         if 'selling_price' in data_dict:
             product.selling_price = data_dict['selling_price']
@@ -1281,6 +1298,11 @@ def update_product(request, product_id):
                 if 'remark' in data_dict:
                     bead.remark = data_dict['remark']
                 bead.save()
+                
+                # 重新计算单颗成本
+                weight = Decimal(str(bead.weight))
+                product.cost_price = product.purchase_cost * weight
+                product.save()
             except Bead.DoesNotExist:
                 pass
         elif product.product_type == ProductType.ACCESSORY:
@@ -1362,6 +1384,7 @@ def update_product(request, product_id):
             'name': product.name,
             'product_type': product.product_type,
             'product_type_display': product.get_product_type_display(),
+            'purchase_cost': float(product.purchase_cost),
             'cost_price': float(product.cost_price),
             'selling_price': float(product.selling_price),
             'location': product.location,
@@ -1460,6 +1483,7 @@ def get_product_detail(request, product_id):
             'name': product.name,
             'product_type': product.product_type,
             'product_type_display': product.get_product_type_display(),
+            'purchase_cost': float(product.purchase_cost),
             'cost_price': float(product.cost_price),
             'selling_price': float(product.selling_price),
             'location': product.location,

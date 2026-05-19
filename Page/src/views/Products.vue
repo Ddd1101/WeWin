@@ -129,7 +129,21 @@
         </el-row>
         
         <el-row :gutter="20">
-          <el-col :span="12">
+          <!-- 串珠显示采购成本 -->
+          <el-col v-if="form.product_type === 'bead'" :span="12">
+            <el-form-item label="采购成本(元/克)" prop="purchase_cost">
+              <el-input-number 
+                v-model="form.purchase_cost" 
+                :min="0" 
+                :step="0.01" 
+                :precision="4" 
+                style="width: 100%" 
+                @change="calculateCostPrice"
+              />
+            </el-form-item>
+          </el-col>
+          <!-- 配件和成品显示成本价格 -->
+          <el-col v-else :span="12">
             <el-form-item label="成本价格" prop="cost_price">
               <el-input-number 
                 v-model="form.cost_price" 
@@ -141,7 +155,29 @@
               />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <!-- 单颗成本，仅对串珠显示 -->
+          <el-col v-if="form.product_type === 'bead'" :span="12">
+            <el-form-item label="单颗成本">
+              <el-input-number 
+                v-model="form.cost_price" 
+                :min="0" 
+                :step="0.01" 
+                :precision="2" 
+                disabled
+                style="width: 100%" 
+              />
+            </el-form-item>
+          </el-col>
+          <!-- 串珠以外显示售卖价格 -->
+          <el-col v-else :span="12">
+            <el-form-item label="售卖价格" prop="selling_price">
+              <el-input-number v-model="form.selling_price" :min="0" :step="0.01" :precision="2" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <!-- 串珠的售卖价格单独一行 -->
+        <el-row v-if="form.product_type === 'bead'" :gutter="20">
+          <el-col :span="24">
             <el-form-item label="售卖价格" prop="selling_price">
               <el-input-number v-model="form.selling_price" :min="0" :step="0.01" :precision="2" style="width: 100%" />
             </el-form-item>
@@ -239,7 +275,7 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="单颗克重">
-                <el-input-number v-model="form.weight" :min="0" :step="0.01" :precision="3" style="width: 100%" />
+                <el-input-number v-model="form.weight" :min="0" :step="0.01" :precision="3" style="width: 100%" @change="calculateCostPrice" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -600,6 +636,7 @@ const form = reactive({
   code: '',
   name: '',
   product_type: '',
+  purchase_cost: 0,
   cost_price: 0,
   selling_price: 0,
   is_active: true,
@@ -625,6 +662,24 @@ const rules = {
   code: [{ required: true, message: '请输入货号', trigger: 'blur' }],
   name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
   product_type: [{ required: true, message: '请选择商品类型', trigger: 'change' }],
+  purchase_cost: [
+    { 
+      required: true, 
+      message: '请输入采购成本', 
+      trigger: 'blur',
+      validator: (rule, value, callback) => {
+        if (form.product_type === 'bead') {
+          if (value === null || value === undefined || value === '') {
+            callback(new Error('请输入采购成本'))
+          } else {
+            callback()
+          }
+        } else {
+          callback()
+        }
+      }
+    }
+  ],
   cost_price: [
     { 
       required: true, 
@@ -632,6 +687,8 @@ const rules = {
       trigger: 'blur',
       validator: (rule, value, callback) => {
         if (form.product_type === 'finished') {
+          callback()
+        } else if (form.product_type === 'bead') {
           callback()
         } else if (value === null || value === undefined || value === '') {
           callback(new Error('请输入成本价格'))
@@ -711,6 +768,15 @@ const safeCalculate = (num1, num2) => {
 const safePrice = (price) => {
   const num = Number(price) || 0
   return num.toFixed(2)
+}
+
+// 计算单颗成本
+const calculateCostPrice = () => {
+  if (form.product_type === 'bead') {
+    const purchaseCost = Number(form.purchase_cost) || 0
+    const weight = Number(form.weight) || 0
+    form.cost_price = purchaseCost * weight
+  }
 }
 
 // 监听成品组成变化，自动计算成本价格
@@ -835,6 +901,7 @@ const resetForm = () => {
     code: '',
     name: '',
     product_type: '',
+    purchase_cost: 0,
     cost_price: 0,
     selling_price: 0,
     is_active: true,
@@ -912,6 +979,7 @@ const handleEditProduct = async (row) => {
       code: product.code,
       name: product.name,
       product_type: product.product_type,
+      purchase_cost: product.purchase_cost || 0,
       cost_price: product.cost_price,
       selling_price: product.selling_price,
       is_active: product.is_active,
@@ -1047,6 +1115,7 @@ const handleSubmit = async () => {
           code: form.code,
           name: form.name,
           product_type: form.product_type,
+          purchase_cost: form.purchase_cost,
           cost_price: form.cost_price,
           selling_price: form.selling_price,
           is_active: form.is_active,
