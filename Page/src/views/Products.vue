@@ -301,46 +301,83 @@
               <span class="value">¥{{ profit.toFixed(2) }} ({{ profitRate.toFixed(1) }}%)</span>
             </div>
           </div>
-          <el-form-item label="串珠组成">
-            <el-button type="primary" size="small" @click="handleAddBead">
+          <el-divider content-position="left" style="margin: 15px 0;">串珠组成</el-divider>
+          <div class="composition-section">
+            <el-button type="primary" size="default" @click="handleAddBead" class="add-btn">
               <el-icon><Plus /></el-icon>
               添加串珠
             </el-button>
             <div class="selected-items" v-if="form.beads.length > 0">
               <div v-for="(bead, index) in form.beads" :key="index" class="item-card">
-                <span class="item-name">{{ bead.bead_name }}</span>
-                <el-input-number 
-                  v-model="bead.quantity" 
-                  :min="1" 
-                  size="small" 
-                  style="width: 100px;"
-                />
-                <el-button size="small" type="danger" link @click="form.beads.splice(index, 1)">
-                  <el-icon><Delete /></el-icon>
-                </el-button>
+                <div class="item-info">
+                  <span class="item-name">{{ bead.bead_name }}</span>
+                  <span class="item-price">单价: ¥{{ bead.cost_price }}</span>
+                </div>
+                <div class="item-controls">
+                  <span class="label">数量:</span>
+                  <el-input-number 
+                    v-model="bead.quantity" 
+                    :min="1" 
+                    size="small" 
+                    style="width: 90px;"
+                  />
+                  <span class="item-subtotal">小计: ¥{{ (bead.cost_price * bead.quantity).toFixed(2) }}</span>
+                  <el-button 
+                    size="small" 
+                    type="danger" 
+                    text 
+                    @click="form.beads.splice(index, 1)"
+                    class="delete-btn"
+                  >
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
+                </div>
               </div>
             </div>
-          </el-form-item>
-          <el-form-item label="配件组成">
-            <el-button type="primary" size="small" @click="handleAddAccessory">
+            <div v-else class="empty-hint">
+              <el-icon><CirclePlus /></el-icon>
+              <span>点击上方按钮添加串珠</span>
+            </div>
+          </div>
+          
+          <el-divider content-position="left" style="margin: 20px 0;">配件组成</el-divider>
+          <div class="composition-section">
+            <el-button type="primary" size="default" @click="handleAddAccessory" class="add-btn">
               <el-icon><Plus /></el-icon>
               添加配件
             </el-button>
             <div class="selected-items" v-if="form.accessories.length > 0">
               <div v-for="(acc, index) in form.accessories" :key="index" class="item-card">
-                <span class="item-name">{{ acc.accessory_name }}</span>
-                <el-input-number 
-                  v-model="acc.quantity" 
-                  :min="1" 
-                  size="small" 
-                  style="width: 100px;"
-                />
-                <el-button size="small" type="danger" link @click="form.accessories.splice(index, 1)">
-                  <el-icon><Delete /></el-icon>
-                </el-button>
+                <div class="item-info">
+                  <span class="item-name">{{ acc.accessory_name }}</span>
+                  <span class="item-price">单价: ¥{{ acc.cost_price }}</span>
+                </div>
+                <div class="item-controls">
+                  <span class="label">数量:</span>
+                  <el-input-number 
+                    v-model="acc.quantity" 
+                    :min="1" 
+                    size="small" 
+                    style="width: 90px;"
+                  />
+                  <span class="item-subtotal">小计: ¥{{ (acc.cost_price * acc.quantity).toFixed(2) }}</span>
+                  <el-button 
+                    size="small" 
+                    type="danger" 
+                    text 
+                    @click="form.accessories.splice(index, 1)"
+                    class="delete-btn"
+                  >
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
+                </div>
               </div>
             </div>
-          </el-form-item>
+            <div v-else class="empty-hint">
+              <el-icon><CirclePlus /></el-icon>
+              <span>点击上方按钮添加配件</span>
+            </div>
+          </div>
         </template>
       </el-form>
       <template #footer>
@@ -1148,19 +1185,45 @@ onMounted(() => {
   color: #10b981;
 }
 
+/* 组成区域样式 */
+.composition-section {
+  margin-bottom: 8px;
+}
+
+.add-btn {
+  margin-bottom: 12px;
+}
+
+.empty-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+  gap: 8px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px dashed #cbd5e1;
+}
+
+.empty-hint .el-icon {
+  font-size: 32px;
+}
+
 .selected-items {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   margin-top: 12px;
 }
 
 .item-card {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #f8fafc;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #fafbff 0%, #f8fafc 100%);
   border-radius: 10px;
   border: 1px solid #e2e8f0;
   transition: all 0.3s;
@@ -1168,15 +1231,65 @@ onMounted(() => {
 }
 
 .item-card:hover {
-  background: #f1f5f9;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.item-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .item-name {
-  flex: 1;
-  font-size: 14px;
+  font-size: 15px;
   color: #374151;
-  font-weight: 500;
+  font-weight: 600;
+}
+
+.item-price {
+  font-size: 13px;
+  color: #64748b;
+  background: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.item-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.item-controls .label {
+  font-size: 13px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.item-subtotal {
+  font-size: 14px;
+  font-weight: 600;
+  color: #667eea;
+  background: #f0f4ff;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.delete-btn {
+  margin-left: auto;
+  padding: 4px 8px;
+  transition: all 0.2s;
+}
+
+.delete-btn:hover {
+  background: #fee2e2;
 }
 
 .image-upload-container {
