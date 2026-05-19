@@ -141,6 +141,22 @@
           </el-col>
         </el-row>
         
+        <!-- 成品特有价格字段 -->
+        <template v-if="form.product_type === 'finished'">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="工费">
+                <el-input-number v-model="form.labor_cost" :min="0" :step="0.01" :precision="2" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="弹性成本">
+                <el-input-number v-model="form.elastic_cost" :min="0" :step="0.01" :precision="2" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </template>
+        
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="库位">
@@ -285,18 +301,6 @@
               <span class="value">¥{{ profit.toFixed(2) }} ({{ profitRate.toFixed(1) }}%)</span>
             </div>
           </div>
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="工费">
-                <el-input-number v-model="form.labor_cost" :min="0" :step="0.01" :precision="2" style="width: 100%" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="弹性成本">
-                <el-input-number v-model="form.elastic_cost" :min="0" :step="0.01" :precision="2" style="width: 100%" />
-              </el-form-item>
-            </el-col>
-          </el-row>
           <el-form-item label="串珠组成">
             <el-button type="primary" size="small" @click="handleAddBead">
               <el-icon><Plus /></el-icon>
