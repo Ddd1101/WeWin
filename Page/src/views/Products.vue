@@ -11,7 +11,7 @@
       <div class="filter-container">
         <el-form :inline="true" :model="filterForm" class="demo-form-inline">
           <el-form-item label="商品类型">
-            <el-select v-model="filterForm.product_type" placeholder="选择商品类型">
+            <el-select v-model="filterForm.product_type" placeholder="选择商品类型" style="width: 150px">
               <el-option label="全部" value="" />
               <el-option 
                 v-for="type in productTypes" 
@@ -22,7 +22,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="状态">
-            <el-select v-model="filterForm.is_active" placeholder="选择状态">
+            <el-select v-model="filterForm.is_active" placeholder="选择状态" style="width: 120px">
               <el-option label="全部" value="" />
               <el-option label="启用" :value="true" />
               <el-option label="禁用" :value="false" />
@@ -195,7 +195,7 @@
           <el-input v-model="form.name" placeholder="请输入商品名称" />
         </el-form-item>
         <el-form-item label="商品类型" prop="product_type">
-          <el-select v-model="form.product_type" placeholder="选择商品类型">
+          <el-select v-model="form.product_type" placeholder="选择商品类型" style="width: 100%">
             <el-option 
               v-for="type in productTypes" 
               :key="type.value" 
