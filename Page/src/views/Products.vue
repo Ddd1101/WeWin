@@ -659,23 +659,63 @@
     <el-dialog
       v-model="beadDialogVisible"
       title="选择串珠"
-      width="500px"
+      width="800px"
+      class="selection-dialog"
     >
-      <el-input v-model="beadSearch" placeholder="搜索串珠" style="margin-bottom: 15px" />
-      <el-table :data="filteredBeads" style="width: 100%">
-        <el-table-column prop="code" label="货号" width="120" />
-        <el-table-column prop="name" label="串珠名称" />
-        <el-table-column prop="cost_price" label="成本价格" width="100" />
-        <el-table-column label="操作" width="80">
-          <template #default="scope">
-            <el-button size="small" type="primary" @click="handleSelectBead(scope.row)">选择</el-button>
+      <div class="dialog-search-wrapper">
+        <el-input v-model="beadSearch" placeholder="搜索串珠名称或货号..." class="search-input">
+          <template #prefix>
+            <el-icon><Search /></el-icon>
           </template>
-        </el-table-column>
-      </el-table>
+        </el-input>
+      </div>
+      
+      <div class="cards-container">
+        <div 
+          v-for="bead in filteredBeads" 
+          :key="bead.id"
+          class="product-card"
+          @click="handleSelectBead(bead)"
+        >
+          <div class="card-image-wrapper">
+            <el-image
+              v-if="bead.image_url"
+              :src="bead.image_url"
+              fit="cover"
+              class="product-image"
+              :preview-src-list="[bead.image_url]"
+              @click.stop
+            />
+            <div v-else class="no-image">
+              <el-icon><Picture /></el-icon>
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="product-code">{{ bead.code }}</div>
+            <h4 class="product-name">{{ bead.name }}</h4>
+            <div class="product-meta">
+              <span class="product-price">¥{{ bead.cost_price.toFixed(2) }}/g</span>
+              <span v-if="bead.weight" class="product-weight">{{ bead.weight?.toFixed(3) }}g</span>
+            </div>
+            <div v-if="bead.quality_level" class="product-badges">
+              <span class="badge quality-badge">品质 {{ bead.quality_level }}级</span>
+            </div>
+          </div>
+          <div class="card-overlay">
+            <span class="select-label">点击选择</span>
+          </div>
+        </div>
+        
+        <div v-if="filteredBeads.length === 0" class="empty-state">
+          <el-icon class="empty-icon"><Document /></el-icon>
+          <p>暂无相关串珠</p>
+        </div>
+      </div>
+      
       <template #footer>
-        <span class="dialog-footer">
+        <div class="dialog-footer-custom">
           <el-button @click="beadDialogVisible = false">取消</el-button>
-        </span>
+        </div>
       </template>
     </el-dialog>
 
@@ -683,23 +723,59 @@
     <el-dialog
       v-model="accessoryDialogVisible"
       title="选择配件"
-      width="500px"
+      width="800px"
+      class="selection-dialog"
     >
-      <el-input v-model="accessorySearch" placeholder="搜索配件" style="margin-bottom: 15px" />
-      <el-table :data="filteredAccessories" style="width: 100%">
-        <el-table-column prop="code" label="货号" width="120" />
-        <el-table-column prop="name" label="配件名称" />
-        <el-table-column prop="cost_price" label="成本价格" width="100" />
-        <el-table-column label="操作" width="80">
-          <template #default="scope">
-            <el-button size="small" type="primary" @click="handleSelectAccessory(scope.row)">选择</el-button>
+      <div class="dialog-search-wrapper">
+        <el-input v-model="accessorySearch" placeholder="搜索配件名称或货号..." class="search-input">
+          <template #prefix>
+            <el-icon><Search /></el-icon>
           </template>
-        </el-table-column>
-      </el-table>
+        </el-input>
+      </div>
+      
+      <div class="cards-container">
+        <div 
+          v-for="accessory in filteredAccessories" 
+          :key="accessory.id"
+          class="product-card"
+          @click="handleSelectAccessory(accessory)"
+        >
+          <div class="card-image-wrapper">
+            <el-image
+              v-if="accessory.image_url"
+              :src="accessory.image_url"
+              fit="cover"
+              class="product-image"
+              :preview-src-list="[accessory.image_url]"
+              @click.stop
+            />
+            <div v-else class="no-image">
+              <el-icon><Picture /></el-icon>
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="product-code">{{ accessory.code }}</div>
+            <h4 class="product-name">{{ accessory.name }}</h4>
+            <div class="product-meta">
+              <span class="product-price">¥{{ accessory.cost_price.toFixed(2) }}</span>
+            </div>
+          </div>
+          <div class="card-overlay">
+            <span class="select-label">点击选择</span>
+          </div>
+        </div>
+        
+        <div v-if="filteredAccessories.length === 0" class="empty-state">
+          <el-icon class="empty-icon"><Document /></el-icon>
+          <p>暂无相关配件</p>
+        </div>
+      </div>
+      
       <template #footer>
-        <span class="dialog-footer">
+        <div class="dialog-footer-custom">
           <el-button @click="accessoryDialogVisible = false">取消</el-button>
-        </span>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -708,7 +784,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Search, Picture, Document } from '@element-plus/icons-vue'
 import { getProductTypes, getProducts, createProduct, updateProduct, deleteProduct, getProductDetail, getAccessories, getBeads } from '@/api'
 
 // 商品类型
@@ -1250,5 +1326,293 @@ onMounted(() => {
 .finished-details .amount {
   font-weight: bold;
   color: #409eff;
+}
+
+/* 选择对话框样式 */
+.selection-dialog {
+  --dialog-bg: #ffffff;
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --card-bg: #ffffff;
+  --text-primary: #1a1a2e;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+  --hover-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.selection-dialog :deep(.el-dialog) {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.selection-dialog :deep(.el-dialog__header) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 24px 24px 20px;
+  margin: 0;
+}
+
+.selection-dialog :deep(.el-dialog__title) {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.selection-dialog :deep(.el-dialog__headerbtn) {
+  top: 24px;
+}
+
+.selection-dialog :deep(.el-dialog__headerbtn .el-dialog__close) {
+  color: #ffffff;
+  font-size: 20px;
+}
+
+.selection-dialog :deep(.el-dialog__body) {
+  padding: 24px;
+  background-color: #f8fafc;
+}
+
+.dialog-search-wrapper {
+  margin-bottom: 24px;
+}
+
+.search-input {
+  --el-input-height: 48px;
+}
+
+.search-input :deep(.el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 0 16px;
+  transition: all 0.3s ease;
+}
+
+.search-input :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.search-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1), 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.search-input :deep(.el-input__inner) {
+  font-size: 15px;
+}
+
+/* 卡片容器 */
+.cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  max-height: 450px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.cards-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cards-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.cards-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 4px;
+}
+
+/* 产品卡片 */
+.product-card {
+  position: relative;
+  background: var(--card-bg);
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 2px solid transparent;
+}
+
+.product-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--hover-shadow);
+  border-color: #667eea;
+}
+
+.product-card:hover .card-overlay {
+  opacity: 1;
+}
+
+.product-card:hover .card-image-wrapper {
+  transform: scale(1.05);
+}
+
+/* 卡片图片 */
+.card-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+  transition: transform 0.4s ease;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.no-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+  color: #94a3b8;
+}
+
+.no-image .el-icon {
+  font-size: 48px;
+}
+
+/* 卡片内容 */
+.card-content {
+  padding: 16px;
+}
+
+.product-code {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.product-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.product-price {
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.product-weight {
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.product-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+
+.quality-badge {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+}
+
+/* 卡片覆盖层 */
+.card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.select-label {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 10px 24px;
+  border: 2px solid #ffffff;
+  border-radius: 30px;
+  transform: translateY(10px);
+  transition: transform 0.3s ease;
+}
+
+.product-card:hover .select-label {
+  transform: translateY(0);
+}
+
+/* 空状态 */
+.empty-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 15px;
+}
+
+/* 对话框底部 */
+.dialog-footer-custom {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.selection-dialog :deep(.el-dialog__footer) {
+  padding: 16px 24px 24px;
+  background-color: #f8fafc;
 }
 </style>
