@@ -131,15 +131,18 @@
         <el-row :gutter="20">
           <!-- 串珠显示采购成本 -->
           <el-col v-if="form.product_type === 'bead'" :span="12">
-            <el-form-item label="采购成本(元/克)" prop="purchase_cost">
-              <el-input-number 
-                v-model="form.purchase_cost" 
-                :min="0" 
-                :step="0.01" 
-                :precision="4" 
-                style="width: 100%" 
-                @change="calculateCostPrice"
-              />
+            <el-form-item label="采购成本" prop="purchase_cost">
+              <div class="purchase-cost-container">
+                <el-input-number 
+                  v-model="form.purchase_cost" 
+                  :min="0" 
+                  :step="0.01" 
+                  :precision="4" 
+                  style="width: 200px" 
+                  @change="calculateCostPrice"
+                />
+                <span class="unit-text">元/克</span>
+              </div>
             </el-form-item>
           </el-col>
           <!-- 配件和成品显示成本价格 -->
@@ -1268,6 +1271,18 @@ onMounted(() => {
 
 .product-dialog :deep(.el-divider--left) {
   margin: 20px 0;
+}
+
+.purchase-cost-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.unit-text {
+  font-size: 14px;
+  color: #64748b;
+  white-space: nowrap;
 }
 
 .cost-summary {
