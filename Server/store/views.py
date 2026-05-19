@@ -7,6 +7,29 @@ import json
 import jwt
 from django.conf import settings
 from datetime import datetime, timedelta
+from decimal import Decimal
+
+
+def calculate_finished_product_cost(finished):
+    """
+    计算成品的总成本
+    公式：串珠成本 + 配件成本 + 工费 + 弹性成本
+    """
+    total_cost = Decimal('0')
+    
+    # 计算串珠成本
+    for fpb in finished.beads.all():
+        total_cost += fpb.bead.product.cost_price * fpb.quantity
+    
+    # 计算配件成本
+    for fpa in finished.accessories.all():
+        total_cost += fpa.accessory.product.cost_price * fpa.quantity
+    
+    # 加上工费和弹性成本
+    total_cost += finished.labor_cost
+    total_cost += finished.elastic_cost
+    
+    return total_cost
 
 from account.models import User, UserType
 from company.models import Company
@@ -1118,6 +1141,10 @@ def create_product(request):
                         )
                     except (Product.DoesNotExist, Accessory.DoesNotExist):
                         pass
+                
+                # 重新计算并保存成品的成本价格
+                product.cost_price = calculate_finished_product_cost(finished)
+                product.save()
 
         # 构建响应数据
         product_data = {
@@ -1321,6 +1348,10 @@ def update_product(request, product_id):
                             )
                         except (Product.DoesNotExist, Accessory.DoesNotExist):
                             pass
+                
+                # 重新计算并保存成品的成本价格
+                product.cost_price = calculate_finished_product_cost(finished)
+                product.save()
             except FinishedProduct.DoesNotExist:
                 pass
 
