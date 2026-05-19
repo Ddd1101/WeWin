@@ -232,17 +232,19 @@
             </el-col>
           </el-row>
           <el-row :gutter="20">
-            <el-col :span="8">
+            <el-col :span="12">
               <el-form-item label="颜色">
                 <el-input v-model="form.color" placeholder="请输入颜色" clearable />
               </el-form-item>
             </el-col>
-            <el-col :span="8">
+            <el-col :span="12">
               <el-form-item label="单颗克重">
                 <el-input-number v-model="form.weight" :min="0" :step="0.01" :precision="3" style="width: 100%" />
               </el-form-item>
             </el-col>
-            <el-col :span="8">
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="24">
               <el-form-item label="品质等级">
                 <div class="quality-slider-container">
                   <el-slider v-model="form.quality_level" :min="1" :max="10" :marks="marks" show-input />
@@ -1205,6 +1207,21 @@ onMounted(() => {
 /* 品质等级滑块容器 */
 .quality-slider-container {
   padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.quality-slider-container :deep(.el-slider) {
+  margin-top: 0;
+}
+
+.quality-slider-container :deep(.el-slider__input) {
+  width: 90px;
+  margin-left: 16px;
+}
+
+.quality-slider-container :deep(.el-slider__marks-text) {
+  font-size: 12px;
+  color: #999;
 }
 
 .cost-summary {
