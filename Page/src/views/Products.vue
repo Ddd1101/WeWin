@@ -318,7 +318,7 @@
               <div v-for="(bead, index) in form.beads" :key="index" class="item-card">
                 <div class="item-info">
                   <span class="item-name">{{ bead.bead_name }}</span>
-                  <span class="item-price">单价: ¥{{ bead.cost_price }}</span>
+                  <span class="item-price">单价: ¥{{ safePrice(bead.cost_price) }}</span>
                 </div>
                 <div class="item-controls">
                   <span class="label">数量:</span>
@@ -328,7 +328,7 @@
                     size="small" 
                     style="width: 90px;"
                   />
-                  <span class="item-subtotal">小计: ¥{{ (bead.cost_price * bead.quantity).toFixed(2) }}</span>
+                  <span class="item-subtotal">小计: ¥{{ safePrice(safeCalculate(bead.cost_price, bead.quantity)) }}</span>
                   <el-button 
                     size="small" 
                     type="danger" 
@@ -357,7 +357,7 @@
               <div v-for="(acc, index) in form.accessories" :key="index" class="item-card">
                 <div class="item-info">
                   <span class="item-name">{{ acc.accessory_name }}</span>
-                  <span class="item-price">单价: ¥{{ acc.cost_price }}</span>
+                  <span class="item-price">单价: ¥{{ safePrice(acc.cost_price) }}</span>
                 </div>
                 <div class="item-controls">
                   <span class="label">数量:</span>
@@ -367,7 +367,7 @@
                     size="small" 
                     style="width: 90px;"
                   />
-                  <span class="item-subtotal">小计: ¥{{ (acc.cost_price * acc.quantity).toFixed(2) }}</span>
+                  <span class="item-subtotal">小计: ¥{{ safePrice(safeCalculate(acc.cost_price, acc.quantity)) }}</span>
                   <el-button 
                     size="small" 
                     type="danger" 
@@ -658,22 +658,30 @@ const marks = {
 // 计算串珠成本
 const beadsCost = computed(() => {
   return form.beads.reduce((sum, bead) => {
-    const beadData = beads.value.find(b => b.id === bead.bead_id)
-    if (beadData) {
-      return sum + (beadData.cost_price * bead.quantity)
+    // 优先使用已保存的 cost_price，如果没有则尝试从列表中查找
+    let costPrice = bead.cost_price
+    if (!costPrice || costPrice === 0) {
+      const beadData = beads.value.find(b => b.id === bead.bead_id)
+      if (beadData) {
+        costPrice = beadData.cost_price
+      }
     }
-    return sum
+    return sum + safeCalculate(costPrice, bead.quantity)
   }, 0)
 })
 
 // 计算配件成本
 const accessoriesCost = computed(() => {
   return form.accessories.reduce((sum, acc) => {
-    const accData = accessories.value.find(a => a.id === acc.accessory_id)
-    if (accData) {
-      return sum + (accData.cost_price * acc.quantity)
+    // 优先使用已保存的 cost_price，如果没有则尝试从列表中查找
+    let costPrice = acc.cost_price
+    if (!costPrice || costPrice === 0) {
+      const accData = accessories.value.find(a => a.id === acc.accessory_id)
+      if (accData) {
+        costPrice = accData.cost_price
+      }
     }
-    return sum
+    return sum + safeCalculate(costPrice, acc.quantity)
   }, 0)
 })
 
@@ -692,6 +700,19 @@ const profitRate = computed(() => {
   if (form.selling_price <= 0) return 0
   return (profit.value / form.selling_price) * 100
 })
+
+// 安全计算函数，防止NaN
+const safeCalculate = (num1, num2) => {
+  const n1 = Number(num1) || 0
+  const n2 = Number(num2) || 0
+  return n1 * n2
+}
+
+// 安全显示价格
+const safePrice = (price) => {
+  const num = Number(price) || 0
+  return num.toFixed(2)
+}
 
 // 监听成品组成变化，自动计算成本价格
 watch([
@@ -905,11 +926,11 @@ const handleEditProduct = async (row) => {
       remark: product.bead?.remark || '',
       beads: (product.finished?.beads || []).map(bead => ({
         ...bead,
-        cost_price: bead.cost_price
+        cost_price: bead.bead_cost_price
       })),
       accessories: (product.finished?.accessories || []).map(acc => ({
         ...acc,
-        cost_price: acc.cost_price
+        cost_price: acc.accessory_cost_price
       })),
       labor_cost: product.finished?.labor_cost || 0,
       elastic_cost: product.finished?.elastic_cost || 0,
