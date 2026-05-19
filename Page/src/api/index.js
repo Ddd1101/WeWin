@@ -204,7 +204,9 @@ export const createOrUpdateStoreApiConfig = (storeId, data) => {
 };
 
 export const triggerDataPull = (storeId, data) => {
-  return storeApi.post(`/${storeId}/trigger-pull/`, data);
+  return storeApi.post(`/${storeId}/trigger-pull/`, data, {
+    timeout: 600000, // 10分钟超时
+  });
 };
 
 export const getStoreOrders = (storeId, params = {}) => {
