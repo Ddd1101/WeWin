@@ -128,31 +128,18 @@
           </el-col>
         </el-row>
         
-        <!-- 价格区域 - 根据商品类型动态显示 -->
-        <div class="price-section">
-          <el-row :gutter="20">
-            <el-col :span="6">
-              <el-form-item label="成本价格" prop="cost_price">
-                <el-input-number v-model="form.cost_price" :min="0" :step="0.01" :precision="2" style="width: 100%" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="6">
-              <el-form-item label="售卖价格" prop="selling_price">
-                <el-input-number v-model="form.selling_price" :min="0" :step="0.01" :precision="2" style="width: 100%" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="6" v-if="form.product_type === 'finished'">
-              <el-form-item label="工费">
-                <el-input-number v-model="form.labor_cost" :min="0" :step="0.01" :precision="2" style="width: 100%" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="6" v-if="form.product_type === 'finished'">
-              <el-form-item label="弹性成本">
-                <el-input-number v-model="form.elastic_cost" :min="0" :step="0.01" :precision="2" style="width: 100%" />
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </div>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="成本价格" prop="cost_price">
+              <el-input-number v-model="form.cost_price" :min="0" :step="0.01" :precision="2" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="售卖价格" prop="selling_price">
+              <el-input-number v-model="form.selling_price" :min="0" :step="0.01" :precision="2" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
         
         <el-row :gutter="20">
           <el-col :span="12">
@@ -298,6 +285,18 @@
               <span class="value">¥{{ profit.toFixed(2) }} ({{ profitRate.toFixed(1) }}%)</span>
             </div>
           </div>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="工费">
+                <el-input-number v-model="form.labor_cost" :min="0" :step="0.01" :precision="2" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="弹性成本">
+                <el-input-number v-model="form.elastic_cost" :min="0" :step="0.01" :precision="2" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+          </el-row>
           <el-form-item label="串珠组成">
             <el-button type="primary" size="small" @click="handleAddBead">
               <el-icon><Plus /></el-icon>
@@ -1102,15 +1101,6 @@ onMounted(() => {
 /* 品质等级滑块容器 */
 .quality-slider-container {
   padding-top: 8px;
-}
-
-/* 价格区域样式 */
-.price-section {
-  background: linear-gradient(135deg, #fafbff 0%, #f8f9ff 100%);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 18px;
-  border: 1px solid #e0e7ff;
 }
 
 .cost-summary {
