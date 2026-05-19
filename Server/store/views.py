@@ -922,7 +922,7 @@ def get_products(request):
                     bead = Bead.objects.get(product=product)
                     product_data['bead'] = {
                         'material': bead.material,
-                        'size': bead.size,
+                        'size': float(bead.size) if bead.size is not None else None,
                         'color': bead.color,
                         'weight': float(bead.weight),
                         'quality_level': bead.quality_level,
@@ -1504,7 +1504,7 @@ def get_product_detail(request, product_id):
                 bead = Bead.objects.get(product=product)
                 product_data['bead'] = {
                     'material': bead.material,
-                    'size': bead.size,
+                    'size': float(bead.size) if bead.size is not None else None,
                     'color': bead.color,
                     'weight': float(bead.weight),
                     'quality_level': bead.quality_level,

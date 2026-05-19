@@ -266,7 +266,7 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="尺寸">
-                <el-input v-model="form.size" placeholder="请输入尺寸" clearable />
+                <el-input-number v-model="form.size" :min="0" :step="0.1" :precision="1" style="width: 100%" placeholder="请输入尺寸" />
               </el-form-item>
             </el-col>
           </el-row>
