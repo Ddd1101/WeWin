@@ -89,9 +89,10 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="700px"
+      width="780px"
       class="product-dialog"
       @close="resetForm"
+      :close-on-click-modal="false"
     >
       <el-form :model="form" :rules="rules" ref="formRef" label-width="110px">
         <el-row :gutter="20">
@@ -171,15 +172,16 @@
                 :preview-src-list="[form.imagePreview || form.image_url]"
                 class="preview-image"
               />
-              <el-button
-                size="small"
-                type="danger"
-                @click="handleRemoveImage"
-                class="remove-btn"
-              >
-                <el-icon><Delete /></el-icon>
-                删除
-              </el-button>
+              <div class="image-actions">
+                <el-button
+                  size="small"
+                  type="danger"
+                  @click="handleRemoveImage"
+                >
+                  <el-icon><Delete /></el-icon>
+                  删除
+                </el-button>
+              </div>
             </div>
             <input
               ref="imageInputRef"
@@ -219,7 +221,9 @@
             </el-col>
             <el-col :span="8">
               <el-form-item label="品质等级">
-                <el-slider v-model="form.quality_level" :min="1" :max="10" :marks="marks" />
+                <div class="quality-slider-container">
+                  <el-slider v-model="form.quality_level" :min="1" :max="10" :marks="marks" show-input />
+                </div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -300,7 +304,13 @@
             </el-button>
             <div class="selected-items" v-if="form.beads.length > 0">
               <div v-for="(bead, index) in form.beads" :key="index" class="item-card">
-                <span class="item-name">{{ bead.bead_name }} x{{ bead.quantity }}</span>
+                <span class="item-name">{{ bead.bead_name }}</span>
+                <el-input-number 
+                  v-model="bead.quantity" 
+                  :min="1" 
+                  size="small" 
+                  style="width: 100px;"
+                />
                 <el-button size="small" type="danger" link @click="form.beads.splice(index, 1)">
                   <el-icon><Delete /></el-icon>
                 </el-button>
@@ -314,7 +324,13 @@
             </el-button>
             <div class="selected-items" v-if="form.accessories.length > 0">
               <div v-for="(acc, index) in form.accessories" :key="index" class="item-card">
-                <span class="item-name">{{ acc.accessory_name }} x{{ acc.quantity }}</span>
+                <span class="item-name">{{ acc.accessory_name }}</span>
+                <el-input-number 
+                  v-model="acc.quantity" 
+                  :min="1" 
+                  size="small" 
+                  style="width: 100px;"
+                />
                 <el-button size="small" type="danger" link @click="form.accessories.splice(index, 1)">
                   <el-icon><Delete /></el-icon>
                 </el-button>
@@ -1067,6 +1083,26 @@ onMounted(() => {
   color: #ffffff;
 }
 
+.product-dialog :deep(.el-dialog__body) {
+  padding: 24px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* 表单间距优化 */
+.product-dialog :deep(.el-form-item) {
+  margin-bottom: 18px;
+}
+
+.product-dialog :deep(.el-divider--left) {
+  margin: 20px 0;
+}
+
+/* 品质等级滑块容器 */
+.quality-slider-container {
+  padding-top: 8px;
+}
+
 .cost-summary {
   background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
   border-radius: 12px;
@@ -1110,29 +1146,33 @@ onMounted(() => {
 
 .selected-items {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 12px;
 }
 
 .item-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #f1f5f9;
-  border-radius: 8px;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 10px;
   border: 1px solid #e2e8f0;
   transition: all 0.3s;
+  width: 100%;
 }
 
 .item-card:hover {
-  background: #e2e8f0;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .item-name {
+  flex: 1;
   font-size: 14px;
   color: #374151;
+  font-weight: 500;
 }
 
 .image-upload-container {
@@ -1170,8 +1210,10 @@ onMounted(() => {
 }
 
 .image-preview-wrapper {
-  position: relative;
-  display: inline-block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .preview-image {
@@ -1179,11 +1221,9 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.remove-btn {
-  position: absolute;
-  bottom: -40px;
-  left: 50%;
-  transform: translateX(-50%);
+.image-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .dialog-footer {
