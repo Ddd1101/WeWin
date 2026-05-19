@@ -244,11 +244,16 @@
             </el-col>
           </el-row>
           <el-row :gutter="20">
-            <el-col :span="24">
+            <el-col :span="12">
               <el-form-item label="品质等级">
-                <div class="quality-slider-container">
-                  <el-slider v-model="form.quality_level" :min="1" :max="10" :marks="marks" show-input />
-                </div>
+                <el-input-number 
+                  v-model="form.quality_level" 
+                  :min="1" 
+                  :max="10" 
+                  :step="1" 
+                  :precision="0" 
+                  style="width: 100%" 
+                  placeholder="请输入品质等级(1-10)" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -648,14 +653,6 @@ const accessorySearch = ref('')
 const beadSearch = ref('')
 // 当前选中的标签页
 const activeTab = ref('finished')
-// 滑块标记
-const marks = {
-  1: '1',
-  3: '3',
-  5: '5',
-  7: '7',
-  10: '10'
-}
 
 // 计算串珠成本
 const beadsCost = computed(() => {
@@ -1202,26 +1199,6 @@ onMounted(() => {
 
 .product-dialog :deep(.el-divider--left) {
   margin: 20px 0;
-}
-
-/* 品质等级滑块容器 */
-.quality-slider-container {
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-
-.quality-slider-container :deep(.el-slider) {
-  margin-top: 0;
-}
-
-.quality-slider-container :deep(.el-slider__input) {
-  width: 90px;
-  margin-left: 16px;
-}
-
-.quality-slider-container :deep(.el-slider__marks-text) {
-  font-size: 12px;
-  color: #999;
 }
 
 .cost-summary {
