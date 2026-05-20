@@ -1,0 +1,14 @@
+
+- [ ] nginx installed successfully
+- [ ] nginx configuration is valid
+- [ ] nginx is listening on port 8080
+- [ ] Frontend (Page) npm dependencies installed
+- [ ] Frontend build completed and dist directory exists
+- [ ] Frontend build memory usage did not exceed 1GB
+- [ ] Backend (Server) virtual environment created
+- [ ] Backend (Server) dependencies installed
+- [ ] Backend migrations applied successfully
+- [ ] Gunicorn is running and listening on 0.0.0.0:8003
+- [ ] Frontend accessible from external network on port 8080
+- [ ] Backend accessible from external network on port 8003
+- [ ] Frontend and backend communication works correctly
