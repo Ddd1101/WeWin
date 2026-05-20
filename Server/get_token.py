@@ -2,7 +2,7 @@ import requests
 import json
 
 # 登录API URL
-login_url = 'http://127.0.0.1:8000/api/account/login/'
+login_url = 'http://43.155.107.92:8003/api/account/login/'
 
 # 登录数据
 data = {

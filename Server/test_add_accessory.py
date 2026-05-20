@@ -2,7 +2,7 @@ import requests
 import json
 
 # API URL
-url = 'http://127.0.0.1:8000/api/store/products/create/'
+url = 'http://43.155.107.92:8003/api/store/products/create/'
 
 # 请求头
 headers = {

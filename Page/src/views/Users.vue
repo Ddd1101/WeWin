@@ -202,7 +202,7 @@ import {
 } from "element-plus";
 
 // API 基础 URL
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "http://43.155.107.92:8003";
 
 // 响应式数据
 const users = ref([]);
