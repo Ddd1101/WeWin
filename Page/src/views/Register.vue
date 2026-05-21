@@ -98,7 +98,7 @@ const handleRegister = async () => {
 
         console.log("11111");
         console.log(data);
-        const API_BASE_URL = "http://43.155.107.92:8003";
+        const API_BASE_URL = "http://0.0.0.0:8003";
         const response = await fetch(`${API_BASE_URL}/api/account/register/`, {
           method: "POST",
           headers: {
