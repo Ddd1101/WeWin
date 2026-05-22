@@ -45,7 +45,6 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { ElMessage } from 'element-plus'
 import { login } from '../api/index.js'
-import { getPageConfig } from '../api/account.js'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -134,14 +133,6 @@ const handleLogin = async () => {
         
         userStore.setToken(data.token)
         userStore.setUserInfo(data.user)
-        
-        // 获取页面配置
-        try {
-          const configResponse = await getPageConfig()
-          userStore.setPageConfig(configResponse.data.pages || [])
-        } catch (error) {
-          console.error('获取页面配置失败:', error)
-        }
         
         ElMessage.success('登录成功')
         router.push('/')

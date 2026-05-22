@@ -61,12 +61,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { User, ArrowDown } from '@element-plus/icons-vue'
-import { getPageConfig } from '../api/account.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -74,24 +73,11 @@ const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
 
-// 在挂载时获取页面配置（如果还没有的话）
-onMounted(async () => {
-  if (userStore.token && userStore.pageConfig.length === 0) {
-    try {
-      const configResponse = await getPageConfig()
-      userStore.setPageConfig(configResponse.data.pages || [])
-    } catch (error) {
-      console.error('获取页面配置失败:', error)
-    }
-  }
-})
-
 const menuRoutes = computed(() => {
   const layoutRoute = router.options.routes.find(r => r.path === '/')
   if (!layoutRoute) return []
   
   const result = []
-  const allowedRoutes = userStore.pageConfig.map(page => page.route)
   
   for (const child of layoutRoute.children) {
     if (child.meta?.requiresAdmin) {
@@ -99,15 +85,6 @@ const menuRoutes = computed(() => {
         continue
       }
     }
-    
-    // 检查页面是否在允许的路由列表中
-    if (allowedRoutes.length > 0) {
-      const routeName = child.path
-      if (!allowedRoutes.includes(routeName)) {
-        continue
-      }
-    }
-    
     result.push(child)
   }
   

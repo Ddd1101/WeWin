@@ -44,71 +44,6 @@ def calculate_finished_product_cost(finished):
 SECRET_KEY = settings.SECRET_KEY
 
 
-def get_current_user(request):
-    """
-    从请求中验证并获取当前用户
-    返回：(current_user, error_response) - 成功时error_response为None，失败时返回错误响应
-    """
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return None, JsonResponse({'error': '未授权'}, status=401)
-    
-    token = auth_header.split(' ')[1]
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-    except jwt.ExpiredSignatureError:
-        return None, JsonResponse({'error': 'Token已过期'}, status=401)
-    except jwt.InvalidTokenError:
-        return None, JsonResponse({'error': '无效的Token'}, status=401)
-    
-    try:
-        current_user = User.objects.get(id=payload['user_id'])
-        return current_user, None
-    except User.DoesNotExist:
-        return None, JsonResponse({'error': '用户不存在'}, status=404)
-
-
-def check_view_products_permission(current_user):
-    """
-    检查用户是否有权限查看商品列表
-    返回：(has_permission, queryset) - 有权限时返回对应的商品查询集
-    """
-    if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
-        return True, Product.objects.all()
-    elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]:
-        if current_user.company:
-            return True, Product.objects.filter(company=current_user.company)
-    return False, None
-
-
-def check_product_operation_permission(current_user, product, include_enterprise_user=False):
-    """
-    检查用户是否有权限操作特定商品
-    include_enterprise_user: 是否允许企业用户查看（用于详情查看）
-    """
-    if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
-        return True
-    elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
-        if current_user.company == product.company:
-            return True
-    elif include_enterprise_user and current_user.user_type == UserType.ENTERPRISE_USER:
-        if current_user.company == product.company:
-            return True
-    return False
-
-
-def check_create_product_permission(current_user):
-    """
-    检查用户是否有权限创建商品
-    """
-    if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
-        return True
-    elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
-        if current_user.company:
-            return True
-    return False
-
-
 @require_http_methods(['GET'])
 def get_platforms(request):
     try:
@@ -920,13 +855,26 @@ def get_product_types(request):
 @require_http_methods(['GET'])
 def get_products(request):
     try:
-        current_user, error_response = get_current_user(request)
-        if error_response:
-            return error_response
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
         
-        has_permission, products = check_view_products_permission(current_user)
-        if not has_permission:
-            products = Product.objects.none()
+        products = []
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            products = Product.objects.all()
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]:
+            if current_user.company:
+                products = Product.objects.filter(company=current_user.company)
 
         # 筛选条件
         product_type = request.GET.get('product_type')
@@ -1038,6 +986,8 @@ def get_products(request):
             'page': page,
             'page_size': page_size
         })
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -1046,11 +996,28 @@ def get_products(request):
 @require_http_methods(['POST'])
 def create_product(request):
     try:
-        current_user, error_response = get_current_user(request)
-        if error_response:
-            return error_response
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
         
-        if not check_create_product_permission(current_user):
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
+            if current_user.company:
+                has_permission = True
+
+        if not has_permission:
             return JsonResponse({'error': '无权限创建商品'}, status=403)
 
         # 支持 multipart/form-data 和 application/json 两种格式
@@ -1215,6 +1182,8 @@ def create_product(request):
         return JsonResponse(product_data, status=201)
     except json.JSONDecodeError:
         return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -1223,20 +1192,35 @@ def create_product(request):
 @require_http_methods(['PUT', 'POST'])
 def update_product(request, product_id):
     try:
-        current_user, error_response = get_current_user(request)
-        if error_response:
-            return error_response
-        
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
         product = Product.objects.get(id=product_id)
         
-        if not check_product_operation_permission(current_user, product):
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN]:
+            if current_user.company == product.company:
+                has_permission = True
+
+        if not has_permission:
             return JsonResponse({'error': '无权限更新商品'}, status=403)
 
         # 支持 multipart/form-data 和 application/json 两种格式
         data_dict = {}
         image = None
         remove_image = False
-        remove_image_val = False
         
         if request.content_type and 'multipart/form-data' in request.content_type:
             # 从 POST 中获取普通字段数据
@@ -1418,6 +1402,8 @@ def update_product(request, product_id):
         return JsonResponse(product_data)
     except json.JSONDecodeError:
         return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
     except Product.DoesNotExist:
         return JsonResponse({'error': '商品不存在'}, status=404)
     except Exception as e:
@@ -1428,17 +1414,35 @@ def update_product(request, product_id):
 @require_http_methods(['DELETE'])
 def delete_product(request, product_id):
     try:
-        current_user, error_response = get_current_user(request)
-        if error_response:
-            return error_response
-        
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
         product = Product.objects.get(id=product_id)
         
-        if not check_product_operation_permission(current_user, product):
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
+            if current_user.company == product.company:
+                has_permission = True
+
+        if not has_permission:
             return JsonResponse({'error': '无权限删除商品'}, status=403)
 
         product.delete()
         return JsonResponse({'message': '商品删除成功'})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
     except Product.DoesNotExist:
         return JsonResponse({'error': '商品不存在'}, status=404)
     except Exception as e:
@@ -1448,13 +1452,29 @@ def delete_product(request, product_id):
 @require_http_methods(['GET'])
 def get_product_detail(request, product_id):
     try:
-        current_user, error_response = get_current_user(request)
-        if error_response:
-            return error_response
-        
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
         product = Product.objects.get(id=product_id)
         
-        if not check_product_operation_permission(current_user, product, include_enterprise_user=True):
+        has_permission = False
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]:
+            if current_user.company == product.company:
+                has_permission = True
+
+        if not has_permission:
             return JsonResponse({'error': '无权限查看商品详情'}, status=403)
 
         product_data = {
@@ -1541,6 +1561,8 @@ def get_product_detail(request, product_id):
                 pass
 
         return JsonResponse(product_data)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
     except Product.DoesNotExist:
         return JsonResponse({'error': '商品不存在'}, status=404)
     except Exception as e:
