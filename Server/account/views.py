@@ -508,6 +508,16 @@ def delete_user(request, user_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+# 定义用户类型权限等级（数值越小，权限越高）
+USER_TYPE_RANK = {
+    UserType.SUPER_ADMIN: 0,
+    UserType.SITE_ADMIN: 1,
+    UserType.ENTERPRISE_LEADER: 2,
+    UserType.ENTERPRISE_ADMIN: 3,
+    UserType.ENTERPRISE_USER: 4,
+    UserType.TEMPORARY: 5,
+}
+
 @csrf_exempt
 @require_http_methods(['PUT'])
 def update_user_type(request, user_id):
@@ -527,24 +537,53 @@ def update_user_type(request, user_id):
         current_user = User.objects.get(id=payload['user_id'])
         target_user = User.objects.get(id=user_id)
         
-        # 只有网站超级管理员可以变更用户类型
-        if current_user.user_type != UserType.SUPER_ADMIN:
-            return JsonResponse({'error': '无权限变更用户类型'}, status=403)
-
-        # 只能变更临时账户或网站管理员的类型
-        if target_user.user_type not in [UserType.TEMPORARY, UserType.SITE_ADMIN]:
-            return JsonResponse({'error': '只能变更临时账户或网站管理员的类型'}, status=400)
-
         data = json.loads(request.body)
         user_type = data.get('user_type')
         
         if not user_type:
             return JsonResponse({'error': '用户类型不能为空'}, status=400)
 
-        # 验证用户类型是否有效
-        valid_user_types = [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]
+        # 不能修改自己的类型
+        if current_user.id == target_user.id:
+            return JsonResponse({'error': '不能修改自己的用户类型'}, status=403)
+
+        has_permission = False
+        valid_user_types = []
+
+        # 获取当前用户和目标用户的权限等级
+        current_rank = USER_TYPE_RANK.get(current_user.user_type, 999)
+        target_rank = USER_TYPE_RANK.get(target_user.user_type, 999)
+        new_rank = USER_TYPE_RANK.get(user_type, 999)
+
+        # 只能修改权限低于自己的用户（目标用户rank必须大于当前用户rank）
+        # 只能修改为权限低于自己的类型（新类型rank必须大于当前用户rank）
+        if target_rank <= current_rank or new_rank <= current_rank:
+            return JsonResponse({'error': '无权限变更此用户类型或目标类型权限过高'}, status=403)
+
+        if current_user.user_type == UserType.SUPER_ADMIN:
+            # 超级管理员：可以修改除自己外的任何用户为任何类型（除不能修改自己）
+            valid_user_types = [UserType.SUPER_ADMIN, UserType.SITE_ADMIN, UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER, UserType.TEMPORARY]
+            has_permission = True
+        elif current_user.user_type == UserType.SITE_ADMIN:
+            # 网站管理员：可以修改权限低于自己的用户
+            valid_user_types = [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER, UserType.TEMPORARY]
+            has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
+            # 企业负责人：只能修改自己企业内权限低于自己的用户
+            if target_user.company == current_user.company:
+                valid_user_types = [UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER, UserType.TEMPORARY]
+                has_permission = True
+        elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
+            # 企业用户管理员：只能修改自己企业内权限低于自己的用户
+            if target_user.company == current_user.company:
+                valid_user_types = [UserType.ENTERPRISE_USER, UserType.TEMPORARY]
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限变更用户类型'}, status=403)
+
         if user_type not in valid_user_types:
-            return JsonResponse({'error': '无效的用户类型'}, status=400)
+            return JsonResponse({'error': '无效的用户类型或权限不足'}, status=400)
 
         # 更新用户类型
         target_user.user_type = user_type

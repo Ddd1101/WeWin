@@ -146,16 +146,15 @@
             @change="(value) => changeUserType({ ...row, user_type: value })"
             size="small"
             style="width: 100%"
-            :disabled="
-              !(row.user_type === 'temporary' || row.user_type === 'site_admin')
-            "
+            :disabled="!canEditUserType(row)"
           >
-            <el-option label="网站超级管理员" value="super_admin" />
-            <el-option label="网站管理员" value="site_admin" />
-            <el-option label="企业负责人" value="enterprise_leader" />
-            <el-option label="企业用户管理员" value="enterprise_admin" />
-            <el-option label="企业用户普通账户" value="enterprise_user" />
-            <el-option label="临时账户" value="temporary" />
+            <el-option
+              v-for="option in userTypeOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+              :disabled="isOptionDisabled(row, option.value)"
+            />
           </el-select>
         </template>
       </el-table-column>
@@ -201,11 +200,33 @@ import {
   ElTooltip,
 } from "element-plus";
 import { API_BASE_URL } from "../api/config";
+import { getCurrentUser } from "../api/account";
+
+// 定义用户类型权限等级（数值越小，权限越高）
+const USER_TYPE_RANK = {
+  super_admin: 0,
+  site_admin: 1,
+  enterprise_leader: 2,
+  enterprise_admin: 3,
+  enterprise_user: 4,
+  temporary: 5,
+};
+
+// 用户类型选项列表
+const userTypeOptions = [
+  { label: "网站超级管理员", value: "super_admin" },
+  { label: "网站管理员", value: "site_admin" },
+  { label: "企业负责人", value: "enterprise_leader" },
+  { label: "企业用户管理员", value: "enterprise_admin" },
+  { label: "企业用户普通账户", value: "enterprise_user" },
+  { label: "临时账户", value: "temporary" },
+];
 
 // 响应式数据
 const users = ref([]);
 const loading = ref(false);
 const selectedUsers = ref([]);
+const currentUser = ref(null);
 
 // 筛选表单
 const filterForm = ref({
@@ -215,6 +236,60 @@ const filterForm = ref({
   company: "",
   status: "",
 });
+
+// 判断某个用户类型选项是否禁用
+const isOptionDisabled = (row, optionValue) => {
+  if (!currentUser.value) return true;
+
+  const currentRank = USER_TYPE_RANK[currentUser.value.user_type] || 999;
+  const targetRank = USER_TYPE_RANK[row.user_type] || 999;
+  const newRank = USER_TYPE_RANK[optionValue] || 999;
+
+  // 如果是自己，禁用
+  if (currentUser.value.id === row.id) return true;
+
+  // 如果目标用户权限高于或等于当前用户，禁用
+  if (targetRank <= currentRank) return true;
+
+  // 如果目标类型权限高于或等于当前用户，禁用
+  if (newRank <= currentRank) return true;
+
+  // 企业用户只能修改自己企业内的用户
+  if (
+    (currentUser.value.user_type === "enterprise_leader" || 
+     currentUser.value.user_type === "enterprise_admin") &&
+    row.company_id !== currentUser.value.company_id
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+// 判断是否可以编辑某行的用户类型
+const canEditUserType = (row) => {
+  if (!currentUser.value) return false;
+
+  const currentRank = USER_TYPE_RANK[currentUser.value.user_type] || 999;
+  const targetRank = USER_TYPE_RANK[row.user_type] || 999;
+
+  // 不能编辑自己
+  if (currentUser.value.id === row.id) return false;
+
+  // 不能编辑权限高于或等于自己的用户
+  if (targetRank <= currentRank) return false;
+
+  // 企业用户只能编辑自己企业内的用户
+  if (
+    (currentUser.value.user_type === "enterprise_leader" || 
+     currentUser.value.user_type === "enterprise_admin") &&
+    row.company_id !== currentUser.value.company_id
+  ) {
+    return false;
+  }
+
+  return true;
+};
 
 // 筛选后的用户列表
 const filteredUsers = computed(() => {
@@ -479,8 +554,19 @@ const batchDeactivate = () => {
   batchUpdateUsers(false, "禁用");
 };
 
+// 加载当前用户信息
+const loadCurrentUser = async () => {
+  try {
+    const response = await getCurrentUser();
+    currentUser.value = response.data;
+  } catch (error) {
+    console.error("加载当前用户信息失败", error);
+  }
+};
+
 // 页面挂载时加载用户列表
 onMounted(() => {
+  loadCurrentUser();
   loadUsers();
 });
 </script>
