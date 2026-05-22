@@ -77,3 +77,38 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Element Plus 图片预览全局样式 - 必须确保在最上层 */
+body > .el-image-viewer__wrapper {
+  z-index: 99999 !important;
+}
+
+/* 确保预览容器在最上层，内部元素保持相对层级 */
+.el-image-viewer__wrapper {
+  z-index: 99999 !important;
+}
+
+/* 调整遮罩层透明度，让它不那么暗 */
+.el-image-viewer__mask {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 防止表格元素创建层叠上下文影响预览 */
+.el-table,
+.el-table__body-wrapper,
+.el-table__body,
+.el-table__cell,
+.el-table__row {
+  position: static !important;
+}
+
+/* 只对必要的元素保持相对定位，但降低z-index */
+.el-table__header-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+.el-table__fixed,
+.el-table__fixed-right {
+  z-index: 2 !important;
+}
