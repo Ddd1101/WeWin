@@ -67,7 +67,7 @@ class Bead(models.Model):
     )
     # 串珠特有属性
     material = models.CharField(max_length=100, blank=True, null=True, verbose_name='材质')
-    size = models.CharField(max_length=100, blank=True, null=True, verbose_name='尺寸')
+    size = models.IntegerField(blank=True, null=True, verbose_name='规格')
     color = models.CharField(max_length=100, blank=True, null=True, verbose_name='颜色')
     weight = models.DecimalField(max_digits=10, decimal_places=3, default=0, verbose_name='单颗克重')
     quality_level = models.IntegerField(default=5, verbose_name='品质等级(1-10)')
@@ -91,7 +91,7 @@ class Accessory(models.Model):
     )
     # 配件特有属性
     material = models.CharField(max_length=100, blank=True, null=True, verbose_name='材质')
-    size = models.CharField(max_length=100, blank=True, null=True, verbose_name='尺寸')
+    size = models.IntegerField(blank=True, null=True, verbose_name='规格')
     color = models.CharField(max_length=100, blank=True, null=True, verbose_name='颜色')
 
     class Meta:

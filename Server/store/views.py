@@ -1096,20 +1096,38 @@ def create_product(request):
 
             # 创建串珠、配件或成品
             if product_type == ProductType.BEAD:
+                size_value = data_dict.get('size')
+                if size_value == '' or size_value is None:
+                    size_value = None
+                else:
+                    try:
+                        size_value = int(size_value)
+                    except (ValueError, TypeError):
+                        size_value = None
+                
                 Bead.objects.create(
                     product=product,
                     material=data_dict.get('material', ''),
-                    size=data_dict.get('size', ''),
+                    size=size_value,
                     color=data_dict.get('color', ''),
                     weight=data_dict.get('weight', 0),
                     quality_level=data_dict.get('quality_level', 5),
                     remark=data_dict.get('remark', '')
                 )
             elif product_type == ProductType.ACCESSORY:
+                size_value = data_dict.get('size')
+                if size_value == '' or size_value is None:
+                    size_value = None
+                else:
+                    try:
+                        size_value = int(size_value)
+                    except (ValueError, TypeError):
+                        size_value = None
+                
                 Accessory.objects.create(
                     product=product,
                     material=data_dict.get('material', ''),
-                    size=data_dict.get('size', ''),
+                    size=size_value,
                     color=data_dict.get('color', '')
                 )
             elif product_type == ProductType.FINISHED:
@@ -1288,7 +1306,15 @@ def update_product(request, product_id):
                 if 'material' in data_dict:
                     bead.material = data_dict['material']
                 if 'size' in data_dict:
-                    bead.size = data_dict['size']
+                    size_value = data_dict['size']
+                    if size_value == '' or size_value is None:
+                        size_value = None
+                    else:
+                        try:
+                            size_value = int(size_value)
+                        except (ValueError, TypeError):
+                            size_value = None
+                    bead.size = size_value
                 if 'color' in data_dict:
                     bead.color = data_dict['color']
                 if 'weight' in data_dict:
@@ -1311,7 +1337,15 @@ def update_product(request, product_id):
                 if 'material' in data_dict:
                     accessory.material = data_dict['material']
                 if 'size' in data_dict:
-                    accessory.size = data_dict['size']
+                    size_value = data_dict['size']
+                    if size_value == '' or size_value is None:
+                        size_value = None
+                    else:
+                        try:
+                            size_value = int(size_value)
+                        except (ValueError, TypeError):
+                            size_value = None
+                    accessory.size = size_value
                 if 'color' in data_dict:
                     accessory.color = data_dict['color']
                 accessory.save()

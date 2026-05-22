@@ -265,8 +265,11 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="尺寸">
-                <el-input v-model="form.size" placeholder="请输入尺寸" clearable />
+              <el-form-item label="规格">
+                <div class="size-input-container">
+                  <el-input-number v-model="form.size" :min="1" :step="1" :precision="0" style="width: 100%" placeholder="请输入规格" />
+                  <span class="unit-text">mm</span>
+                </div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -311,8 +314,11 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="尺寸">
-                <el-input v-model="form.size" placeholder="请输入尺寸" clearable />
+              <el-form-item label="规格">
+                <div class="size-input-container">
+                  <el-input-number v-model="form.size" :min="1" :step="1" :precision="0" style="width: 100%" placeholder="请输入规格" />
+                  <span class="unit-text">mm</span>
+                </div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -1273,7 +1279,8 @@ onMounted(() => {
   margin: 20px 0;
 }
 
-.purchase-cost-container {
+.purchase-cost-container,
+.size-input-container {
   display: flex;
   align-items: center;
   gap: 10px;

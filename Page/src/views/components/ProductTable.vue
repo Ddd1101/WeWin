@@ -146,6 +146,23 @@
       <el-table-column prop="code" label="货号" width="180" />
       <el-table-column prop="name" label="商品名称" />
       <el-table-column prop="product_type_display" label="商品类型" width="120" />
+      <!-- 配件显示规格 -->
+      <el-table-column v-if="props.products.some(p => p.product_type === 'accessory')" label="规格(mm)" width="100">
+        <template #default="scope">
+          {{ scope.row.accessory?.size || '-' }}
+        </template>
+      </el-table-column>
+      <!-- 串珠显示规格和品质 -->
+      <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="规格(mm)" width="100">
+        <template #default="scope">
+          {{ scope.row.bead?.size || '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="品质等级" width="100">
+        <template #default="scope">
+          {{ scope.row.bead?.quality_level || '-' }}
+        </template>
+      </el-table-column>
       <!-- 串珠显示采购成本和单颗成本 -->
       <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="采购成本(元/克)" width="130">
         <template #default="scope">
