@@ -329,7 +329,7 @@ def create_user(request):
             if user_type != UserType.SUPER_ADMIN:
                 has_permission = True
         elif current_user.user_type == UserType.ENTERPRISE_LEADER:
-            if user_type in [UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER] and company == current_user.company:
+            if user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER] and company == current_user.company:
                 has_permission = True
         elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
             if user_type == UserType.ENTERPRISE_USER and company == current_user.company:
@@ -429,7 +429,7 @@ def update_user_status(request, user_id):
             if target_user.user_type != UserType.SUPER_ADMIN:
                 has_permission = True
         elif current_user.user_type == UserType.ENTERPRISE_LEADER:
-            if target_user.user_type in [UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER] and target_user.company == current_user.company:
+            if target_user.company == current_user.company and target_user.user_type != UserType.SUPER_ADMIN:
                 has_permission = True
         elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
             if target_user.user_type == UserType.ENTERPRISE_USER and target_user.company == current_user.company:
@@ -488,7 +488,7 @@ def delete_user(request, user_id):
             if target_user.user_type != UserType.SUPER_ADMIN:
                 has_permission = True
         elif current_user.user_type == UserType.ENTERPRISE_LEADER:
-            if target_user.user_type in [UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER] and target_user.company == current_user.company:
+            if target_user.company == current_user.company and target_user.user_type != UserType.SUPER_ADMIN:
                 has_permission = True
         elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
             if target_user.user_type == UserType.ENTERPRISE_USER and target_user.company == current_user.company:
