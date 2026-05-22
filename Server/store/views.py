@@ -1663,7 +1663,8 @@ def get_accessories(request):
                 'supplier': product.supplier,
                 'material': accessory.material,
                 'size': accessory.size,
-                'color': accessory.color
+                'color': accessory.color,
+                'image_url': request.build_absolute_uri(product.image.url) if product.image else None
             })
 
         return JsonResponse({'accessories': accessory_list})
@@ -1712,7 +1713,8 @@ def get_beads(request):
                 'color': bead.color,
                 'weight': float(bead.weight),
                 'quality_level': bead.quality_level,
-                'remark': bead.remark
+                'remark': bead.remark,
+                'image_url': request.build_absolute_uri(product.image.url) if product.image else None
             })
 
         return JsonResponse({'beads': bead_list})
