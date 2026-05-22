@@ -475,7 +475,7 @@
             <el-image
               v-if="bead.image_url"
               :src="bead.image_url"
-              fit="cover"
+              fit="contain"
               class="product-image"
               :preview-src-list="[bead.image_url]"
               @click.stop
@@ -542,7 +542,7 @@
             <el-image
               v-if="accessory.image_url"
               :src="accessory.image_url"
-              fit="cover"
+              fit="contain"
               class="product-image"
               :preview-src-list="[accessory.image_url]"
               @click.stop
