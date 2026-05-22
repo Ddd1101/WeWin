@@ -86,6 +86,7 @@ import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "../store/user";
 import { ElMessage } from "element-plus";
+import { API_BASE_URL } from "../api/config";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -93,7 +94,6 @@ const activeTab = ref("create");
 const loading = ref(false);
 const createFormRef = ref(null);
 const bindFormRef = ref(null);
-const API_BASE_URL = "http://43.155.107.92:8003";
 
 const createForm = ref({
   company_name: "",
