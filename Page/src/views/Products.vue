@@ -472,13 +472,20 @@
           @click="handleSelectBead(bead)"
         >
           <div class="card-image-wrapper">
-            <el-image
+            <img
               v-if="bead.image_url"
               :src="bead.image_url"
-              fit="contain"
               class="product-image"
-              :preview-src-list="[bead.image_url]"
-              @click.stop
+              @click.stop="() => { 
+                const viewer = document.createElement('div');
+                viewer.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:99999;cursor:zoom-out;';
+                viewer.onclick = () => viewer.remove();
+                const img = document.createElement('img');
+                img.src = bead.image_url;
+                img.style.cssText = 'max-width:90%;max-height:90%;object-fit:contain;';
+                viewer.appendChild(img);
+                document.body.appendChild(viewer);
+              }"
             />
             <div v-else class="no-image">
               <el-icon><Picture /></el-icon>
@@ -539,13 +546,20 @@
           @click="handleSelectAccessory(accessory)"
         >
           <div class="card-image-wrapper">
-            <el-image
+            <img
               v-if="accessory.image_url"
               :src="accessory.image_url"
-              fit="contain"
               class="product-image"
-              :preview-src-list="[accessory.image_url]"
-              @click.stop
+              @click.stop="() => { 
+                const viewer = document.createElement('div');
+                viewer.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:99999;cursor:zoom-out;';
+                viewer.onclick = () => viewer.remove();
+                const img = document.createElement('img');
+                img.src = accessory.image_url;
+                img.style.cssText = 'max-width:90%;max-height:90%;object-fit:contain;';
+                viewer.appendChild(img);
+                document.body.appendChild(viewer);
+              }"
             />
             <div v-else class="no-image">
               <el-icon><Picture /></el-icon>
@@ -1610,21 +1624,25 @@ onMounted(() => {
 .card-image-wrapper {
   position: relative;
   width: 100%;
-  height: 160px;
+  min-height: 160px;
+  max-height: 220px;
   overflow: hidden;
   transition: transform 0.4s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #f8fafc;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
 .product-image {
   max-width: 100%;
-  max-height: 100%;
+  max-height: 200px;
   width: auto;
   height: auto;
-  object-fit: contain;
+  display: block;
+  cursor: zoom-in;
 }
 
 .no-image {
