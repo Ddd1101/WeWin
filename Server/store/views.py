@@ -1043,15 +1043,42 @@ def create_product(request):
             data_dict = json.loads(request.body)
             image = None
 
+        # 辅助函数：安全转换为 Decimal
+        def to_decimal(value, default=0):
+            if value is None or value == '':
+                return Decimal(str(default))
+            try:
+                return Decimal(str(value))
+            except (ValueError, TypeError):
+                return Decimal(str(default))
+
+        # 辅助函数：安全转换为整数
+        def to_integer(value, default=None):
+            if value is None or value == '':
+                return default
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return default
+
+        # 辅助函数：安全转换为布尔值
+        def to_boolean(value, default=False):
+            if isinstance(value, bool):
+                return value
+            if value is None or value == '':
+                return default
+            return str(value).lower() in ['true', '1', 'yes', 'on']
+
         code = data_dict.get('code')
         name = data_dict.get('name')
         product_type = data_dict.get('product_type')
-        purchase_cost = data_dict.get('purchase_cost', 0)
-        cost_price = data_dict.get('cost_price', 0)
-        selling_price = data_dict.get('selling_price')
+        purchase_cost = to_decimal(data_dict.get('purchase_cost', 0))
+        cost_price = to_decimal(data_dict.get('cost_price', 0))
+        selling_price = to_decimal(data_dict.get('selling_price'))
         location = data_dict.get('location', '')
         supplier = data_dict.get('supplier', '')
         company_id = data_dict.get('company_id')
+        is_active = to_boolean(data_dict.get('is_active', True))
 
         if not all([code, name, product_type, selling_price]):
             return JsonResponse({'error': '必填字段不能为空'}, status=400)
@@ -1074,11 +1101,11 @@ def create_product(request):
         with transaction.atomic():
             # 计算单颗成本（仅对串珠有效）
             if product_type == ProductType.BEAD:
-                weight = Decimal(str(data_dict.get('weight', 0)))
-                cost_price = Decimal(str(purchase_cost)) * weight
+                weight = to_decimal(data_dict.get('weight', 0))
+                cost_price = purchase_cost * weight
             else:
                 # 配件和成品直接使用传入的 cost_price
-                cost_price = data_dict.get('cost_price', 0)
+                cost_price = to_decimal(data_dict.get('cost_price', 0))
             
             product = Product.objects.create(
                 code=code,
@@ -1091,39 +1118,24 @@ def create_product(request):
                 supplier=supplier,
                 company=company,
                 image=image,
+                is_active=is_active,
                 created_by=current_user
             )
 
             # 创建串珠、配件或成品
             if product_type == ProductType.BEAD:
-                size_value = data_dict.get('size')
-                if size_value == '' or size_value is None:
-                    size_value = None
-                else:
-                    try:
-                        size_value = int(size_value)
-                    except (ValueError, TypeError):
-                        size_value = None
-                
+                size_value = to_integer(data_dict.get('size'))
                 Bead.objects.create(
                     product=product,
                     material=data_dict.get('material', ''),
                     size=size_value,
                     color=data_dict.get('color', ''),
-                    weight=data_dict.get('weight', 0),
-                    quality_level=data_dict.get('quality_level', 5),
+                    weight=to_decimal(data_dict.get('weight', 0)),
+                    quality_level=to_integer(data_dict.get('quality_level', 5)),
                     remark=data_dict.get('remark', '')
                 )
             elif product_type == ProductType.ACCESSORY:
-                size_value = data_dict.get('size')
-                if size_value == '' or size_value is None:
-                    size_value = None
-                else:
-                    try:
-                        size_value = int(size_value)
-                    except (ValueError, TypeError):
-                        size_value = None
-                
+                size_value = to_integer(data_dict.get('size'))
                 Accessory.objects.create(
                     product=product,
                     material=data_dict.get('material', ''),
@@ -1133,8 +1145,8 @@ def create_product(request):
             elif product_type == ProductType.FINISHED:
                 finished = FinishedProduct.objects.create(
                     product=product,
-                    labor_cost=data_dict.get('labor_cost', 0),
-                    elastic_cost=data_dict.get('elastic_cost', 0)
+                    labor_cost=to_decimal(data_dict.get('labor_cost', 0)),
+                    elastic_cost=to_decimal(data_dict.get('elastic_cost', 0))
                 )
                 # 添加串珠组成
                 beads = data_dict.get('beads', [])
@@ -1149,7 +1161,7 @@ def create_product(request):
                         FinishedProductBead.objects.create(
                             finished_product=finished,
                             bead=bead,
-                            quantity=bead_data['quantity']
+                            quantity=to_integer(bead_data['quantity'], 1)
                         )
                     except (Product.DoesNotExist, Bead.DoesNotExist):
                         pass
@@ -1166,7 +1178,7 @@ def create_product(request):
                         FinishedProductAccessory.objects.create(
                             finished_product=finished,
                             accessory=accessory,
-                            quantity=acc['quantity']
+                            quantity=to_integer(acc['quantity'], 1)
                         )
                     except (Product.DoesNotExist, Accessory.DoesNotExist):
                         pass
@@ -1262,20 +1274,46 @@ def update_product(request, product_id):
             image = None
             remove_image = data_dict.get('remove_image', False)
 
+        # 辅助函数：安全转换为 Decimal
+        def to_decimal(value, default=0):
+            if value is None or value == '':
+                return Decimal(str(default))
+            try:
+                return Decimal(str(value))
+            except (ValueError, TypeError):
+                return Decimal(str(default))
+
+        # 辅助函数：安全转换为整数
+        def to_integer(value, default=None):
+            if value is None or value == '':
+                return default
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return default
+
+        # 辅助函数：安全转换为布尔值
+        def to_boolean(value, default=False):
+            if isinstance(value, bool):
+                return value
+            if value is None or value == '':
+                return default
+            return str(value).lower() in ['true', '1', 'yes', 'on']
+
         # 更新商品基本信息
         if 'name' in data_dict:
             product.name = data_dict['name']
 
         if 'purchase_cost' in data_dict:
-            product.purchase_cost = data_dict['purchase_cost']
+            product.purchase_cost = to_decimal(data_dict['purchase_cost'])
 
         if 'cost_price' in data_dict:
             # 对串珠不直接更新 cost_price，会在后面根据 weight 和 purchase_cost 计算
             if product.product_type != ProductType.BEAD:
-                product.cost_price = data_dict['cost_price']
+                product.cost_price = to_decimal(data_dict['cost_price'])
 
         if 'selling_price' in data_dict:
-            product.selling_price = data_dict['selling_price']
+            product.selling_price = to_decimal(data_dict['selling_price'])
 
         if 'location' in data_dict:
             product.location = data_dict['location']
@@ -1284,7 +1322,7 @@ def update_product(request, product_id):
             product.supplier = data_dict['supplier']
 
         if 'is_active' in data_dict:
-            product.is_active = data_dict['is_active']
+            product.is_active = to_boolean(data_dict['is_active'])
 
         # 处理图片
         use_remove_image = remove_image_val if request.content_type and 'multipart/form-data' in request.content_type else remove_image
@@ -1306,27 +1344,20 @@ def update_product(request, product_id):
                 if 'material' in data_dict:
                     bead.material = data_dict['material']
                 if 'size' in data_dict:
-                    size_value = data_dict['size']
-                    if size_value == '' or size_value is None:
-                        size_value = None
-                    else:
-                        try:
-                            size_value = int(size_value)
-                        except (ValueError, TypeError):
-                            size_value = None
+                    size_value = to_integer(data_dict['size'])
                     bead.size = size_value
                 if 'color' in data_dict:
                     bead.color = data_dict['color']
                 if 'weight' in data_dict:
-                    bead.weight = data_dict['weight']
+                    bead.weight = to_decimal(data_dict['weight'])
                 if 'quality_level' in data_dict:
-                    bead.quality_level = data_dict['quality_level']
+                    bead.quality_level = to_integer(data_dict['quality_level'])
                 if 'remark' in data_dict:
                     bead.remark = data_dict['remark']
                 bead.save()
                 
                 # 重新计算单颗成本
-                weight = Decimal(str(bead.weight))
+                weight = bead.weight
                 product.cost_price = product.purchase_cost * weight
                 product.save()
             except Bead.DoesNotExist:
@@ -1337,14 +1368,7 @@ def update_product(request, product_id):
                 if 'material' in data_dict:
                     accessory.material = data_dict['material']
                 if 'size' in data_dict:
-                    size_value = data_dict['size']
-                    if size_value == '' or size_value is None:
-                        size_value = None
-                    else:
-                        try:
-                            size_value = int(size_value)
-                        except (ValueError, TypeError):
-                            size_value = None
+                    size_value = to_integer(data_dict['size'])
                     accessory.size = size_value
                 if 'color' in data_dict:
                     accessory.color = data_dict['color']
@@ -1356,9 +1380,9 @@ def update_product(request, product_id):
                 finished = FinishedProduct.objects.get(product=product)
                 # 更新工费和弹性成本
                 if 'labor_cost' in data_dict:
-                    finished.labor_cost = data_dict['labor_cost']
+                    finished.labor_cost = to_decimal(data_dict['labor_cost'])
                 if 'elastic_cost' in data_dict:
-                    finished.elastic_cost = data_dict['elastic_cost']
+                    finished.elastic_cost = to_decimal(data_dict['elastic_cost'])
                 finished.save()
 
                 # 更新串珠组成
@@ -1378,7 +1402,7 @@ def update_product(request, product_id):
                             FinishedProductBead.objects.create(
                                 finished_product=finished,
                                 bead=bead,
-                                quantity=bead_data['quantity']
+                                quantity=to_integer(bead_data['quantity'], 1)
                             )
                         except (Product.DoesNotExist, Bead.DoesNotExist):
                             pass
@@ -1400,7 +1424,7 @@ def update_product(request, product_id):
                             FinishedProductAccessory.objects.create(
                                 finished_product=finished,
                                 accessory=accessory,
-                                quantity=acc['quantity']
+                                quantity=to_integer(acc['quantity'], 1)
                             )
                         except (Product.DoesNotExist, Accessory.DoesNotExist):
                             pass
