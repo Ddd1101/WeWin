@@ -166,7 +166,7 @@
       <!-- 串珠显示采购成本和单颗成本 -->
       <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="采购成本(元/克)" width="130">
         <template #default="scope">
-          ¥{{ scope.row.purchase_cost?.toFixed(4) || '-' }}
+          ¥{{ scope.row.purchase_cost?.toFixed(2) || '-' }}
         </template>
       </el-table-column>
       <el-table-column label="成本价格" width="100">
