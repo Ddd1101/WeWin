@@ -968,6 +968,45 @@ def get_product_types(request):
 
 
 @require_http_methods(['GET'])
+def get_product_stats(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            products = Product.objects.all()
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]:
+            products = Product.objects.filter(company=current_user.company) if current_user.company else Product.objects.none()
+        else:
+            products = Product.objects.none()
+
+        active_products = products.filter(is_active=True)
+        stats = {
+            'total_count': products.count(),
+            'active_count': active_products.count(),
+            'bead_count': products.filter(product_type=ProductType.BEAD).count(),
+            'accessory_count': products.filter(product_type=ProductType.ACCESSORY).count(),
+            'finished_count': products.filter(product_type=ProductType.FINISHED).count(),
+            'sku_count': ProductSku.objects.filter(product__in=products).count() if sku_schema_ready() else 0,
+        }
+        return JsonResponse({'product_stats': stats})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
 def get_products(request):
     try:
         auth_header = request.headers.get('Authorization')

@@ -15,14 +15,15 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card class="stat-card">
+        <el-card class="stat-card" v-loading="productStatsLoading">
           <div class="stat-content">
             <div class="stat-icon" style="background: #67C23A">
               <el-icon :size="30"><Box /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">2,580</div>
+              <div class="stat-value">{{ productStats.total_count }}</div>
               <div class="stat-label">商品总数</div>
+              <div class="stat-extra">串珠 {{ productStats.bead_count }} / 配件 {{ productStats.accessory_count }} / 成品 {{ productStats.finished_count }}</div>
             </div>
           </div>
         </el-card>
@@ -81,11 +82,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
+import { getProductStats } from '@/api'
 
 const salesChartRef = ref(null)
 const categoryChartRef = ref(null)
+const productStatsLoading = ref(false)
+const productStats = reactive({
+  total_count: 0,
+  active_count: 0,
+  bead_count: 0,
+  accessory_count: 0,
+  finished_count: 0,
+  sku_count: 0
+})
 let salesChart = null
 let categoryChart = null
 
@@ -155,7 +166,20 @@ const handleResize = () => {
   categoryChart && categoryChart.resize()
 }
 
+const fetchProductStats = async () => {
+  productStatsLoading.value = true
+  try {
+    const response = await getProductStats()
+    Object.assign(productStats, response.data.product_stats || {})
+  } catch (error) {
+    console.error('获取商品统计失败', error?.response?.data || error)
+  } finally {
+    productStatsLoading.value = false
+  }
+}
+
 onMounted(() => {
+  fetchProductStats()
   initSalesChart()
   initCategoryChart()
   window.addEventListener('resize', handleResize)
@@ -198,6 +222,12 @@ onUnmounted(() => {
   font-size: 14px;
   color: #999;
   margin-top: 5px;
+}
+.stat-extra {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
 }
 .card-header {
   display: flex;

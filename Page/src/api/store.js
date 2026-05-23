@@ -66,6 +66,10 @@ export const getProducts = (params = {}) => {
   return storeApi.get("/products/", { params });
 };
 
+export const getProductStats = () => {
+  return storeApi.get("/products/stats/");
+};
+
 export const createProduct = (data) => {
   // 如果数据包含图片文件，则使用 FormData
   if (data.image) {
