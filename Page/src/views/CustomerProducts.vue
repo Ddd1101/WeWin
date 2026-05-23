@@ -251,16 +251,6 @@
           <span class="price">¥{{ currentProduct.price.toFixed(2) }}</span>
         </div>
       </div>
-      <!-- 报价趋势图 -->
-      <div class="chart-section" v-if="priceHistories.length > 0">
-        <div class="chart-header">
-          <div class="chart-title">
-            <el-icon><TrendCharts /></el-icon>
-            价格趋势（最近 {{ priceHistories.length > 10 ? 10 : priceHistories.length }} 次）
-          </div>
-        </div>
-        <div ref="priceChartRef" class="price-chart"></div>
-      </div>
       <!-- 历史列表区域 -->
       <div class="history-list-header">
         <div class="history-list-title">
@@ -347,6 +337,16 @@
           </div>
         </div>
         <el-empty v-else description="暂无报价历史" class="empty-history" />
+      </div>
+      <!-- 报价趋势图 -->
+      <div class="chart-section" v-if="priceHistories.length > 0">
+        <div class="chart-header">
+          <div class="chart-title">
+            <el-icon><TrendCharts /></el-icon>
+            价格趋势（最近 {{ priceHistories.length > 10 ? 10 : priceHistories.length }} 次）
+          </div>
+        </div>
+        <div ref="priceChartRef" class="price-chart"></div>
       </div>
       <template #footer>
         <el-button @click="priceHistoryDialogVisible = false" size="large">关闭</el-button>
