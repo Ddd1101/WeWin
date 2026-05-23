@@ -2,7 +2,7 @@ import sqlite3
 import os
 
 # 数据库路径
-db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db.sqlite3')
+db_path = os.path.join(os.path.dirname(__file__), 'db.sqlite3')
 print(f"Database path: {db_path}")
 print(f"Database exists: {os.path.exists(db_path)}")
 

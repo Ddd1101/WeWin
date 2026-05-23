@@ -2,7 +2,7 @@ import sqlite3
 import os
 
 # 获取数据库路径
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.join(BASE_DIR, 'db.sqlite3')
 
 print(f"Database path: {db_path}")
