@@ -90,7 +90,7 @@ export const createProduct = (data) => {
 
 export const updateProduct = (id, data) => {
   // 如果数据包含图片文件或删除图片请求，则使用 FormData
-  if (data.image || data.remove_image) {
+  if (data.image || data.remove_image || data.beads || data.accessories || data.skus) {
     const formData = new FormData();
     for (const key in data) {
       if (data[key] !== undefined && data[key] !== null) {

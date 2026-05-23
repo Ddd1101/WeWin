@@ -4,6 +4,7 @@ from django.views.decorators.http import require_http_methods
 from django.db import transaction
 from django.utils import timezone
 import json
+import traceback
 import jwt
 from django.conf import settings
 from datetime import datetime, timedelta
@@ -1066,32 +1067,32 @@ def get_products(request):
                         'elastic_cost': float(finished.elastic_cost)
                     }
                     # 获取成品的串珠组成
-                    for fpb in FinishedProductBead.objects.raw('SELECT id, finished_product_id, bead_id, quantity, created_at FROM finished_product_bead WHERE finished_product_id = %s', [finished.product_id]):
+                    for fpb in FinishedProductBead.objects.raw('SELECT id, finished_product_id, bead_id, quantity, created_at, sku_id FROM finished_product_bead WHERE finished_product_id = %s', [finished.product_id]):
                         bead_product = fpb.bead.product
                         bead = fpb.bead
                         product_data['finished']['beads'].append({
                             'bead_id': bead_product.id,
-                            'sku_id': None,
-                            'sku': None,
+                            'sku_id': getattr(fpb, 'sku_id', None),
+                            'sku': sku_to_dict(fpb.sku) if getattr(fpb, 'sku_id', None) else None,
                             'bead_code': bead_product.code,
                             'bead_name': bead_product.name,
-                            'bead_cost_price': float(bead_product.cost_price),
+                            'bead_cost_price': float((fpb.sku.cost_price if getattr(fpb, 'sku_id', None) else bead_product.cost_price)),
                             'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
                             'quantity': fpb.quantity,
-                            'bead_weight': float(bead.weight),
-                            'bead_quality_level': bead.quality_level,
-                            'bead_remark': bead.remark
+                            'bead_weight': float((fpb.sku.weight if getattr(fpb, 'sku_id', None) else bead.weight)),
+                            'bead_quality_level': (fpb.sku.quality_level if getattr(fpb, 'sku_id', None) else bead.quality_level),
+                            'bead_remark': (fpb.sku.remark if getattr(fpb, 'sku_id', None) else bead.remark)
                         })
                     # 获取成品的配件组成
-                    for fpa in FinishedProductAccessory.objects.raw('SELECT id, finished_product_id, accessory_id, quantity, created_at FROM finished_product_accessory WHERE finished_product_id = %s', [finished.product_id]):
+                    for fpa in FinishedProductAccessory.objects.raw('SELECT id, finished_product_id, accessory_id, quantity, created_at, sku_id FROM finished_product_accessory WHERE finished_product_id = %s', [finished.product_id]):
                         acc_product = fpa.accessory.product
                         product_data['finished']['accessories'].append({
                             'accessory_id': acc_product.id,
-                            'sku_id': None,
-                            'sku': None,
+                            'sku_id': getattr(fpa, 'sku_id', None),
+                            'sku': sku_to_dict(fpa.sku) if getattr(fpa, 'sku_id', None) else None,
                             'accessory_code': acc_product.code,
                             'accessory_name': acc_product.name,
-                            'accessory_cost_price': float(acc_product.cost_price),
+                            'accessory_cost_price': float((fpa.sku.cost_price if getattr(fpa, 'sku_id', None) else acc_product.cost_price)),
                             'accessory_image_url': request.build_absolute_uri(acc_product.image.url) if acc_product.image else None,
                             'quantity': fpa.quantity
                         })
@@ -1401,6 +1402,7 @@ def update_product(request, product_id):
         data_dict = {}
         image = None
         remove_image = False
+        remove_image_val = False
         
         if request.content_type and 'multipart/form-data' in request.content_type:
             # 从 POST 中获取普通字段数据
@@ -1633,7 +1635,8 @@ def update_product(request, product_id):
     except Product.DoesNotExist:
         return JsonResponse({'error': '商品不存在'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        traceback.print_exc()
+        return JsonResponse({'error': str(e), 'trace': traceback.format_exc()[-2000:]}, status=500)
 
 
 @csrf_exempt
@@ -1760,28 +1763,36 @@ def get_product_detail(request, product_id):
                     'elastic_cost': float(finished.elastic_cost)
                 }
                 # 获取成品的串珠组成
-                for fpb in FinishedProductBead.objects.raw('SELECT id, finished_product_id, bead_id, quantity, created_at FROM finished_product_bead WHERE finished_product_id = %s', [finished.product_id]):
+                for fpb in FinishedProductBead.objects.raw('SELECT id, finished_product_id, bead_id, quantity, created_at, sku_id FROM finished_product_bead WHERE finished_product_id = %s', [finished.product_id]):
                     bead_product = fpb.bead.product
                     bead = fpb.bead
+                    sku = fpb.sku if getattr(fpb, 'sku_id', None) else get_default_sku(bead_product)
+                    sku_payload = sku_to_dict(sku) if sku else None
                     product_data['finished']['beads'].append({
                         'bead_id': bead_product.id,
+                        'sku_id': sku.id if sku else None,
+                        'sku': sku_payload,
                         'bead_code': bead_product.code,
                         'bead_name': bead_product.name,
-                        'bead_cost_price': float(bead_product.cost_price),
+                        'bead_cost_price': float((sku.cost_price if sku else bead_product.cost_price)),
                         'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
                         'quantity': fpb.quantity,
-                        'bead_weight': float(bead.weight),
-                        'bead_quality_level': bead.quality_level,
-                        'bead_remark': bead.remark
+                        'bead_weight': float((sku.weight if sku else bead.weight)),
+                        'bead_quality_level': (sku.quality_level if sku else bead.quality_level),
+                        'bead_remark': (sku.remark if sku else bead.remark)
                     })
                 # 获取成品的配件组成
-                for fpa in FinishedProductAccessory.objects.raw('SELECT id, finished_product_id, accessory_id, quantity, created_at FROM finished_product_accessory WHERE finished_product_id = %s', [finished.product_id]):
+                for fpa in FinishedProductAccessory.objects.raw('SELECT id, finished_product_id, accessory_id, quantity, created_at, sku_id FROM finished_product_accessory WHERE finished_product_id = %s', [finished.product_id]):
                     acc_product = fpa.accessory.product
+                    sku = fpa.sku if getattr(fpa, 'sku_id', None) else get_default_sku(acc_product)
+                    sku_payload = sku_to_dict(sku) if sku else None
                     product_data['finished']['accessories'].append({
                         'accessory_id': acc_product.id,
+                        'sku_id': sku.id if sku else None,
+                        'sku': sku_payload,
                         'accessory_code': acc_product.code,
                         'accessory_name': acc_product.name,
-                        'accessory_cost_price': float(acc_product.cost_price),
+                        'accessory_cost_price': float((sku.cost_price if sku else acc_product.cost_price)),
                         'accessory_image_url': request.build_absolute_uri(acc_product.image.url) if acc_product.image else None,
                         'quantity': fpa.quantity
                     })

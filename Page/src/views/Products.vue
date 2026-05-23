@@ -893,7 +893,7 @@ const fetchProductTypes = async () => {
     productTypes.value = response.data.product_types
   } catch (error) {
     ElMessage.error('获取商品类型失败')
-    console.error(error)
+    console.error(error?.response?.data || error)
   }
 }
 
@@ -1089,11 +1089,28 @@ const handleEditProduct = async (row) => {
       remark: product.bead?.remark || '',
       beads: (product.finished?.beads || []).map(bead => ({
         ...bead,
+        sku: bead.sku || {
+          sku_name: bead.sku_name || '',
+          name: bead.sku_name || '',
+          size: bead.bead_size || bead.size,
+          weight: bead.bead_weight,
+          quality_level: bead.bead_quality_level,
+          remark: bead.bead_remark,
+          cost_price: bead.bead_cost_price
+        },
+        sku_id: bead.sku_id,
         cost_price: bead.bead_cost_price,
         image_url: bead.bead_image_url
       })),
       accessories: (product.finished?.accessories || []).map(acc => ({
         ...acc,
+        sku: acc.sku || {
+          sku_name: acc.sku_name || '',
+          name: acc.sku_name || '',
+          size: acc.accessory_size || acc.size,
+          cost_price: acc.accessory_cost_price
+        },
+        sku_id: acc.sku_id,
         cost_price: acc.accessory_cost_price,
         image_url: acc.accessory_image_url
       })),
@@ -1316,8 +1333,8 @@ const handleSubmit = async () => {
         dialogVisible.value = false
         fetchProducts()
       } catch (error) {
-        ElMessage.error('操作失败')
-        console.error(error)
+        ElMessage.error(error?.response?.data?.error || '操作失败')
+        console.error(error?.response?.data || error)
       } finally {
         submitLoading.value = false
       }
