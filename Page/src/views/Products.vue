@@ -463,10 +463,14 @@
               <div v-for="(bead, index) in form.beads" :key="index" class="item-card">
                 <div class="item-main">
                   <div class="selected-item-image-wrapper">
-                    <img
+                    <el-image
                       v-if="bead.image_url || bead.bead_image_url"
                       :src="bead.image_url || bead.bead_image_url"
                       class="selected-item-image"
+                      fit="cover"
+                      :preview-src-list="[bead.image_url || bead.bead_image_url]"
+                      :initial-index="0"
+                      preview-teleported
                       :alt="bead.bead_name"
                     />
                     <div v-else class="selected-item-no-image">
@@ -517,10 +521,14 @@
               <div v-for="(acc, index) in form.accessories" :key="index" class="item-card">
                 <div class="item-main">
                   <div class="selected-item-image-wrapper">
-                    <img
+                    <el-image
                       v-if="acc.image_url || acc.accessory_image_url"
                       :src="acc.image_url || acc.accessory_image_url"
                       class="selected-item-image"
+                      fit="cover"
+                      :preview-src-list="[acc.image_url || acc.accessory_image_url]"
+                      :initial-index="0"
+                      preview-teleported
                       :alt="acc.accessory_name"
                     />
                     <div v-else class="selected-item-no-image">
@@ -1644,8 +1652,12 @@ onMounted(() => {
 .selected-item-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
   display: block;
+  cursor: zoom-in;
+}
+
+.selected-item-image :deep(img) {
+  object-fit: cover;
 }
 
 .selected-item-no-image {

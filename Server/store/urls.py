@@ -17,6 +17,7 @@ urlpatterns = [
     
     # 商品相关路由
     path('products/types/', views.get_product_types, name='get-product-types'),
+    path('products/stats/', views.get_product_stats, name='get-product-stats'),
     path('products/', views.get_products, name='get-products'),
     path('products/create/', views.create_product, name='create-product'),
     path('products/<int:product_id>/update/', views.update_product, name='update-product'),
