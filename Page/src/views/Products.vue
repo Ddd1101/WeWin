@@ -131,7 +131,7 @@
         <el-row :gutter="20">
           <!-- SKU商品的采购/成本在SKU中维护 -->
           <el-col v-if="false && form.product_type === 'bead'" :span="12">
-            <el-form-item label="采购成本" prop="purchase_cost">
+            <el-form-item label="采购成本(元/克)" prop="purchase_cost">
               <div class="purchase-cost-container">
                 <el-input-number 
                   v-model="form.purchase_cost" 
@@ -341,29 +341,86 @@
             <el-icon><Plus /></el-icon> 添加SKU
           </el-button>
           <div v-for="(sku, index) in form.skus" :key="index" class="sku-card">
-            <el-row :gutter="12">
-              <el-col :span="6"><el-input v-model="sku.sku_code" placeholder="SKU编码" /></el-col>
-              <el-col :span="6"><el-input v-model="sku.sku_name" placeholder="SKU名称" /></el-col>
-              <el-col :span="4"><el-input-number v-model="sku.size" :min="0" :precision="0" placeholder="规格" style="width:100%" /></el-col>
-              <el-col :span="4"><el-input-number v-model="sku.cost_price" :min="0" :precision="2" placeholder="单颗/件成本" style="width:100%" /></el-col>
-              <el-col :span="4" class="sku-actions">
-                <el-switch v-model="sku.is_default" active-text="默认" @change="() => setDefaultSku(index)" />
-                <el-button type="danger" text @click="removeSku(index)"><el-icon><Delete /></el-icon></el-button>
-              </el-col>
-            </el-row>
-            <el-row :gutter="12" style="margin-top: 10px">
-              <el-col :span="5"><el-input v-model="sku.material" placeholder="材质" /></el-col>
-              <el-col :span="5"><el-input v-model="sku.color" placeholder="颜色" /></el-col>
-              <el-col :span="5"><el-input-number v-model="sku.purchase_cost" :min="0" :precision="4" placeholder="采购成本" style="width:100%" /></el-col>
-              <el-col :span="5"><el-input-number v-model="sku.weight" :min="0" :precision="3" placeholder="克重" style="width:100%" /></el-col>
-              <el-col :span="4"><el-input-number v-model="sku.quality_level" :min="1" :max="10" :precision="0" placeholder="品质" style="width:100%" /></el-col>
-            </el-row>
-            <el-row :gutter="12" style="margin-top: 10px">
-              <el-col :span="6"><el-input-number v-model="sku.selling_price" :min="0" :precision="2" placeholder="售价" style="width:100%" /></el-col>
-              <el-col :span="6"><el-input v-model="sku.location" placeholder="库位" /></el-col>
-              <el-col :span="6"><el-input v-model="sku.supplier" placeholder="供应商" /></el-col>
-              <el-col :span="6"><el-input v-model="sku.remark" placeholder="备注" /></el-col>
-            </el-row>
+            <div class="sku-card-header">
+              <div class="sku-title">
+                <span>SKU {{ index + 1 }}</span>
+                <el-tag v-if="sku.is_default" type="success" size="small">默认</el-tag>
+              </div>
+              <div class="sku-actions">
+                <el-button size="small" :type="sku.is_default ? 'success' : 'default'" @click="setDefaultSku(index)">
+                  设为默认
+                </el-button>
+                <el-button size="small" type="danger" plain @click="removeSku(index)">
+                  <el-icon><Delete /></el-icon>
+                  删除
+                </el-button>
+              </div>
+            </div>
+
+            <div class="sku-grid">
+              <div class="sku-field span-2">
+                <label>SKU编码</label>
+                <el-input v-model="sku.sku_code" placeholder="如：PJ001-4MM-A" clearable />
+              </div>
+              <div class="sku-field span-2">
+                <label>SKU名称</label>
+                <el-input v-model="sku.sku_name" placeholder="如：4mm A级 / 银色小配件" clearable />
+              </div>
+              <div class="sku-field">
+                <label>规格(mm)</label>
+                <el-input-number v-model="sku.size" :min="0" :precision="0" controls-position="right" style="width:100%" />
+              </div>
+              <div class="sku-field">
+                <label>品质等级</label>
+                <el-input-number v-model="sku.quality_level" :min="1" :max="10" :precision="0" controls-position="right" style="width:100%" />
+              </div>
+
+              <div v-if="form.product_type === 'bead'" class="sku-field">
+                <label>采购成本(元/克)</label>
+                <el-input-number v-model="sku.purchase_cost" :min="0" :precision="2" controls-position="right" style="width:100%" />
+              </div>
+              <div class="sku-field">
+                <label>{{ form.product_type === 'bead' ? '单颗成本(自动)' : '单件成本' }}</label>
+                <el-input-number
+                  v-model="sku.cost_price"
+                  :min="0"
+                  :precision="2"
+                  controls-position="right"
+                  :disabled="form.product_type === 'bead'"
+                  style="width:100%"
+                />
+              </div>
+              <div class="sku-field" v-if="form.product_type === 'bead'">
+                <label>单颗克重(g)</label>
+                <el-input-number v-model="sku.weight" :min="0" :precision="3" controls-position="right" style="width:100%" />
+              </div>
+              <div class="sku-field">
+                <label>售卖价格</label>
+                <el-input-number v-model="sku.selling_price" :min="0" :precision="2" controls-position="right" style="width:100%" />
+              </div>
+
+              <div class="sku-field">
+                <label>材质</label>
+                <el-input v-model="sku.material" placeholder="材质" clearable />
+              </div>
+              <div class="sku-field">
+                <label>颜色</label>
+                <el-input v-model="sku.color" placeholder="颜色" clearable />
+              </div>
+              <div class="sku-field">
+                <label>库位</label>
+                <el-input v-model="sku.location" placeholder="库位" clearable />
+              </div>
+              <div class="sku-field">
+                <label>供应商</label>
+                <el-input v-model="sku.supplier" placeholder="供应商" clearable />
+              </div>
+
+              <div class="sku-field span-full">
+                <label>备注</label>
+                <el-input v-model="sku.remark" type="textarea" :rows="2" placeholder="填写该SKU的特殊说明" />
+              </div>
+            </div>
           </div>
         </template>
 
@@ -885,6 +942,20 @@ watch([
     form.cost_price = totalCost.value
   }
 }, { deep: true, immediate: true })
+
+// 串珠 SKU 单颗成本 = 采购成本(元/克) × 单颗克重
+watch(
+  () => form.skus,
+  (skus) => {
+    if (form.product_type !== 'bead') return
+    skus.forEach((sku) => {
+      const purchaseCost = Number(sku.purchase_cost) || 0
+      const weight = Number(sku.weight) || 0
+      sku.cost_price = Number((purchaseCost * weight).toFixed(2))
+    })
+  },
+  { deep: true, immediate: true }
+)
 
 // 获取商品类型
 const fetchProductTypes = async () => {
@@ -1992,16 +2063,75 @@ onMounted(() => {
   }
 }
 .sku-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 12px;
-  background: #f8fafc;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
 }
+
+.sku-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.sku-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #334155;
+}
+
 .sku-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sku-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.sku-field {
+  min-width: 0;
+}
+
+.sku-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1;
+}
+
+.sku-field.span-2 {
+  grid-column: span 2;
+}
+
+.sku-field.span-full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .sku-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sku-field.span-2 {
+    grid-column: 1 / -1;
+  }
 }
 
 </style>
