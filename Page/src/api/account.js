@@ -51,7 +51,7 @@ export const changePassword = (data) => {
 };
 
 export const simpleRegister = (data) => {
-  return axios.post(`${API_BASE_URL}/api/account/simple-register/`, data);
+  return axios.post(`${API_BASE_URL}/api/account/register/`, data);
 };
 
 export const createAndBindCompany = (data) => {

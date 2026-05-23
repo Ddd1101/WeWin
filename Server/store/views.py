@@ -4,6 +4,7 @@ from django.views.decorators.http import require_http_methods
 from django.db import transaction
 from django.utils import timezone
 import json
+import traceback
 import jwt
 from django.conf import settings
 from datetime import datetime, timedelta
@@ -14,7 +15,7 @@ from company.models import Company
 from .models import (
     Store, Platform, Category, Order, OrderItem, OrderReceiver,
     PlatformApiConfig, DataPullTask, StoreDataConfig, DataPullStatus,
-    Product, ProductType, Bead, Accessory, FinishedProduct, FinishedProductBead, FinishedProductAccessory
+    Product, ProductType, ProductSku, Bead, Accessory, FinishedProduct, FinishedProductBead, FinishedProductAccessory
 )
 from .services import BaseDataPullService, Ali1688DataPullService
 
@@ -40,6 +41,120 @@ def calculate_finished_product_cost(finished):
     
     return total_cost
 
+
+
+def sku_to_dict(sku):
+    return {
+        'id': sku.id,
+        'sku_id': sku.id,
+        'sku_code': sku.sku_code,
+        'sku_name': sku.name,
+        'name': sku.name,
+        'material': sku.material,
+        'size': sku.size,
+        'color': sku.color,
+        'purchase_cost': float(sku.purchase_cost),
+        'cost_price': float(sku.cost_price),
+        'weight': float(sku.weight),
+        'quality_level': sku.quality_level,
+        'selling_price': float(getattr(sku, 'selling_price', 0)),
+        'location': getattr(sku, 'location', None),
+        'supplier': getattr(sku, 'supplier', None),
+        'remark': sku.remark,
+        'is_default': sku.is_default,
+        'is_active': sku.is_active,
+    }
+
+
+def get_default_sku(product):
+    return product.skus.filter(is_active=True, is_default=True).first() or product.skus.filter(is_active=True).first()
+
+
+def ensure_default_sku(product, detail_obj=None):
+    sku = get_default_sku(product)
+    if sku:
+        return sku
+    defaults = {
+        'sku_code': f'{product.code}-默认',
+        'name': '默认SKU',
+        'purchase_cost': product.purchase_cost,
+        'cost_price': product.cost_price,
+        'is_default': True,
+        'is_active': True,
+    }
+    if detail_obj:
+        for attr in ['material', 'size', 'color', 'weight', 'quality_level', 'remark']:
+            if hasattr(detail_obj, attr):
+                defaults[attr] = getattr(detail_obj, attr)
+    return ProductSku.objects.create(product=product, **defaults)
+
+
+def sync_skus(product, sku_items, to_decimal, to_integer, fallback_detail=None):
+    if sku_items is None:
+        return
+    existing_ids = set(product.skus.values_list('id', flat=True))
+    kept_ids = set()
+    first_active = None
+    default_sku = None
+    for idx, item in enumerate(sku_items):
+        sku_id = item.get('id') or item.get('sku_id')
+        sku = None
+        if sku_id:
+            try:
+                sku = ProductSku.objects.get(id=sku_id, product=product)
+            except ProductSku.DoesNotExist:
+                sku = None
+        if sku is None:
+            sku = ProductSku(product=product)
+        sku.sku_code = item.get('sku_code') or item.get('code') or sku.sku_code or f'{product.code}-SKU{idx + 1}'
+        sku.name = item.get('sku_name') or item.get('name') or sku.name or f'SKU{idx + 1}'
+        sku.material = item.get('material', '')
+        sku.size = to_integer(item.get('size'))
+        sku.color = item.get('color', '')
+        sku.purchase_cost = to_decimal(item.get('purchase_cost', product.purchase_cost))
+        sku.weight = to_decimal(item.get('weight', 0))
+        if product.product_type == ProductType.BEAD and (not item.get('cost_price')):
+            sku.cost_price = sku.purchase_cost * sku.weight
+        else:
+            sku.cost_price = to_decimal(item.get('cost_price', 0))
+        sku.quality_level = to_integer(item.get('quality_level', 5), 5)
+        sku.selling_price = to_decimal(item.get('selling_price', product.selling_price))
+        sku.location = item.get('location', product.location or '')
+        sku.supplier = item.get('supplier', product.supplier or '')
+        sku.remark = item.get('remark', '')
+        sku.is_default = bool(item.get('is_default', idx == 0))
+        sku.is_active = item.get('is_active', True) is not False
+        sku.save()
+        kept_ids.add(sku.id)
+        if first_active is None and sku.is_active:
+            first_active = sku
+        if sku.is_default:
+            default_sku = sku
+    product.skus.filter(id__in=(existing_ids - kept_ids)).delete()
+    if not default_sku and first_active:
+        first_active.is_default = True
+        first_active.save(update_fields=['is_default'])
+    product.skus.exclude(id=(default_sku or first_active).id if (default_sku or first_active) else None).update(is_default=False)
+
+
+def sku_schema_ready():
+    from django.db import connection
+    try:
+        tables = connection.introspection.table_names()
+        if 'product_sku' not in tables:
+            return False
+        with connection.cursor() as cursor:
+            bead_cols = {c.name for c in connection.introspection.get_table_description(cursor, 'finished_product_bead')}
+            acc_cols = {c.name for c in connection.introspection.get_table_description(cursor, 'finished_product_accessory')}
+        return 'sku_id' in bead_cols and 'sku_id' in acc_cols
+    except Exception:
+        return False
+
+
+def product_skus_payload(product):
+    if not sku_schema_ready():
+        return []
+    return [sku_to_dict(sku) for sku in product.skus.all()]
 
 SECRET_KEY = settings.SECRET_KEY
 
@@ -853,6 +968,45 @@ def get_product_types(request):
 
 
 @require_http_methods(['GET'])
+def get_product_stats(request):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            products = Product.objects.all()
+        elif current_user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]:
+            products = Product.objects.filter(company=current_user.company) if current_user.company else Product.objects.none()
+        else:
+            products = Product.objects.none()
+
+        active_products = products.filter(is_active=True)
+        stats = {
+            'total_count': products.count(),
+            'active_count': active_products.count(),
+            'bead_count': products.filter(product_type=ProductType.BEAD).count(),
+            'accessory_count': products.filter(product_type=ProductType.ACCESSORY).count(),
+            'finished_count': products.filter(product_type=ProductType.FINISHED).count(),
+            'sku_count': ProductSku.objects.filter(product__in=products).count() if sku_schema_ready() else 0,
+        }
+        return JsonResponse({'product_stats': stats})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
 def get_products(request):
     try:
         auth_header = request.headers.get('Authorization')
@@ -928,6 +1082,7 @@ def get_products(request):
                         'quality_level': bead.quality_level,
                         'remark': bead.remark
                     }
+                    product_data['skus'] = product_skus_payload(product)
                 except Bead.DoesNotExist:
                     pass
             elif product.product_type == ProductType.ACCESSORY:
@@ -938,6 +1093,7 @@ def get_products(request):
                         'size': accessory.size,
                         'color': accessory.color
                     }
+                    product_data['skus'] = product_skus_payload(product)
                 except Accessory.DoesNotExist:
                     pass
             elif product.product_type == ProductType.FINISHED:
@@ -950,28 +1106,32 @@ def get_products(request):
                         'elastic_cost': float(finished.elastic_cost)
                     }
                     # 获取成品的串珠组成
-                    for fpb in finished.beads.all():
+                    for fpb in FinishedProductBead.objects.raw('SELECT id, finished_product_id, bead_id, quantity, created_at, sku_id FROM finished_product_bead WHERE finished_product_id = %s', [finished.product_id]):
                         bead_product = fpb.bead.product
                         bead = fpb.bead
                         product_data['finished']['beads'].append({
                             'bead_id': bead_product.id,
+                            'sku_id': getattr(fpb, 'sku_id', None),
+                            'sku': sku_to_dict(fpb.sku) if getattr(fpb, 'sku_id', None) else None,
                             'bead_code': bead_product.code,
                             'bead_name': bead_product.name,
-                            'bead_cost_price': float(bead_product.cost_price),
+                            'bead_cost_price': float((fpb.sku.cost_price if getattr(fpb, 'sku_id', None) else bead_product.cost_price)),
                             'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
                             'quantity': fpb.quantity,
-                            'bead_weight': float(bead.weight),
-                            'bead_quality_level': bead.quality_level,
-                            'bead_remark': bead.remark
+                            'bead_weight': float((fpb.sku.weight if getattr(fpb, 'sku_id', None) else bead.weight)),
+                            'bead_quality_level': (fpb.sku.quality_level if getattr(fpb, 'sku_id', None) else bead.quality_level),
+                            'bead_remark': (fpb.sku.remark if getattr(fpb, 'sku_id', None) else bead.remark)
                         })
                     # 获取成品的配件组成
-                    for fpa in finished.accessories.all():
+                    for fpa in FinishedProductAccessory.objects.raw('SELECT id, finished_product_id, accessory_id, quantity, created_at, sku_id FROM finished_product_accessory WHERE finished_product_id = %s', [finished.product_id]):
                         acc_product = fpa.accessory.product
                         product_data['finished']['accessories'].append({
                             'accessory_id': acc_product.id,
+                            'sku_id': getattr(fpa, 'sku_id', None),
+                            'sku': sku_to_dict(fpa.sku) if getattr(fpa, 'sku_id', None) else None,
                             'accessory_code': acc_product.code,
                             'accessory_name': acc_product.name,
-                            'accessory_cost_price': float(acc_product.cost_price),
+                            'accessory_cost_price': float((fpa.sku.cost_price if getattr(fpa, 'sku_id', None) else acc_product.cost_price)),
                             'accessory_image_url': request.build_absolute_uri(acc_product.image.url) if acc_product.image else None,
                             'quantity': fpa.quantity
                         })
@@ -1038,22 +1198,54 @@ def create_product(request):
                     data_dict['accessories'] = json.loads(request.POST['accessories'])
                 except (json.JSONDecodeError, TypeError):
                     data_dict['accessories'] = []
+            if 'skus' in request.POST:
+                try:
+                    data_dict['skus'] = json.loads(request.POST['skus'])
+                except (json.JSONDecodeError, TypeError):
+                    data_dict['skus'] = []
             image = request.FILES.get('image')
         else:
             data_dict = json.loads(request.body)
             image = None
 
+        # 辅助函数：安全转换为 Decimal
+        def to_decimal(value, default=0):
+            if value is None or value == '':
+                return Decimal(str(default))
+            try:
+                return Decimal(str(value))
+            except (ValueError, TypeError):
+                return Decimal(str(default))
+
+        # 辅助函数：安全转换为整数
+        def to_integer(value, default=None):
+            if value is None or value == '':
+                return default
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return default
+
+        # 辅助函数：安全转换为布尔值
+        def to_boolean(value, default=False):
+            if isinstance(value, bool):
+                return value
+            if value is None or value == '':
+                return default
+            return str(value).lower() in ['true', '1', 'yes', 'on']
+
         code = data_dict.get('code')
         name = data_dict.get('name')
         product_type = data_dict.get('product_type')
-        purchase_cost = data_dict.get('purchase_cost', 0)
-        cost_price = data_dict.get('cost_price', 0)
-        selling_price = data_dict.get('selling_price')
+        purchase_cost = to_decimal(data_dict.get('purchase_cost', 0))
+        cost_price = to_decimal(data_dict.get('cost_price', 0))
+        selling_price = to_decimal(data_dict.get('selling_price', 0))
         location = data_dict.get('location', '')
         supplier = data_dict.get('supplier', '')
         company_id = data_dict.get('company_id')
+        is_active = to_boolean(data_dict.get('is_active', True))
 
-        if not all([code, name, product_type, selling_price]):
+        if not all([code, name, product_type]):
             return JsonResponse({'error': '必填字段不能为空'}, status=400)
 
         company = None
@@ -1074,11 +1266,11 @@ def create_product(request):
         with transaction.atomic():
             # 计算单颗成本（仅对串珠有效）
             if product_type == ProductType.BEAD:
-                weight = Decimal(str(data_dict.get('weight', 0)))
-                cost_price = Decimal(str(purchase_cost)) * weight
+                weight = to_decimal(data_dict.get('weight', 0))
+                cost_price = purchase_cost * weight
             else:
                 # 配件和成品直接使用传入的 cost_price
-                cost_price = data_dict.get('cost_price', 0)
+                cost_price = to_decimal(data_dict.get('cost_price', 0))
             
             product = Product.objects.create(
                 code=code,
@@ -1091,32 +1283,48 @@ def create_product(request):
                 supplier=supplier,
                 company=company,
                 image=image,
+                is_active=is_active,
                 created_by=current_user
             )
 
             # 创建串珠、配件或成品
             if product_type == ProductType.BEAD:
-                Bead.objects.create(
+                size_value = to_integer(data_dict.get('size'))
+                bead = Bead.objects.create(
                     product=product,
                     material=data_dict.get('material', ''),
-                    size=data_dict.get('size', ''),
+                    size=size_value,
                     color=data_dict.get('color', ''),
-                    weight=data_dict.get('weight', 0),
-                    quality_level=data_dict.get('quality_level', 5),
+                    weight=to_decimal(data_dict.get('weight', 0)),
+                    quality_level=to_integer(data_dict.get('quality_level', 5)),
                     remark=data_dict.get('remark', '')
                 )
+                if sku_schema_ready():
+                    sync_skus(product, data_dict.get('skus') or [{
+                        'sku_code': f'{code}-默认', 'name': '默认SKU', 'material': bead.material,
+                        'size': bead.size, 'color': bead.color, 'purchase_cost': product.purchase_cost,
+                        'cost_price': product.cost_price, 'weight': bead.weight,
+                        'quality_level': bead.quality_level, 'remark': bead.remark, 'is_default': True
+                    }], to_decimal, to_integer, bead)
             elif product_type == ProductType.ACCESSORY:
-                Accessory.objects.create(
+                size_value = to_integer(data_dict.get('size'))
+                accessory = Accessory.objects.create(
                     product=product,
                     material=data_dict.get('material', ''),
-                    size=data_dict.get('size', ''),
+                    size=size_value,
                     color=data_dict.get('color', '')
                 )
+                if sku_schema_ready():
+                    sync_skus(product, data_dict.get('skus') or [{
+                        'sku_code': f'{code}-默认', 'name': '默认SKU', 'material': accessory.material,
+                        'size': accessory.size, 'color': accessory.color, 'purchase_cost': product.purchase_cost,
+                        'cost_price': product.cost_price, 'is_default': True
+                    }], to_decimal, to_integer, accessory)
             elif product_type == ProductType.FINISHED:
                 finished = FinishedProduct.objects.create(
                     product=product,
-                    labor_cost=data_dict.get('labor_cost', 0),
-                    elastic_cost=data_dict.get('elastic_cost', 0)
+                    labor_cost=to_decimal(data_dict.get('labor_cost', 0)),
+                    elastic_cost=to_decimal(data_dict.get('elastic_cost', 0))
                 )
                 # 添加串珠组成
                 beads = data_dict.get('beads', [])
@@ -1128,11 +1336,17 @@ def create_product(request):
                             company=company
                         )
                         bead = Bead.objects.get(product=bead_product)
-                        FinishedProductBead.objects.create(
-                            finished_product=finished,
-                            bead=bead,
-                            quantity=bead_data['quantity']
-                        )
+                        if sku_schema_ready():
+                            sku = ProductSku.objects.filter(id=bead_data.get('sku_id'), product=bead_product).first() or ensure_default_sku(bead_product, bead)
+                            FinishedProductBead.objects.create(
+                                finished_product=finished, bead=bead, sku=sku,
+                                quantity=to_integer(bead_data['quantity'], 1)
+                            )
+                        else:
+                            FinishedProductBead.objects.create(
+                                finished_product=finished, bead=bead,
+                                quantity=to_integer(bead_data['quantity'], 1)
+                            )
                     except (Product.DoesNotExist, Bead.DoesNotExist):
                         pass
                 # 添加配件组成
@@ -1145,11 +1359,17 @@ def create_product(request):
                             company=company
                         )
                         accessory = Accessory.objects.get(product=accessory_product)
-                        FinishedProductAccessory.objects.create(
-                            finished_product=finished,
-                            accessory=accessory,
-                            quantity=acc['quantity']
-                        )
+                        if sku_schema_ready():
+                            sku = ProductSku.objects.filter(id=acc.get('sku_id'), product=accessory_product).first() or ensure_default_sku(accessory_product, accessory)
+                            FinishedProductAccessory.objects.create(
+                                finished_product=finished, accessory=accessory, sku=sku,
+                                quantity=to_integer(acc['quantity'], 1)
+                            )
+                        else:
+                            FinishedProductAccessory.objects.create(
+                                finished_product=finished, accessory=accessory,
+                                quantity=to_integer(acc['quantity'], 1)
+                            )
                     except (Product.DoesNotExist, Accessory.DoesNotExist):
                         pass
                 
@@ -1221,6 +1441,7 @@ def update_product(request, product_id):
         data_dict = {}
         image = None
         remove_image = False
+        remove_image_val = False
         
         if request.content_type and 'multipart/form-data' in request.content_type:
             # 从 POST 中获取普通字段数据
@@ -1237,6 +1458,11 @@ def update_product(request, product_id):
                     data_dict['accessories'] = json.loads(request.POST['accessories'])
                 except (json.JSONDecodeError, TypeError):
                     data_dict['accessories'] = []
+            if 'skus' in request.POST:
+                try:
+                    data_dict['skus'] = json.loads(request.POST['skus'])
+                except (json.JSONDecodeError, TypeError):
+                    data_dict['skus'] = []
             image = request.FILES.get('image')
             remove_image_val = request.POST.get('remove_image', 'false').lower() == 'true'
         else:
@@ -1244,20 +1470,46 @@ def update_product(request, product_id):
             image = None
             remove_image = data_dict.get('remove_image', False)
 
+        # 辅助函数：安全转换为 Decimal
+        def to_decimal(value, default=0):
+            if value is None or value == '':
+                return Decimal(str(default))
+            try:
+                return Decimal(str(value))
+            except (ValueError, TypeError):
+                return Decimal(str(default))
+
+        # 辅助函数：安全转换为整数
+        def to_integer(value, default=None):
+            if value is None or value == '':
+                return default
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return default
+
+        # 辅助函数：安全转换为布尔值
+        def to_boolean(value, default=False):
+            if isinstance(value, bool):
+                return value
+            if value is None or value == '':
+                return default
+            return str(value).lower() in ['true', '1', 'yes', 'on']
+
         # 更新商品基本信息
         if 'name' in data_dict:
             product.name = data_dict['name']
 
         if 'purchase_cost' in data_dict:
-            product.purchase_cost = data_dict['purchase_cost']
+            product.purchase_cost = to_decimal(data_dict['purchase_cost'])
 
         if 'cost_price' in data_dict:
             # 对串珠不直接更新 cost_price，会在后面根据 weight 和 purchase_cost 计算
             if product.product_type != ProductType.BEAD:
-                product.cost_price = data_dict['cost_price']
+                product.cost_price = to_decimal(data_dict['cost_price'])
 
         if 'selling_price' in data_dict:
-            product.selling_price = data_dict['selling_price']
+            product.selling_price = to_decimal(data_dict['selling_price'])
 
         if 'location' in data_dict:
             product.location = data_dict['location']
@@ -1266,7 +1518,7 @@ def update_product(request, product_id):
             product.supplier = data_dict['supplier']
 
         if 'is_active' in data_dict:
-            product.is_active = data_dict['is_active']
+            product.is_active = to_boolean(data_dict['is_active'])
 
         # 处理图片
         use_remove_image = remove_image_val if request.content_type and 'multipart/form-data' in request.content_type else remove_image
@@ -1288,19 +1540,27 @@ def update_product(request, product_id):
                 if 'material' in data_dict:
                     bead.material = data_dict['material']
                 if 'size' in data_dict:
-                    bead.size = data_dict['size']
+                    size_value = to_integer(data_dict['size'])
+                    bead.size = size_value
                 if 'color' in data_dict:
                     bead.color = data_dict['color']
                 if 'weight' in data_dict:
-                    bead.weight = data_dict['weight']
+                    bead.weight = to_decimal(data_dict['weight'])
                 if 'quality_level' in data_dict:
-                    bead.quality_level = data_dict['quality_level']
+                    bead.quality_level = to_integer(data_dict['quality_level'])
                 if 'remark' in data_dict:
                     bead.remark = data_dict['remark']
                 bead.save()
+                if sku_schema_ready():
+                    sync_skus(product, data_dict.get('skus') or [{
+                        'sku_code': f'{product.code}-默认', 'name': '默认SKU', 'material': bead.material,
+                        'size': bead.size, 'color': bead.color, 'purchase_cost': product.purchase_cost,
+                        'cost_price': product.purchase_cost * bead.weight, 'weight': bead.weight,
+                        'quality_level': bead.quality_level, 'remark': bead.remark, 'is_default': True
+                    }], to_decimal, to_integer, bead)
                 
                 # 重新计算单颗成本
-                weight = Decimal(str(bead.weight))
+                weight = bead.weight
                 product.cost_price = product.purchase_cost * weight
                 product.save()
             except Bead.DoesNotExist:
@@ -1311,10 +1571,17 @@ def update_product(request, product_id):
                 if 'material' in data_dict:
                     accessory.material = data_dict['material']
                 if 'size' in data_dict:
-                    accessory.size = data_dict['size']
+                    size_value = to_integer(data_dict['size'])
+                    accessory.size = size_value
                 if 'color' in data_dict:
                     accessory.color = data_dict['color']
                 accessory.save()
+                if sku_schema_ready():
+                    sync_skus(product, data_dict.get('skus') or [{
+                        'sku_code': f'{product.code}-默认', 'name': '默认SKU', 'material': accessory.material,
+                        'size': accessory.size, 'color': accessory.color, 'purchase_cost': product.purchase_cost,
+                        'cost_price': product.cost_price, 'is_default': True
+                    }], to_decimal, to_integer, accessory)
             except Accessory.DoesNotExist:
                 pass
         elif product.product_type == ProductType.FINISHED:
@@ -1322,9 +1589,9 @@ def update_product(request, product_id):
                 finished = FinishedProduct.objects.get(product=product)
                 # 更新工费和弹性成本
                 if 'labor_cost' in data_dict:
-                    finished.labor_cost = data_dict['labor_cost']
+                    finished.labor_cost = to_decimal(data_dict['labor_cost'])
                 if 'elastic_cost' in data_dict:
-                    finished.elastic_cost = data_dict['elastic_cost']
+                    finished.elastic_cost = to_decimal(data_dict['elastic_cost'])
                 finished.save()
 
                 # 更新串珠组成
@@ -1344,7 +1611,7 @@ def update_product(request, product_id):
                             FinishedProductBead.objects.create(
                                 finished_product=finished,
                                 bead=bead,
-                                quantity=bead_data['quantity']
+                                quantity=to_integer(bead_data['quantity'], 1)
                             )
                         except (Product.DoesNotExist, Bead.DoesNotExist):
                             pass
@@ -1366,7 +1633,7 @@ def update_product(request, product_id):
                             FinishedProductAccessory.objects.create(
                                 finished_product=finished,
                                 accessory=accessory,
-                                quantity=acc['quantity']
+                                quantity=to_integer(acc['quantity'], 1)
                             )
                         except (Product.DoesNotExist, Accessory.DoesNotExist):
                             pass
@@ -1407,7 +1674,8 @@ def update_product(request, product_id):
     except Product.DoesNotExist:
         return JsonResponse({'error': '商品不存在'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        traceback.print_exc()
+        return JsonResponse({'error': str(e), 'trace': traceback.format_exc()[-2000:]}, status=500)
 
 
 @csrf_exempt
@@ -1510,6 +1778,7 @@ def get_product_detail(request, product_id):
                     'quality_level': bead.quality_level,
                     'remark': bead.remark
                 }
+                product_data['skus'] = product_skus_payload(product)
             except Bead.DoesNotExist:
                 pass
         elif product.product_type == ProductType.ACCESSORY:
@@ -1520,6 +1789,7 @@ def get_product_detail(request, product_id):
                     'size': accessory.size,
                     'color': accessory.color
                 }
+                product_data['skus'] = product_skus_payload(product)
             except Accessory.DoesNotExist:
                 pass
         elif product.product_type == ProductType.FINISHED:
@@ -1532,28 +1802,36 @@ def get_product_detail(request, product_id):
                     'elastic_cost': float(finished.elastic_cost)
                 }
                 # 获取成品的串珠组成
-                for fpb in finished.beads.all():
+                for fpb in FinishedProductBead.objects.raw('SELECT id, finished_product_id, bead_id, quantity, created_at, sku_id FROM finished_product_bead WHERE finished_product_id = %s', [finished.product_id]):
                     bead_product = fpb.bead.product
                     bead = fpb.bead
+                    sku = fpb.sku if getattr(fpb, 'sku_id', None) else get_default_sku(bead_product)
+                    sku_payload = sku_to_dict(sku) if sku else None
                     product_data['finished']['beads'].append({
                         'bead_id': bead_product.id,
+                        'sku_id': sku.id if sku else None,
+                        'sku': sku_payload,
                         'bead_code': bead_product.code,
                         'bead_name': bead_product.name,
-                        'bead_cost_price': float(bead_product.cost_price),
+                        'bead_cost_price': float((sku.cost_price if sku else bead_product.cost_price)),
                         'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
                         'quantity': fpb.quantity,
-                        'bead_weight': float(bead.weight),
-                        'bead_quality_level': bead.quality_level,
-                        'bead_remark': bead.remark
+                        'bead_weight': float((sku.weight if sku else bead.weight)),
+                        'bead_quality_level': (sku.quality_level if sku else bead.quality_level),
+                        'bead_remark': (sku.remark if sku else bead.remark)
                     })
                 # 获取成品的配件组成
-                for fpa in finished.accessories.all():
+                for fpa in FinishedProductAccessory.objects.raw('SELECT id, finished_product_id, accessory_id, quantity, created_at, sku_id FROM finished_product_accessory WHERE finished_product_id = %s', [finished.product_id]):
                     acc_product = fpa.accessory.product
+                    sku = fpa.sku if getattr(fpa, 'sku_id', None) else get_default_sku(acc_product)
+                    sku_payload = sku_to_dict(sku) if sku else None
                     product_data['finished']['accessories'].append({
                         'accessory_id': acc_product.id,
+                        'sku_id': sku.id if sku else None,
+                        'sku': sku_payload,
                         'accessory_code': acc_product.code,
                         'accessory_name': acc_product.name,
-                        'accessory_cost_price': float(acc_product.cost_price),
+                        'accessory_cost_price': float((sku.cost_price if sku else acc_product.cost_price)),
                         'accessory_image_url': request.build_absolute_uri(acc_product.image.url) if acc_product.image else None,
                         'quantity': fpa.quantity
                     })
@@ -1605,7 +1883,9 @@ def get_accessories(request):
                 'supplier': product.supplier,
                 'material': accessory.material,
                 'size': accessory.size,
-                'color': accessory.color
+                'color': accessory.color,
+                'image_url': request.build_absolute_uri(product.image.url) if product.image else None,
+                'skus': product_skus_payload(product)
             })
 
         return JsonResponse({'accessories': accessory_list})
@@ -1654,11 +1934,41 @@ def get_beads(request):
                 'color': bead.color,
                 'weight': float(bead.weight),
                 'quality_level': bead.quality_level,
-                'remark': bead.remark
+                'remark': bead.remark,
+                'image_url': request.build_absolute_uri(product.image.url) if product.image else None,
+                'skus': product_skus_payload(product)
             })
 
         return JsonResponse({'beads': bead_list})
     except User.DoesNotExist:
         return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+def get_product_skus(request, product_id):
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': '未授权'}, status=401)
+
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'error': 'Token已过期'}, status=401)
+        except jwt.InvalidTokenError:
+            return JsonResponse({'error': '无效的Token'}, status=401)
+
+        current_user = User.objects.get(id=payload['user_id'])
+        product = Product.objects.get(id=product_id)
+        if current_user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN] and current_user.company != product.company:
+            return JsonResponse({'error': '无权限查看SKU'}, status=403)
+        return JsonResponse({'skus': product_skus_payload(product)})
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Product.DoesNotExist:
+        return JsonResponse({'error': '商品不存在'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

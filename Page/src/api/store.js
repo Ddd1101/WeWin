@@ -66,13 +66,17 @@ export const getProducts = (params = {}) => {
   return storeApi.get("/products/", { params });
 };
 
+export const getProductStats = () => {
+  return storeApi.get("/products/stats/");
+};
+
 export const createProduct = (data) => {
   // 如果数据包含图片文件，则使用 FormData
   if (data.image) {
     const formData = new FormData();
     for (const key in data) {
       if (data[key] !== undefined && data[key] !== null) {
-        if (key === 'beads' || key === 'accessories') {
+        if (key === 'beads' || key === 'accessories' || key === 'skus') {
             formData.append(key, JSON.stringify(data[key]));
         } else {
             formData.append(key, data[key]);
@@ -90,11 +94,11 @@ export const createProduct = (data) => {
 
 export const updateProduct = (id, data) => {
   // 如果数据包含图片文件或删除图片请求，则使用 FormData
-  if (data.image || data.remove_image) {
+  if (data.image || data.remove_image || data.beads || data.accessories || data.skus) {
     const formData = new FormData();
     for (const key in data) {
       if (data[key] !== undefined && data[key] !== null) {
-        if (key === 'beads' || key === 'accessories') {
+        if (key === 'beads' || key === 'accessories' || key === 'skus') {
             formData.append(key, JSON.stringify(data[key]));
         } else {
             formData.append(key, data[key]);
@@ -124,6 +128,10 @@ export const getAccessories = () => {
 
 export const getBeads = () => {
   return storeApi.get("/products/beads/");
+};
+
+export const getProductSkus = (id) => {
+  return storeApi.get(`/products/${id}/skus/`);
 };
 
 export default storeApi;

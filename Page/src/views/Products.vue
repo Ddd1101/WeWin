@@ -129,9 +129,9 @@
         </el-row>
         
         <el-row :gutter="20">
-          <!-- 串珠显示采购成本 -->
-          <el-col v-if="form.product_type === 'bead'" :span="12">
-            <el-form-item label="采购成本" prop="purchase_cost">
+          <!-- SKU商品的采购/成本在SKU中维护 -->
+          <el-col v-if="false && form.product_type === 'bead'" :span="12">
+            <el-form-item label="采购成本(元/克)" prop="purchase_cost">
               <div class="purchase-cost-container">
                 <el-input-number 
                   v-model="form.purchase_cost" 
@@ -146,7 +146,7 @@
             </el-form-item>
           </el-col>
           <!-- 配件和成品显示成本价格 -->
-          <el-col v-else :span="12">
+          <el-col v-if="form.product_type === 'finished'" :span="12">
             <el-form-item label="成本价格" prop="cost_price">
               <el-input-number 
                 v-model="form.cost_price" 
@@ -158,8 +158,8 @@
               />
             </el-form-item>
           </el-col>
-          <!-- 单颗成本，仅对串珠显示 -->
-          <el-col v-if="form.product_type === 'bead'" :span="12">
+          <!-- 单颗成本归入SKU -->
+          <el-col v-if="false && form.product_type === 'bead'" :span="12">
             <el-form-item label="单颗成本">
               <el-input-number 
                 v-model="form.cost_price" 
@@ -171,15 +171,15 @@
               />
             </el-form-item>
           </el-col>
-          <!-- 串珠以外显示售卖价格 -->
-          <el-col v-else :span="12">
+          <!-- 串珠/配件售价归入SKU，成品保留售价 -->
+          <el-col v-if="form.product_type === 'finished'" :span="12">
             <el-form-item label="售卖价格" prop="selling_price">
               <el-input-number v-model="form.selling_price" :min="0" :step="0.01" :precision="2" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>
         <!-- 串珠的售卖价格单独一行 -->
-        <el-row v-if="form.product_type === 'bead'" :gutter="20">
+        <el-row v-if="false && form.product_type === 'bead'" :gutter="20">
           <el-col :span="24">
             <el-form-item label="售卖价格" prop="selling_price">
               <el-input-number v-model="form.selling_price" :min="0" :step="0.01" :precision="2" style="width: 100%" />
@@ -203,7 +203,7 @@
           </el-row>
         </template>
         
-        <el-row :gutter="20">
+        <el-row v-if="form.product_type === 'finished'" :gutter="20">
           <el-col :span="12">
             <el-form-item label="库位">
               <el-input v-model="form.location" placeholder="请输入库位" clearable />
@@ -256,7 +256,7 @@
         </el-form-item>
         
         <!-- 串珠特有属性 -->
-        <template v-if="form.product_type === 'bead'">
+        <template v-if="false && form.product_type === 'bead'">
           <el-divider content-position="left">串珠属性</el-divider>
           <el-row :gutter="20">
             <el-col :span="12">
@@ -265,8 +265,11 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="尺寸">
-                <el-input v-model="form.size" placeholder="请输入尺寸" clearable />
+              <el-form-item label="规格">
+                <div class="size-input-container">
+                  <el-input-number v-model="form.size" :min="1" :step="1" :precision="0" style="width: 100%" placeholder="请输入规格" />
+                  <span class="unit-text">mm</span>
+                </div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -302,7 +305,7 @@
         </template>
 
         <!-- 配件特有属性 -->
-        <template v-if="form.product_type === 'accessory'">
+        <template v-if="false && form.product_type === 'accessory'">
           <el-divider content-position="left">配件属性</el-divider>
           <el-row :gutter="20">
             <el-col :span="12">
@@ -311,8 +314,11 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="尺寸">
-                <el-input v-model="form.size" placeholder="请输入尺寸" clearable />
+              <el-form-item label="规格">
+                <div class="size-input-container">
+                  <el-input-number v-model="form.size" :min="1" :step="1" :precision="0" style="width: 100%" placeholder="请输入规格" />
+                  <span class="unit-text">mm</span>
+                </div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -323,6 +329,99 @@
               </el-form-item>
             </el-col>
           </el-row>
+        </template>
+
+        <!-- SKU选项 -->
+        <template v-if="form.product_type === 'bead' || form.product_type === 'accessory'">
+          <el-divider content-position="left">SKU选项</el-divider>
+          <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px">
+            <template #title>同一货号下可维护多个规格/成本/克重/品质不同的 SKU，成品组合时会选择具体 SKU。</template>
+          </el-alert>
+          <el-button type="primary" size="small" @click="handleAddSku" style="margin-bottom: 12px">
+            <el-icon><Plus /></el-icon> 添加SKU
+          </el-button>
+          <div v-for="(sku, index) in form.skus" :key="index" class="sku-card">
+            <div class="sku-card-header">
+              <div class="sku-title">
+                <span>SKU {{ index + 1 }}</span>
+                <el-tag v-if="sku.is_default" type="success" size="small">默认</el-tag>
+              </div>
+              <div class="sku-actions">
+                <el-button size="small" :type="sku.is_default ? 'success' : 'default'" @click="setDefaultSku(index)">
+                  设为默认
+                </el-button>
+                <el-button size="small" type="danger" plain @click="removeSku(index)">
+                  <el-icon><Delete /></el-icon>
+                  删除
+                </el-button>
+              </div>
+            </div>
+
+            <div class="sku-grid">
+              <div class="sku-field span-2">
+                <label>SKU编码</label>
+                <el-input v-model="sku.sku_code" placeholder="如：PJ001-4MM-A" clearable />
+              </div>
+              <div class="sku-field span-2">
+                <label>SKU名称</label>
+                <el-input v-model="sku.sku_name" placeholder="如：4mm A级 / 银色小配件" clearable />
+              </div>
+              <div class="sku-field">
+                <label>规格(mm)</label>
+                <el-input-number v-model="sku.size" :min="0" :precision="0" controls-position="right" style="width:100%" />
+              </div>
+              <div class="sku-field">
+                <label>品质等级</label>
+                <el-input-number v-model="sku.quality_level" :min="1" :max="10" :precision="0" controls-position="right" style="width:100%" />
+              </div>
+
+              <div v-if="form.product_type === 'bead'" class="sku-field">
+                <label>采购成本(元/克)</label>
+                <el-input-number v-model="sku.purchase_cost" :min="0" :precision="2" controls-position="right" style="width:100%" />
+              </div>
+              <div class="sku-field">
+                <label>{{ form.product_type === 'bead' ? '单颗成本(自动)' : '单件成本' }}</label>
+                <el-input-number
+                  v-model="sku.cost_price"
+                  :min="0"
+                  :precision="2"
+                  controls-position="right"
+                  :disabled="form.product_type === 'bead'"
+                  style="width:100%"
+                />
+              </div>
+              <div class="sku-field" v-if="form.product_type === 'bead'">
+                <label>单颗克重(g)</label>
+                <el-input-number v-model="sku.weight" :min="0" :precision="3" controls-position="right" style="width:100%" />
+              </div>
+              <div class="sku-field">
+                <label>售卖价格</label>
+                <el-input-number v-model="sku.selling_price" :min="0" :precision="2" controls-position="right" style="width:100%" />
+              </div>
+
+              <div class="sku-field">
+                <label>材质</label>
+                <el-input v-model="sku.material" placeholder="材质" clearable />
+              </div>
+              <div class="sku-field">
+                <label>颜色</label>
+                <el-input v-model="sku.color" placeholder="颜色" clearable />
+              </div>
+              <div class="sku-field">
+                <label>库位</label>
+                <el-input v-model="sku.location" placeholder="库位" clearable />
+              </div>
+              <div class="sku-field">
+                <label>供应商</label>
+                <el-input v-model="sku.supplier" placeholder="供应商" clearable />
+              </div>
+
+              <div class="sku-field span-full">
+                <label>备注</label>
+                <el-input v-model="sku.remark" type="textarea" :rows="2" placeholder="填写该SKU的特殊说明" />
+              </div>
+            </div>
+          </div>
         </template>
 
         <!-- 成品特有属性 -->
@@ -362,9 +461,28 @@
             </el-button>
             <div class="selected-items" v-if="form.beads.length > 0">
               <div v-for="(bead, index) in form.beads" :key="index" class="item-card">
-                <div class="item-info">
-                  <span class="item-name">{{ bead.bead_name }}</span>
-                  <span class="item-price">单价: ¥{{ safePrice(bead.cost_price) }}</span>
+                <div class="item-main">
+                  <div class="selected-item-image-wrapper">
+                    <el-image
+                      v-if="bead.image_url || bead.bead_image_url"
+                      :src="bead.image_url || bead.bead_image_url"
+                      class="selected-item-image"
+                      fit="cover"
+                      :preview-src-list="[bead.image_url || bead.bead_image_url]"
+                      :initial-index="0"
+                      preview-teleported
+                      :alt="bead.bead_name"
+                    />
+                    <div v-else class="selected-item-no-image">
+                      <el-icon><Picture /></el-icon>
+                    </div>
+                  </div>
+                  <div class="item-info">
+                    <span class="item-name">{{ bead.bead_name }}</span>
+                    <span class="item-code">{{ bead.bead_code }}</span>
+                    <span class="item-price">{{ skuLabel(bead) }}</span>
+                    <span class="item-price">单价: ¥{{ safePrice(bead.cost_price) }}</span>
+                  </div>
                 </div>
                 <div class="item-controls">
                   <span class="label">数量:</span>
@@ -401,9 +519,28 @@
             </el-button>
             <div class="selected-items" v-if="form.accessories.length > 0">
               <div v-for="(acc, index) in form.accessories" :key="index" class="item-card">
-                <div class="item-info">
-                  <span class="item-name">{{ acc.accessory_name }}</span>
-                  <span class="item-price">单价: ¥{{ safePrice(acc.cost_price) }}</span>
+                <div class="item-main">
+                  <div class="selected-item-image-wrapper">
+                    <el-image
+                      v-if="acc.image_url || acc.accessory_image_url"
+                      :src="acc.image_url || acc.accessory_image_url"
+                      class="selected-item-image"
+                      fit="cover"
+                      :preview-src-list="[acc.image_url || acc.accessory_image_url]"
+                      :initial-index="0"
+                      preview-teleported
+                      :alt="acc.accessory_name"
+                    />
+                    <div v-else class="selected-item-no-image">
+                      <el-icon><Picture /></el-icon>
+                    </div>
+                  </div>
+                  <div class="item-info">
+                    <span class="item-name">{{ acc.accessory_name }}</span>
+                    <span class="item-code">{{ acc.accessory_code }}</span>
+                    <span class="item-price">{{ skuLabel(acc) }}</span>
+                    <span class="item-price">单价: ¥{{ safePrice(acc.cost_price) }}</span>
+                  </div>
                 </div>
                 <div class="item-controls">
                   <span class="label">数量:</span>
@@ -463,16 +600,22 @@
           v-for="bead in filteredBeads" 
           :key="bead.id"
           class="product-card"
-          @click="handleSelectBead(bead)"
         >
           <div class="card-image-wrapper">
-            <el-image
+            <img
               v-if="bead.image_url"
               :src="bead.image_url"
-              fit="cover"
               class="product-image"
-              :preview-src-list="[bead.image_url]"
-              @click.stop
+              @click.stop="() => { 
+                const viewer = document.createElement('div');
+                viewer.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:99999;cursor:zoom-out;';
+                viewer.onclick = () => viewer.remove();
+                const img = document.createElement('img');
+                img.src = bead.image_url;
+                img.style.cssText = 'max-width:90%;max-height:90%;object-fit:contain;';
+                viewer.appendChild(img);
+                document.body.appendChild(viewer);
+              }"
             />
             <div v-else class="no-image">
               <el-icon><Picture /></el-icon>
@@ -485,15 +628,18 @@
               <span class="product-price">¥{{ bead.cost_price.toFixed(2) }}/g</span>
               <span v-if="bead.weight" class="product-weight">{{ bead.weight?.toFixed(3) }}g</span>
             </div>
-            <div v-if="bead.quality_level" class="product-badges">
-              <span class="badge quality-badge">品质 {{ bead.quality_level }}级</span>
+            <div class="product-badges">
+              <span class="badge quality-badge">{{ bead.skus?.length || 0 }} 个SKU</span>
             </div>
+            <el-select v-if="bead.skus?.length" v-model="bead.selectedSku" value-key="id" placeholder="选择SKU" style="width:100%; margin-top:8px" @click.stop>
+              <el-option v-for="sku in bead.skus" :key="sku.id" :label="skuLabel(sku) || sku.sku_code" :value="sku" />
+            </el-select>
           </div>
-          <div class="card-overlay">
-            <span class="select-label">
+          <div class="card-actions">
+            <el-button type="primary" size="small" class="select-card-btn" @click.stop="handleSelectBead(bead)">
               <el-icon><Check /></el-icon>
               选择
-            </span>
+            </el-button>
           </div>
         </div>
         
@@ -530,16 +676,22 @@
           v-for="accessory in filteredAccessories" 
           :key="accessory.id"
           class="product-card"
-          @click="handleSelectAccessory(accessory)"
         >
           <div class="card-image-wrapper">
-            <el-image
+            <img
               v-if="accessory.image_url"
               :src="accessory.image_url"
-              fit="cover"
               class="product-image"
-              :preview-src-list="[accessory.image_url]"
-              @click.stop
+              @click.stop="() => { 
+                const viewer = document.createElement('div');
+                viewer.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:99999;cursor:zoom-out;';
+                viewer.onclick = () => viewer.remove();
+                const img = document.createElement('img');
+                img.src = accessory.image_url;
+                img.style.cssText = 'max-width:90%;max-height:90%;object-fit:contain;';
+                viewer.appendChild(img);
+                document.body.appendChild(viewer);
+              }"
             />
             <div v-else class="no-image">
               <el-icon><Picture /></el-icon>
@@ -551,12 +703,16 @@
             <div class="product-meta">
               <span class="product-price">¥{{ accessory.cost_price.toFixed(2) }}</span>
             </div>
+            <div class="product-badges"><span class="badge quality-badge">{{ accessory.skus?.length || 0 }} 个SKU</span></div>
+            <el-select v-if="accessory.skus?.length" v-model="accessory.selectedSku" value-key="id" placeholder="选择SKU" style="width:100%; margin-top:8px" @click.stop>
+              <el-option v-for="sku in accessory.skus" :key="sku.id" :label="skuLabel(sku) || sku.sku_code" :value="sku" />
+            </el-select>
           </div>
-          <div class="card-overlay">
-            <span class="select-label">
+          <div class="card-actions">
+            <el-button type="primary" size="small" class="select-card-btn" @click.stop="handleSelectAccessory(accessory)">
               <el-icon><Check /></el-icon>
               选择
-            </span>
+            </el-button>
           </div>
         </div>
         
@@ -658,7 +814,8 @@ const form = reactive({
   image: null,
   imagePreview: '',
   image_url: '',
-  remove_image: false
+  remove_image: false,
+  skus: []
 })
 // 表单验证规则
 const rules = {
@@ -794,6 +951,20 @@ watch([
   }
 }, { deep: true, immediate: true })
 
+// 串珠 SKU 单颗成本 = 采购成本(元/克) × 单颗克重
+watch(
+  () => form.skus,
+  (skus) => {
+    if (form.product_type !== 'bead') return
+    skus.forEach((sku) => {
+      const purchaseCost = Number(sku.purchase_cost) || 0
+      const weight = Number(sku.weight) || 0
+      sku.cost_price = Number((purchaseCost * weight).toFixed(2))
+    })
+  },
+  { deep: true, immediate: true }
+)
+
 // 获取商品类型
 const fetchProductTypes = async () => {
   try {
@@ -801,7 +972,7 @@ const fetchProductTypes = async () => {
     productTypes.value = response.data.product_types
   } catch (error) {
     ElMessage.error('获取商品类型失败')
-    console.error(error)
+    console.error(error?.response?.data || error)
   }
 }
 
@@ -858,7 +1029,7 @@ const handleSelectAll = (ids) => {
 const fetchAccessories = async () => {
   try {
     const response = await getAccessories()
-    accessories.value = response.data.accessories
+    accessories.value = response.data.accessories.map(acc => ({ ...acc, selectedSku: acc.skus?.find(s => s.is_default) || acc.skus?.[0] }))
   } catch (error) {
     ElMessage.error('获取配件列表失败')
     console.error(error)
@@ -869,7 +1040,7 @@ const fetchAccessories = async () => {
 const fetchBeads = async () => {
   try {
     const response = await getBeads()
-    beads.value = response.data.beads
+    beads.value = response.data.beads.map(bead => ({ ...bead, selectedSku: bead.skus?.find(s => s.is_default) || bead.skus?.[0] }))
   } catch (error) {
     ElMessage.error('获取串珠列表失败')
     console.error(error)
@@ -923,7 +1094,8 @@ const resetForm = () => {
     image: null,
     imagePreview: '',
     image_url: '',
-    remove_image: false
+    remove_image: false,
+    skus: []
   })
   formRef.value?.resetFields()
 }
@@ -996,18 +1168,38 @@ const handleEditProduct = async (row) => {
       remark: product.bead?.remark || '',
       beads: (product.finished?.beads || []).map(bead => ({
         ...bead,
-        cost_price: bead.bead_cost_price
+        sku: bead.sku || {
+          sku_name: bead.sku_name || '',
+          name: bead.sku_name || '',
+          size: bead.bead_size || bead.size,
+          weight: bead.bead_weight,
+          quality_level: bead.bead_quality_level,
+          remark: bead.bead_remark,
+          cost_price: bead.bead_cost_price
+        },
+        sku_id: bead.sku_id,
+        cost_price: bead.bead_cost_price,
+        image_url: bead.bead_image_url
       })),
       accessories: (product.finished?.accessories || []).map(acc => ({
         ...acc,
-        cost_price: acc.accessory_cost_price
+        sku: acc.sku || {
+          sku_name: acc.sku_name || '',
+          name: acc.sku_name || '',
+          size: acc.accessory_size || acc.size,
+          cost_price: acc.accessory_cost_price
+        },
+        sku_id: acc.sku_id,
+        cost_price: acc.accessory_cost_price,
+        image_url: acc.accessory_image_url
       })),
       labor_cost: product.finished?.labor_cost || 0,
       elastic_cost: product.finished?.elastic_cost || 0,
       image: null,
       imagePreview: '',
       image_url: product.image_url || '',
-      remove_image: false
+      remove_image: false,
+      skus: (product.skus || []).map(sku => ({ ...sku, sku_name: sku.sku_name || sku.name }))
     })
     dialogVisible.value = true
   } catch (error) {
@@ -1069,22 +1261,75 @@ const handleAddBead = () => {
 
 // 处理选择串珠
 const handleSelectBead = (bead) => {
-  const existing = form.beads.find(item => item.bead_id === bead.id)
+  const sku = bead.selectedSku || bead.skus?.find(s => s.is_default) || bead.skus?.[0] || {}
+  const existing = form.beads.find(item => item.bead_id === bead.id && item.sku_id === sku.id)
   if (existing) {
-    ElMessage.warning('该串珠已经添加过了')
+    ElMessage.warning('该串珠SKU已经添加过了')
     return
   }
   form.beads.push({
     bead_id: bead.id,
+    sku_id: sku.id,
+    sku,
     bead_code: bead.code,
     bead_name: bead.name,
-    cost_price: bead.cost_price,
+    cost_price: sku.cost_price ?? bead.cost_price,
+    image_url: bead.image_url,
+    bead_image_url: bead.image_url,
     quantity: 1
   })
   beadDialogVisible.value = false
 }
 
 // 处理添加配件
+const ensureDefaultSku = () => {
+  if (!['bead', 'accessory'].includes(form.product_type)) return
+  if (form.skus.length === 0) {
+    form.skus.push({
+      sku_code: `${form.code || 'SKU'}-默认`,
+      sku_name: '默认SKU',
+      selling_price: form.selling_price,
+      location: form.location,
+      supplier: form.supplier,
+      material: form.material,
+      size: form.size,
+      color: form.color,
+      purchase_cost: form.purchase_cost,
+      cost_price: form.cost_price,
+      weight: form.weight,
+      quality_level: form.quality_level,
+      remark: form.remark,
+      is_default: true,
+      is_active: true
+    })
+  }
+}
+
+const handleAddSku = () => {
+  form.skus.push({
+    sku_code: `${form.code || 'SKU'}-${form.skus.length + 1}`,
+    sku_name: '', selling_price: form.selling_price, location: form.location, supplier: form.supplier, material: form.material, size: form.size, color: form.color,
+    purchase_cost: form.purchase_cost, cost_price: form.cost_price, weight: form.weight,
+    quality_level: form.quality_level, remark: '', is_default: form.skus.length === 0, is_active: true
+  })
+}
+
+const removeSku = (index) => {
+  form.skus.splice(index, 1)
+  if (form.skus.length && !form.skus.some(s => s.is_default)) form.skus[0].is_default = true
+}
+
+const setDefaultSku = (index) => {
+  form.skus.forEach((sku, i) => { sku.is_default = i === index })
+}
+
+const skuLabel = (item, prefix = '') => {
+  const sku = item.sku || item
+  const parts = [sku.sku_name || sku.name, sku.size ? `${sku.size}mm` : '', sku.weight ? `${Number(sku.weight).toFixed(3)}g` : '', sku.quality_level ? `品质${sku.quality_level}` : ''].filter(Boolean)
+  return `${prefix}${parts.join(' / ')}`
+}
+
+
 const handleAddAccessory = () => {
   fetchAccessories()
   accessoryDialogVisible.value = true
@@ -1092,16 +1337,21 @@ const handleAddAccessory = () => {
 
 // 处理选择配件
 const handleSelectAccessory = (accessory) => {
-  const existing = form.accessories.find(item => item.accessory_id === accessory.id)
+  const sku = accessory.selectedSku || accessory.skus?.find(s => s.is_default) || accessory.skus?.[0] || {}
+  const existing = form.accessories.find(item => item.accessory_id === accessory.id && item.sku_id === sku.id)
   if (existing) {
-    ElMessage.warning('该配件已经添加过了')
+    ElMessage.warning('该配件SKU已经添加过了')
     return
   }
   form.accessories.push({
     accessory_id: accessory.id,
+    sku_id: sku.id,
+    sku,
     accessory_code: accessory.code,
     accessory_name: accessory.name,
-    cost_price: accessory.cost_price,
+    cost_price: sku.cost_price ?? accessory.cost_price,
+    image_url: accessory.image_url,
+    accessory_image_url: accessory.image_url,
     quantity: 1
   })
   accessoryDialogVisible.value = false
@@ -1133,10 +1383,12 @@ const handleSubmit = async () => {
           data.weight = form.weight
           data.quality_level = form.quality_level
           data.remark = form.remark
+          data.skus = form.skus
         } else if (form.product_type === 'accessory') {
           data.material = form.material
           data.size = form.size
           data.color = form.color
+          data.skus = form.skus
         } else if (form.product_type === 'finished') {
           data.beads = form.beads
           data.accessories = form.accessories
@@ -1161,8 +1413,8 @@ const handleSubmit = async () => {
         dialogVisible.value = false
         fetchProducts()
       } catch (error) {
-        ElMessage.error('操作失败')
-        console.error(error)
+        ElMessage.error(error?.response?.data?.error || '操作失败')
+        console.error(error?.response?.data || error)
       } finally {
         submitLoading.value = false
       }
@@ -1273,7 +1525,8 @@ onMounted(() => {
   margin: 20px 0;
 }
 
-.purchase-cost-container {
+.purchase-cost-container,
+.size-input-container {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1378,16 +1631,65 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
+
+.item-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.selected-item-image-wrapper {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.selected-item-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: zoom-in;
+}
+
+.selected-item-image :deep(img) {
+  object-fit: cover;
+}
+
+.selected-item-no-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+}
+
+.selected-item-no-image .el-icon {
+  font-size: 24px;
+}
+
 .item-info {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .item-name {
   font-size: 15px;
   color: #374151;
   font-weight: 600;
+}
+
+.item-code {
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .item-price {
@@ -1591,10 +1893,6 @@ onMounted(() => {
   border-color: #667eea;
 }
 
-.product-card:hover .card-overlay {
-  opacity: 1;
-}
-
 .product-card:hover .card-image-wrapper {
   transform: scale(1.05);
 }
@@ -1603,15 +1901,25 @@ onMounted(() => {
 .card-image-wrapper {
   position: relative;
   width: 100%;
-  height: 160px;
+  min-height: 160px;
+  max-height: 220px;
   overflow: hidden;
   transition: transform 0.4s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
 .product-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-width: 100%;
+  max-height: 200px;
+  width: auto;
+  height: auto;
+  display: block;
+  cursor: zoom-in;
 }
 
 .no-image {
@@ -1699,40 +2007,17 @@ onMounted(() => {
   color: #92400e;
 }
 
-/* 卡片覆盖层 */
-.card-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+/* 卡片操作区 */
+.card-actions {
+  padding: 0 16px 16px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 10;
+  justify-content: flex-end;
 }
 
-.select-label {
-  color: #ffffff;
-  font-size: 15px;
+.select-card-btn {
+  width: 100%;
+  border-radius: 10px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 12px 28px;
-  border: 2px solid #ffffff;
-  border-radius: 30px;
-  transform: translateY(10px);
-  transition: transform 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.product-card:hover .select-label {
-  transform: translateY(0);
 }
 
 /* 空状态 */
@@ -1789,4 +2074,76 @@ onMounted(() => {
     gap: 8px;
   }
 }
+.sku-card {
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.sku-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.sku-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.sku-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sku-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.sku-field {
+  min-width: 0;
+}
+
+.sku-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1;
+}
+
+.sku-field.span-2 {
+  grid-column: span 2;
+}
+
+.sku-field.span-full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .sku-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sku-field.span-2 {
+    grid-column: 1 / -1;
+  }
+}
+
 </style>

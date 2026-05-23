@@ -128,6 +128,42 @@
               <span class="amount">¥{{ calculateTotalCost(scope.row.finished).toFixed(2) }}</span>
             </div>
           </div>
+          <div v-else-if="['bead', 'accessory'].includes(scope.row.product_type)" class="sku-details">
+            <h4>SKU列表</h4>
+            <el-table v-if="scope.row.skus && scope.row.skus.length > 0" :data="scope.row.skus" size="small" style="width: 100%">
+              <el-table-column prop="sku_code" label="SKU编码" min-width="120" />
+              <el-table-column label="SKU名称" min-width="120">
+                <template #default="skuScope">{{ skuScope.row.sku_name || skuScope.row.name || '-' }}</template>
+              </el-table-column>
+              <el-table-column prop="material" label="材质" width="100" />
+              <el-table-column label="规格(mm)" width="100">
+                <template #default="skuScope">{{ skuScope.row.size || '-' }}</template>
+              </el-table-column>
+              <el-table-column prop="color" label="颜色" width="100" />
+              <el-table-column label="采购成本(元/克)" width="110">
+                <template #default="skuScope">¥{{ formatPrice(skuScope.row.purchase_cost, 2) }}</template>
+              </el-table-column>
+              <el-table-column label="成本" width="100">
+                <template #default="skuScope">¥{{ formatPrice(skuScope.row.cost_price) }}</template>
+              </el-table-column>
+              <el-table-column v-if="scope.row.product_type === 'bead'" label="克重" width="90">
+                <template #default="skuScope">{{ formatPrice(skuScope.row.weight, 3) }}g</template>
+              </el-table-column>
+              <el-table-column label="品质" width="80">
+                <template #default="skuScope">{{ skuScope.row.quality_level || '-' }}</template>
+              </el-table-column>
+              <el-table-column label="售价" width="100">
+                <template #default="skuScope">¥{{ formatPrice(skuScope.row.selling_price) }}</template>
+              </el-table-column>
+              <el-table-column prop="location" label="库位" width="100" />
+              <el-table-column prop="supplier" label="供应商" width="120" />
+              <el-table-column label="默认" width="80">
+                <template #default="skuScope"><el-tag v-if="skuScope.row.is_default" size="small">默认</el-tag></template>
+              </el-table-column>
+              <el-table-column prop="remark" label="备注" min-width="120" />
+            </el-table>
+            <el-empty v-else description="暂无SKU" />
+          </div>
           <div v-else>无明细</div>
         </template>
       </el-table-column>
@@ -146,10 +182,27 @@
       <el-table-column prop="code" label="货号" width="180" />
       <el-table-column prop="name" label="商品名称" />
       <el-table-column prop="product_type_display" label="商品类型" width="120" />
+      <!-- 配件显示规格 -->
+      <el-table-column v-if="props.products.some(p => p.product_type === 'accessory')" label="规格(mm)" width="100">
+        <template #default="scope">
+          {{ scope.row.accessory?.size || '-' }}
+        </template>
+      </el-table-column>
+      <!-- 串珠显示规格和品质 -->
+      <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="规格(mm)" width="100">
+        <template #default="scope">
+          {{ scope.row.bead?.size || '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="品质等级" width="100">
+        <template #default="scope">
+          {{ scope.row.bead?.quality_level || '-' }}
+        </template>
+      </el-table-column>
       <!-- 串珠显示采购成本和单颗成本 -->
       <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="采购成本(元/克)" width="130">
         <template #default="scope">
-          ¥{{ scope.row.purchase_cost?.toFixed(4) || '-' }}
+          ¥{{ formatPrice(scope.row.purchase_cost, 2) }}
         </template>
       </el-table-column>
       <el-table-column label="成本价格" width="100">
@@ -256,6 +309,11 @@ const handleDelete = (row) => {
   emit('delete', row)
 }
 
+const formatPrice = (value, digits = 2) => {
+  const num = Number(value) || 0
+  return num.toFixed(digits)
+}
+
 const calculateTotalCost = (finished) => {
   let total = 0
   // 计算串珠成本
@@ -281,13 +339,15 @@ const calculateTotalCost = (finished) => {
   border-radius: 12px;
 }
 
-/* 成品详情样式 */
+/* 展开详情样式 */
+.sku-details,
 .finished-details {
   padding: 20px;
   background-color: #f8fafc;
   border-radius: 8px;
 }
 
+.sku-details h4,
 .finished-details h4 {
   margin: 0 0 15px 0;
   color: #1e293b;
@@ -330,5 +390,42 @@ const calculateTotalCost = (finished) => {
 .finished-details .amount {
   font-weight: bold;
   color: #667eea;
+}
+</style>
+
+<style>
+/* Element Plus 图片预览全局样式 - 必须确保在最上层 */
+body > .el-image-viewer__wrapper {
+  z-index: 99999 !important;
+}
+
+/* 确保预览容器在最上层，内部元素保持相对层级 */
+.el-image-viewer__wrapper {
+  z-index: 99999 !important;
+}
+
+/* 调整遮罩层透明度，让它不那么暗 */
+.el-image-viewer__mask {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 防止表格元素创建层叠上下文影响预览 */
+.el-table,
+.el-table__body-wrapper,
+.el-table__body,
+.el-table__cell,
+.el-table__row {
+  position: static !important;
+}
+
+/* 只对必要的元素保持相对定位，但降低z-index */
+.el-table__header-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+.el-table__fixed,
+.el-table__fixed-right {
+  z-index: 2 !important;
 }
 </style>
