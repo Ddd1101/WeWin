@@ -368,9 +368,23 @@
             </el-button>
             <div class="selected-items" v-if="form.beads.length > 0">
               <div v-for="(bead, index) in form.beads" :key="index" class="item-card">
-                <div class="item-info">
-                  <span class="item-name">{{ bead.bead_name }}</span>
-                  <span class="item-price">单价: ¥{{ safePrice(bead.cost_price) }}</span>
+                <div class="item-main">
+                  <div class="selected-item-image-wrapper">
+                    <img
+                      v-if="bead.image_url || bead.bead_image_url"
+                      :src="bead.image_url || bead.bead_image_url"
+                      class="selected-item-image"
+                      :alt="bead.bead_name"
+                    />
+                    <div v-else class="selected-item-no-image">
+                      <el-icon><Picture /></el-icon>
+                    </div>
+                  </div>
+                  <div class="item-info">
+                    <span class="item-name">{{ bead.bead_name }}</span>
+                    <span class="item-code">{{ bead.bead_code }}</span>
+                    <span class="item-price">单价: ¥{{ safePrice(bead.cost_price) }}</span>
+                  </div>
                 </div>
                 <div class="item-controls">
                   <span class="label">数量:</span>
@@ -407,9 +421,23 @@
             </el-button>
             <div class="selected-items" v-if="form.accessories.length > 0">
               <div v-for="(acc, index) in form.accessories" :key="index" class="item-card">
-                <div class="item-info">
-                  <span class="item-name">{{ acc.accessory_name }}</span>
-                  <span class="item-price">单价: ¥{{ safePrice(acc.cost_price) }}</span>
+                <div class="item-main">
+                  <div class="selected-item-image-wrapper">
+                    <img
+                      v-if="acc.image_url || acc.accessory_image_url"
+                      :src="acc.image_url || acc.accessory_image_url"
+                      class="selected-item-image"
+                      :alt="acc.accessory_name"
+                    />
+                    <div v-else class="selected-item-no-image">
+                      <el-icon><Picture /></el-icon>
+                    </div>
+                  </div>
+                  <div class="item-info">
+                    <span class="item-name">{{ acc.accessory_name }}</span>
+                    <span class="item-code">{{ acc.accessory_code }}</span>
+                    <span class="item-price">单价: ¥{{ safePrice(acc.cost_price) }}</span>
+                  </div>
                 </div>
                 <div class="item-controls">
                   <span class="label">数量:</span>
@@ -1016,11 +1044,13 @@ const handleEditProduct = async (row) => {
       remark: product.bead?.remark || '',
       beads: (product.finished?.beads || []).map(bead => ({
         ...bead,
-        cost_price: bead.bead_cost_price
+        cost_price: bead.bead_cost_price,
+        image_url: bead.bead_image_url
       })),
       accessories: (product.finished?.accessories || []).map(acc => ({
         ...acc,
-        cost_price: acc.accessory_cost_price
+        cost_price: acc.accessory_cost_price,
+        image_url: acc.accessory_image_url
       })),
       labor_cost: product.finished?.labor_cost || 0,
       elastic_cost: product.finished?.elastic_cost || 0,
@@ -1099,6 +1129,8 @@ const handleSelectBead = (bead) => {
     bead_code: bead.code,
     bead_name: bead.name,
     cost_price: bead.cost_price,
+    image_url: bead.image_url,
+    bead_image_url: bead.image_url,
     quantity: 1
   })
   beadDialogVisible.value = false
@@ -1122,6 +1154,8 @@ const handleSelectAccessory = (accessory) => {
     accessory_code: accessory.code,
     accessory_name: accessory.name,
     cost_price: accessory.cost_price,
+    image_url: accessory.image_url,
+    accessory_image_url: accessory.image_url,
     quantity: 1
   })
   accessoryDialogVisible.value = false
@@ -1399,16 +1433,61 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
+
+.item-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.selected-item-image-wrapper {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.selected-item-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.selected-item-no-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+}
+
+.selected-item-no-image .el-icon {
+  font-size: 24px;
+}
+
 .item-info {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .item-name {
   font-size: 15px;
   color: #374151;
   font-weight: 600;
+}
+
+.item-code {
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .item-price {
