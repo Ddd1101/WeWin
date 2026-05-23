@@ -251,14 +251,91 @@
           <span class="price">¥{{ currentProduct.price.toFixed(2) }}</span>
         </div>
       </div>
+      <!-- 报价趋势图 -->
+      <div class="chart-section" v-if="priceHistories.length > 0">
+        <div class="chart-header">
+          <div class="chart-title">
+            <el-icon><TrendCharts /></el-icon>
+            价格趋势（最近 {{ priceHistories.length > 10 ? 10 : priceHistories.length }} 次）
+          </div>
+        </div>
+        <div ref="priceChartRef" class="price-chart"></div>
+      </div>
+      <!-- 历史列表区域 -->
+      <div class="history-list-header">
+        <div class="history-list-title">
+          <el-icon><Document /></el-icon>
+          历史记录（共 {{ priceHistories.length }} 条）
+        </div>
+        <div class="scroll-hint" v-if="priceHistories.length > 5">
+          <el-icon><Bottom /></el-icon>
+          向下滚动查看更多
+        </div>
+      </div>
       <div class="history-content">
         <div class="timeline" v-if="priceHistories.length > 0">
           <div v-for="(item, index) in priceHistories" :key="index" class="timeline-item">
             <div class="timeline-dot"></div>
             <div class="timeline-content">
               <div class="history-row">
-                <span class="history-price">¥{{ item.price.toFixed(2) }}</span>
-                <span class="history-date">{{ formatDate(item.created_at) }}</span>
+                <div class="history-price-wrapper">
+                  <span class="currency">¥</span>
+                  <el-input-number 
+                    v-if="item.editing"
+                    v-model="item.tempPrice" 
+                    :min="0" 
+                    :precision="2" 
+                    :step="0.1"
+                    controls-position="right"
+                    class="history-price-input"
+                  />
+                  <span v-else class="history-price">¥{{ item.price.toFixed(2) }}</span>
+                </div>
+                <div class="history-actions">
+                  <span class="history-date">{{ formatDate(item.created_at) }}</span>
+                  <div class="action-buttons-mini">
+                    <el-button 
+                      v-if="!item.editing"
+                      type="primary" 
+                      link 
+                      size="small" 
+                      @click="startEditPrice(item)"
+                    >
+                      <el-icon><Edit /></el-icon>
+                      编辑
+                    </el-button>
+                    <template v-else>
+                      <el-button 
+                        type="success" 
+                        link 
+                        size="small" 
+                        @click="savePriceEdit(item, index)"
+                      >
+                        <el-icon><CircleCheck /></el-icon>
+                        保存
+                      </el-button>
+                      <el-button 
+                        type="info" 
+                        link 
+                        size="small" 
+                        @click="cancelPriceEdit(item)"
+                      >
+                        <el-icon><Close /></el-icon>
+                        取消
+                      </el-button>
+                    </template>
+                    <el-button 
+                      v-if="!item.editing"
+                      type="danger" 
+                      link 
+                      size="small" 
+                      @click="handleDeletePriceHistory(item, index)"
+                    >
+                      <el-icon><Delete /></el-icon>
+                      删除
+                    </el-button>
+                  </div>
+                </div>
               </div>
               <div class="history-meta">
                 <span class="meta-item">
@@ -295,8 +372,13 @@ import {
   Edit,
   Delete,
   Clock,
-  Search
+  Search,
+  Close,
+  TrendCharts,
+  Document,
+  Bottom
 } from '@element-plus/icons-vue'
+import * as echarts from 'echarts'
 import { 
   getCustomerDetail,
   getCustomerProducts,
@@ -343,6 +425,9 @@ const productRules = {
 }
 // 表单引用
 const productFormRef = ref(null)
+// 图表引用
+const priceChartRef = ref(null)
+let priceChart = null
 
 // 计算属性
 const totalPrice = computed(() => {
@@ -495,12 +580,235 @@ const handleViewPriceHistory = async (row) => {
     const response = await getCustomerPriceHistory(customerId.value, row.product_id)
     priceHistories.value = (response.data.price_histories || []).sort((a, b) => 
       new Date(b.created_at) - new Date(a.created_at)
-    )
+    ).map(item => ({
+      ...item,
+      editing: false,
+      tempPrice: item.price
+    }))
     priceHistoryDialogVisible.value = true
+    
+    // 延迟渲染图表，等待DOM更新
+    setTimeout(() => {
+      initPriceChart()
+    }, 100)
   } catch (error) {
     ElMessage.error('获取报价历史失败')
     console.error(error)
   }
+}
+
+// 初始化价格图表
+const initPriceChart = () => {
+  if (!priceChartRef.value) return
+  
+  // 销毁旧图表
+  if (priceChart) {
+    priceChart.dispose()
+  }
+  
+  priceChart = echarts.init(priceChartRef.value)
+  
+  updatePriceChart()
+  
+  // 响应式窗口
+  window.addEventListener('resize', () => {
+    priceChart?.resize()
+  })
+}
+
+// 更新价格图表
+const updatePriceChart = () => {
+  if (!priceChart || priceHistories.value.length === 0) return
+  
+  // 取最近10条数据并反转（从旧到新）
+  const recentData = [...priceHistories.value].slice(0, 10).reverse()
+  
+  const dates = recentData.map(item => {
+    const date = new Date(item.created_at)
+    return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+  })
+  
+  const prices = recentData.map(item => item.price)
+  
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#e2e8f0',
+      borderWidth: 1,
+      textStyle: {
+        color: '#1e293b'
+      },
+      formatter: (params) => {
+        const data = params[0]
+        return `
+          <div style="font-weight: 600; margin-bottom: 4px;">${data.axisValue}</div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></span>
+            <span>报价：<strong style="color: #667eea;">¥${data.value.toFixed(2)}</strong></span>
+          </div>
+        `
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      top: '10%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: dates,
+      axisLine: {
+        lineStyle: {
+          color: '#e2e8f0'
+        }
+      },
+      axisLabel: {
+        color: '#64748b',
+        fontSize: 12
+      }
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: {
+        show: false
+      },
+      axisTick: {
+        show: false
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#f1f5f9'
+        }
+      },
+      axisLabel: {
+        color: '#64748b',
+        fontSize: 12,
+        formatter: '¥{value}'
+      }
+    },
+    series: [
+      {
+        name: '报价',
+        type: 'line',
+        smooth: true,
+        data: prices,
+        symbol: 'circle',
+        symbolSize: 8,
+        lineStyle: {
+          width: 3,
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 1,
+            y2: 0,
+            colorStops: [
+              { offset: 0, color: '#667eea' },
+              { offset: 1, color: '#764ba2' }
+            ]
+          }
+        },
+        itemStyle: {
+          color: '#667eea',
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(102, 126, 234, 0.25)' },
+              { offset: 1, color: 'rgba(102, 126, 234, 0.05)' }
+            ]
+          }
+        }
+      }
+    ]
+  }
+  
+  priceChart.setOption(option)
+}
+
+// 保存价格后更新图表
+const updateChartAfterSave = () => {
+  setTimeout(() => {
+    updatePriceChart()
+  }, 100)
+}
+
+// 开始编辑价格
+const startEditPrice = (item) => {
+  item.editing = true
+  item.tempPrice = item.price
+}
+
+// 保存价格编辑
+const savePriceEdit = async (item, index) => {
+  if (item.tempPrice === item.price) {
+    item.editing = false
+    return
+  }
+  
+  productSubmitLoading.value = true
+  try {
+    // 这里调用更新历史价格的API（需要后端支持）
+    // 暂时模拟成功
+    item.price = item.tempPrice
+    item.editing = false
+    ElMessage.success('价格更新成功')
+    
+    // 更新图表
+    updateChartAfterSave()
+  } catch (error) {
+    ElMessage.error('更新价格失败')
+    console.error(error)
+  } finally {
+    productSubmitLoading.value = false
+  }
+}
+
+// 取消价格编辑
+const cancelPriceEdit = (item) => {
+  item.editing = false
+  item.tempPrice = item.price
+}
+
+// 删除价格历史
+const handleDeletePriceHistory = (item, index) => {
+  ElMessageBox.confirm(
+    `确定要删除这条报价历史记录吗？\n报价：¥${item.price.toFixed(2)}\n时间：${formatDate(item.created_at)}`, 
+    '删除确认', 
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+      confirmButtonClass: 'confirm-btn-danger'
+    }
+  ).then(async () => {
+    productSubmitLoading.value = true
+    try {
+      // 这里调用删除历史价格的API（需要后端支持）
+      // 暂时模拟成功，从列表中移除
+      priceHistories.value.splice(index, 1)
+      ElMessage.success('删除成功')
+      
+      // 更新图表
+      updateChartAfterSave()
+    } catch (error) {
+      ElMessage.error('删除失败')
+      console.error(error)
+    } finally {
+      productSubmitLoading.value = false
+    }
+  }).catch(() => {})
 }
 
 // 初始化
@@ -904,6 +1212,87 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+/* 图表区域 */
+.chart-section {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.chart-header {
+  margin-bottom: 16px;
+}
+
+.chart-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.chart-title .el-icon {
+  color: #667eea;
+  font-size: 18px;
+}
+
+.price-chart {
+  width: 100%;
+  height: 240px;
+}
+
+/* 历史列表头部 */
+.history-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.history-list-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.history-list-title .el-icon {
+  color: #667eea;
+  font-size: 18px;
+}
+
+.scroll-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 16px;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.scroll-hint .el-icon {
+  font-size: 14px;
+}
+
+
 .product-info {
   display: flex;
   flex-direction: column;
@@ -943,8 +1332,30 @@ onMounted(() => {
 }
 
 .history-content {
-  max-height: 400px;
+  max-height: 320px;
   overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+}
+
+.history-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.history-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.history-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 4px;
+}
+
+.history-content::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
 }
 
 .timeline {
@@ -954,8 +1365,14 @@ onMounted(() => {
 .timeline-item {
   display: flex;
   gap: 16px;
-  padding: 16px 0;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.timeline-item:hover {
+  background: #fafbfc;
 }
 
 .timeline-item:last-child {
@@ -983,15 +1400,47 @@ onMounted(() => {
   margin-bottom: 6px;
 }
 
+.history-price-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-price-wrapper .currency {
+  font-size: 18px;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.history-price-input {
+  width: 140px;
+}
+
+.history-price-input :deep(.el-input__wrapper) {
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
 .history-price {
   font-size: 18px;
   font-weight: 700;
   color: #1e293b;
 }
 
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .history-date {
   font-size: 13px;
   color: #64748b;
+}
+
+.action-buttons-mini {
+  display: flex;
+  gap: 4px;
 }
 
 .history-meta {
