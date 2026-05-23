@@ -140,8 +140,8 @@
                 <template #default="skuScope">{{ skuScope.row.size || '-' }}</template>
               </el-table-column>
               <el-table-column prop="color" label="颜色" width="100" />
-              <el-table-column label="采购成本" width="110">
-                <template #default="skuScope">¥{{ formatPrice(skuScope.row.purchase_cost, 4) }}</template>
+              <el-table-column label="采购成本(元/克)" width="110">
+                <template #default="skuScope">¥{{ formatPrice(skuScope.row.purchase_cost, 2) }}</template>
               </el-table-column>
               <el-table-column label="成本" width="100">
                 <template #default="skuScope">¥{{ formatPrice(skuScope.row.cost_price) }}</template>
@@ -202,7 +202,7 @@
       <!-- 串珠显示采购成本和单颗成本 -->
       <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="采购成本(元/克)" width="130">
         <template #default="scope">
-          ¥{{ scope.row.purchase_cost?.toFixed(2) || '-' }}
+          ¥{{ formatPrice(scope.row.purchase_cost, 2) }}
         </template>
       </el-table-column>
       <el-table-column label="成本价格" width="100">
