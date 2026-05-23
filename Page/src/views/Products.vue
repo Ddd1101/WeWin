@@ -1250,6 +1250,7 @@ const skuLabel = (item, prefix = '') => {
   return `${prefix}${parts.join(' / ')}`
 }
 
+
 const handleAddAccessory = () => {
   fetchAccessories()
   accessoryDialogVisible.value = true
