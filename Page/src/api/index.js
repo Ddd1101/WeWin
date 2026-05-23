@@ -2,6 +2,7 @@
 import accountApi, * as account from "./account";
 import companyApi, * as company from "./company";
 import storeApi, * as store from "./store";
+import customerApi, * as customer from "./customer";
 import { API_BASE_URL } from "./config";
 
 export { API_BASE_URL };
@@ -11,15 +12,17 @@ export {
   account,
   company,
   store,
+  customer,
 };
 
 // 导出默认实例
-export { accountApi, companyApi, storeApi };
+export { accountApi, companyApi, storeApi, customerApi };
 
 // 保持向后兼容，也可以直接导出常用函数
 export * from "./account";
 export * from "./company";
 export * from "./store";
+export * from "./customer";
 
 // 默认导出 accountApi（保持兼容性）
 export default accountApi;

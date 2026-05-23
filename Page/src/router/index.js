@@ -29,6 +29,26 @@ const routes = [
         meta: { title: "数据概览", icon: "DataAnalysis" },
       },
       {
+        path: "customers",
+        name: "Customers",
+        meta: { title: "客户管理", icon: "User" },
+        redirect: "/customers/list",
+        children: [
+          {
+            path: "list",
+            name: "CustomerList",
+            component: () => import("../views/Customers.vue"),
+            meta: { title: "客户列表", icon: "List" },
+          },
+          {
+            path: ":id/products",
+            name: "CustomerProducts",
+            component: () => import("../views/CustomerProducts.vue"),
+            meta: { title: "客户商品管理", icon: "Goods", hidden: true },
+          },
+        ],
+      },
+      {
         path: "stores",
         name: "Stores",
         meta: { title: "店铺管理", icon: "Shop" },

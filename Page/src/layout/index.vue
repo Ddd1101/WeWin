@@ -12,13 +12,13 @@
         active-text-color="#409EFF"
       >
         <template v-for="route in menuRoutes" :key="route.path">
-          <el-sub-menu v-if="route.children && route.children.length > 0" :index="route.path">
+          <el-sub-menu v-if="route.children && route.children.length > 0" :index="`/${route.path}`">
             <template #title>
               <el-icon><component :is="route.meta.icon" /></el-icon>
               <span>{{ route.meta.title }}</span>
             </template>
             <el-menu-item 
-              v-for="child in route.children" 
+              v-for="child in route.children.filter(c => !c.meta?.hidden)" 
               :key="child.path" 
               :index="`/${route.path}/${child.path}`"
             >
