@@ -29,6 +29,12 @@ const routes = [
         meta: { title: "数据概览", icon: "DataAnalysis" },
       },
       {
+        path: "customers",
+        name: "Customers",
+        component: () => import("../views/Customers.vue"),
+        meta: { title: "客户管理", icon: "User" },
+      },
+      {
         path: "stores",
         name: "Stores",
         meta: { title: "店铺管理", icon: "Shop" },
