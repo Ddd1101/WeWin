@@ -24,4 +24,5 @@ urlpatterns = [
     path('products/<int:product_id>/detail/', views.get_product_detail, name='get-product-detail'),
     path('products/accessories/', views.get_accessories, name='get-accessories'),
     path('products/beads/', views.get_beads, name='get-beads'),
+    path('products/<int:product_id>/skus/', views.get_product_skus, name='get-product-skus'),
 ]

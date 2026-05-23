@@ -72,7 +72,7 @@ export const createProduct = (data) => {
     const formData = new FormData();
     for (const key in data) {
       if (data[key] !== undefined && data[key] !== null) {
-        if (key === 'beads' || key === 'accessories') {
+        if (key === 'beads' || key === 'accessories' || key === 'skus') {
             formData.append(key, JSON.stringify(data[key]));
         } else {
             formData.append(key, data[key]);
@@ -94,7 +94,7 @@ export const updateProduct = (id, data) => {
     const formData = new FormData();
     for (const key in data) {
       if (data[key] !== undefined && data[key] !== null) {
-        if (key === 'beads' || key === 'accessories') {
+        if (key === 'beads' || key === 'accessories' || key === 'skus') {
             formData.append(key, JSON.stringify(data[key]));
         } else {
             formData.append(key, data[key]);
@@ -124,6 +124,10 @@ export const getAccessories = () => {
 
 export const getBeads = () => {
   return storeApi.get("/products/beads/");
+};
+
+export const getProductSkus = (id) => {
+  return storeApi.get(`/products/${id}/skus/`);
 };
 
 export default storeApi;
