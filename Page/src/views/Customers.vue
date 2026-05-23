@@ -1,59 +1,157 @@
 <template>
-  <div class="customers">
-    <el-card class="main-card">
-      <template #header>
-        <div class="card-header">
-          <span class="title">客户管理</span>
-          <div class="header-actions">
-            <el-button type="primary" @click="handleAddCustomer">
-              <el-icon><Plus /></el-icon>
-              添加客户
-            </el-button>
-          </div>
+  <div class="customers-page">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <div class="header-left">
+        <h1 class="page-title">客户管理</h1>
+        <p class="page-subtitle">管理和维护您的客户信息</p>
+      </div>
+      <div class="header-actions">
+        <el-button type="primary" size="large" @click="handleAddCustomer" class="add-btn">
+          <el-icon><Plus /></el-icon>
+          <span>新建客户</span>
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-section">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+          <el-icon><User /></el-icon>
         </div>
-      </template>
-      
+        <div class="stat-content">
+          <div class="stat-value">{{ pagination.total }}</div>
+          <div class="stat-label">全部客户</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+          <el-icon><CircleCheck /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ activeCount }}</div>
+          <div class="stat-label">活跃客户</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+          <el-icon><UserFilled /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ customers.length }}</div>
+          <div class="stat-label">当前页面</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主内容卡片 -->
+    <div class="content-card">
       <!-- 搜索和筛选 -->
       <div class="filter-section">
-        <el-input v-model="searchKeyword" placeholder="搜索客户名称、电话或联系人..." clearable style="width: 300px; margin-right: 12px;">
-          <template #prefix>
+        <div class="filter-left">
+          <el-input 
+            v-model="searchKeyword" 
+            placeholder="搜索客户名称、电话或联系人..." 
+            clearable
+            class="search-input"
+            prefix-icon="Search"
+            @keyup.enter="fetchCustomers"
+          />
+          <el-select 
+            v-model="filterForm.is_active" 
+            placeholder="状态筛选" 
+            clearable
+            class="status-select"
+            @change="fetchCustomers"
+          >
+            <el-option label="全部" value="" />
+            <el-option label="活跃" :value="true" />
+            <el-option label="停用" :value="false" />
+          </el-select>
+          <el-button type="primary" @click="fetchCustomers" class="search-btn">
             <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
-        <el-select v-model="filterForm.is_active" placeholder="状态筛选" clearable style="width: 150px;">
-          <el-option label="全部" value="" />
-          <el-option label="启用" :value="true" />
-          <el-option label="禁用" :value="false" />
-        </el-select>
-        <el-button type="primary" @click="fetchCustomers">查询</el-button>
+            查询
+          </el-button>
+        </div>
       </div>
 
       <!-- 客户列表 -->
-      <el-table :data="customers" style="width: 100%; margin-top: 16px;" v-loading="loading">
-        <el-table-column prop="name" label="客户名称" width="180" />
-        <el-table-column prop="contact_name" label="联系人" width="120" />
-        <el-table-column prop="phone" label="联系电话" width="140" />
-        <el-table-column prop="email" label="邮箱" width="200" />
-        <el-table-column prop="address" label="地址" show-overflow-tooltip />
+      <el-table 
+        :data="customers" 
+        class="customer-table"
+        v-loading="loading"
+        stripe
+        :header-cell-style="{ background: '#f8fafc', color: '#475569', fontWeight: 600 }"
+      >
+        <el-table-column prop="name" label="客户名称" width="200">
+          <template #default="{ row }">
+            <div class="name-cell">
+              <div class="avatar-small">
+                {{ row.name?.charAt(0)?.toUpperCase() || 'C' }}
+              </div>
+              <span class="name-text">{{ row.name }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="contact_name" label="联系人" width="120">
+          <template #default="{ row }">
+            <span class="text-gray">{{ row.contact_name || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="phone" label="联系电话" width="150">
+          <template #default="{ row }">
+            <span class="text-gray">{{ row.phone || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="email" label="邮箱" min-width="200">
+          <template #default="{ row }">
+            <span class="text-gray">{{ row.email || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="address" label="地址" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span class="text-gray">{{ row.address || '-' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="is_active" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.is_active ? 'success' : 'danger'">
-              {{ row.is_active ? '启用' : '禁用' }}
+            <el-tag :type="row.is_active ? 'success' : 'info'" effect="light" size="small">
+              {{ row.is_active ? '活跃' : '停用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_by_name" label="创建人" width="120" />
-        <el-table-column label="操作" width="320" fixed="right">
+        <el-table-column prop="created_by_name" label="创建人" width="120">
           <template #default="{ row }">
-            <el-button size="small" @click="handleViewDetail(row)">详情</el-button>
-            <el-button size="small" type="primary" @click="handleEditCustomer(row)">编辑</el-button>
-            <el-button size="small" type="success" @click="handleProductRelation(row)">商品关联</el-button>
-            <el-button size="small" type="danger" @click="handleDeleteCustomer(row)">删除</el-button>
+            <span class="text-gray">{{ row.created_by_name || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="280" fixed="right">
+          <template #default="{ row }">
+            <div class="action-buttons">
+              <el-button type="primary" link size="small" @click="handleViewDetail(row)">
+                <el-icon><View /></el-icon>
+                详情
+              </el-button>
+              <el-button type="primary" link size="small" @click="handleEditCustomer(row)">
+                <el-icon><Edit /></el-icon>
+                编辑
+              </el-button>
+              <el-button type="success" link size="small" @click="handleProductRelation(row)">
+                <el-icon><Goods /></el-icon>
+                商品
+              </el-button>
+              <el-button type="danger" link size="small" @click="handleDeleteCustomer(row)">
+                <el-icon><Delete /></el-icon>
+                删除
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
-      
-      <div class="pagination-container">
+
+      <!-- 分页 -->
+      <div class="pagination-container" v-if="pagination.total > 0">
         <el-pagination
           v-model:current-page="pagination.currentPage"
           v-model:page-size="pagination.pageSize"
@@ -64,51 +162,61 @@
           @current-change="handleCurrentChange"
         />
       </div>
-    </el-card>
+
+      <!-- 空状态 -->
+      <el-empty v-if="customers.length === 0 && !loading" description="暂无客户" class="empty-state">
+        <el-button type="primary" @click="handleAddCustomer">
+          <el-icon><Plus /></el-icon>
+          添加第一个客户
+        </el-button>
+      </el-empty>
+    </div>
     
     <!-- 添加/编辑客户对话框 -->
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="600px"
+      width="560px"
       class="customer-dialog"
       @close="resetForm"
       :close-on-click-modal="false"
     >
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
+      <el-form :model="form" :rules="rules" ref="formRef" label-width="90px" class="customer-form">
         <el-form-item label="客户名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入客户名称" />
+          <el-input v-model="form.name" placeholder="请输入客户名称" class="form-input" />
         </el-form-item>
-        <el-row :gutter="20">
+        <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="联系人" prop="contact_name">
-              <el-input v-model="form.contact_name" placeholder="请输入联系人" />
+              <el-input v-model="form.contact_name" placeholder="请输入联系人" class="form-input" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="联系电话" prop="phone">
-              <el-input v-model="form.phone" placeholder="请输入联系电话" />
+              <el-input v-model="form.phone" placeholder="请输入联系电话" class="form-input" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="邮箱" prop="email">
-          <el-input v-model="form.email" placeholder="请输入邮箱" />
+          <el-input v-model="form.email" placeholder="请输入邮箱" class="form-input" />
         </el-form-item>
         <el-form-item label="地址" prop="address">
-          <el-input v-model="form.address" type="textarea" :rows="2" placeholder="请输入地址" />
+          <el-input v-model="form.address" type="textarea" :rows="2" placeholder="请输入地址" class="form-textarea" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="请输入备注" />
+          <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="请输入备注" class="form-textarea" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-switch v-model="form.is_active" active-text="启用" inactive-text="禁用" />
+          <div class="switch-wrapper">
+            <el-switch v-model="form.is_active" active-text="活跃" inactive-text="停用" inline-prompt />
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit" :loading="submitLoading">
-            确定
+          <el-button @click="dialogVisible = false" size="large">取消</el-button>
+          <el-button type="primary" @click="handleSubmit" :loading="submitLoading" size="large">
+            确认保存
           </el-button>
         </div>
       </template>
@@ -118,147 +226,88 @@
     <el-dialog
       v-model="detailDialogVisible"
       title="客户详情"
-      width="700px"
+      width="680px"
       class="detail-dialog"
     >
-      <el-descriptions :column="2" border v-if="currentCustomer">
-        <el-descriptions-item label="客户名称">{{ currentCustomer.name }}</el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <el-tag :type="currentCustomer.is_active ? 'success' : 'danger'">
-            {{ currentCustomer.is_active ? '启用' : '禁用' }}
+      <div class="detail-header" v-if="currentCustomer">
+        <div class="detail-avatar">
+          {{ currentCustomer.name?.charAt(0)?.toUpperCase() || 'C' }}
+        </div>
+        <div class="detail-info">
+          <h2 class="detail-name">{{ currentCustomer.name }}</h2>
+          <el-tag :type="currentCustomer.is_active ? 'success' : 'info'" effect="light" size="small">
+            {{ currentCustomer.is_active ? '活跃' : '停用' }}
           </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="联系人">{{ currentCustomer.contact_name || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="联系电话">{{ currentCustomer.phone || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="邮箱" :span="2">{{ currentCustomer.email || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="地址" :span="2">{{ currentCustomer.address || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="备注" :span="2">{{ currentCustomer.remark || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="所属企业">{{ currentCustomer.company_name || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="创建人">{{ currentCustomer.created_by_name || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ formatDate(currentCustomer.created_at) }}</el-descriptions-item>
-        <el-descriptions-item label="更新时间">{{ formatDate(currentCustomer.updated_at) }}</el-descriptions-item>
-      </el-descriptions>
-    </el-dialog>
-
-    <!-- 商品关联管理对话框 -->
-    <el-dialog
-      v-model="productDialogVisible"
-      title="商品关联管理"
-      width="900px"
-      class="product-dialog"
-    >
-      <div class="product-header">
-        <el-button type="primary" size="small" @click="handleAddProductRelation">
-          <el-icon><Plus /></el-icon>
-          添加商品
-        </el-button>
+        </div>
       </div>
-      <el-table :data="customerProducts" style="width: 100%; margin-top: 16px;">
-        <el-table-column prop="product_code" label="商品编码" width="120" />
-        <el-table-column prop="product_name" label="商品名称" width="180" />
-        <el-table-column prop="product_type_display" label="商品类型" width="100" />
-        <el-table-column prop="price" label="价格" width="100">
-          <template #default="{ row }">
-            ¥{{ row.price.toFixed(2) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="is_active" label="状态" width="80">
-          <template #default="{ row }">
-            <el-tag :type="row.is_active ? 'success' : 'danger'" size="small">
-              {{ row.is_active ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150">
-          <template #default="{ row }">
-            <el-button size="small" type="primary" @click="handleEditProductRelation(row)">编辑</el-button>
-            <el-button size="small" type="warning" @click="handleViewPriceHistory(row)">报价历史</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-dialog>
-
-    <!-- 添加/编辑商品关联对话框 -->
-    <el-dialog
-      v-model="addProductDialogVisible"
-      :title="productRelationDialogTitle"
-      width="500px"
-      class="add-product-dialog"
-    >
-      <el-form :model="productForm" :rules="productRules" ref="productFormRef" label-width="100px">
-        <el-form-item label="选择商品" prop="product_id">
-          <el-select v-model="productForm.product_id" placeholder="请选择商品" style="width: 100%;" filterable>
-            <el-option
-              v-for="product in allProducts"
-              :key="product.id"
-              :label="`${product.code} - ${product.name}`"
-              :value="product.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="价格" prop="price">
-          <el-input-number v-model="productForm.price" :min="0" :precision="2" style="width: 100%;" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-switch v-model="productForm.is_active" active-text="启用" inactive-text="禁用" />
-        </el-form-item>
-      </el-form>
+      <div class="detail-content">
+        <el-descriptions :column="2" border v-if="currentCustomer" class="detail-descriptions">
+          <el-descriptions-item label="联系人">
+            <span class="desc-text">{{ currentCustomer.contact_name || '-' }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="联系电话">
+            <span class="desc-text">{{ currentCustomer.phone || '-' }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="邮箱" :span="2">
+            <span class="desc-text">{{ currentCustomer.email || '-' }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="地址" :span="2">
+            <span class="desc-text">{{ currentCustomer.address || '-' }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">
+            <span class="desc-text">{{ currentCustomer.remark || '-' }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="所属企业">
+            <span class="desc-text">{{ currentCustomer.company_name || '-' }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="创建人">
+            <span class="desc-text">{{ currentCustomer.created_by_name || '-' }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间">
+            <span class="desc-text">{{ formatDate(currentCustomer.created_at) }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="更新时间">
+            <span class="desc-text">{{ formatDate(currentCustomer.updated_at) }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
       <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="addProductDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmitProductRelation" :loading="productSubmitLoading">
-            确定
+        <div class="detail-footer">
+          <el-button @click="detailDialogVisible = false" size="large">关闭</el-button>
+          <el-button type="primary" @click="handleEditFromDetail" size="large" v-if="currentCustomer">
+            <el-icon><Edit /></el-icon>
+            编辑客户
+          </el-button>
+          <el-button type="success" @click="handleProductRelation(currentCustomer)" size="large" v-if="currentCustomer">
+            <el-icon><Goods /></el-icon>
+            商品管理
           </el-button>
         </div>
       </template>
-    </el-dialog>
-
-    <!-- 报价历史对话框 -->
-    <el-dialog
-      v-model="priceHistoryDialogVisible"
-      title="报价历史"
-      width="600px"
-      class="price-history-dialog"
-    >
-      <el-table :data="priceHistories" style="width: 100%;">
-        <el-table-column prop="price" label="价格" width="120">
-          <template #default="{ row }">
-            ¥{{ row.price.toFixed(2) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="created_by_name" label="创建人" width="120" />
-        <el-table-column prop="created_at" label="创建时间">
-          <template #default="{ row }">
-            {{ formatDate(row.created_at) }}
-          </template>
-        </el-table-column>
-      </el-table>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search } from '@element-plus/icons-vue'
+import { Plus, Search, User, CircleCheck, UserFilled, View, Edit, Delete, Goods } from '@element-plus/icons-vue'
 import { 
   getCustomers, 
   createCustomer, 
   updateCustomer, 
   deleteCustomer, 
-  getCustomerDetail,
-  getCustomerProducts,
-  createOrUpdateCustomerProduct,
-  getCustomerPriceHistory,
-  getProducts as fetchAllProducts
+  getCustomerDetail
 } from '@/api'
+
+const router = useRouter()
 
 // 客户列表
 const customers = ref([])
 // 加载状态
 const loading = ref(false)
 const submitLoading = ref(false)
-const productSubmitLoading = ref(false)
 // 搜索关键词
 const searchKeyword = ref('')
 // 筛选表单
@@ -274,20 +323,9 @@ const pagination = reactive({
 // 对话框状态
 const dialogVisible = ref(false)
 const detailDialogVisible = ref(false)
-const productDialogVisible = ref(false)
-const addProductDialogVisible = ref(false)
-const priceHistoryDialogVisible = ref(false)
-const dialogTitle = ref('添加客户')
-const productRelationDialogTitle = ref('添加商品关联')
+const dialogTitle = ref('新建客户')
 // 当前操作的客户
 const currentCustomer = ref(null)
-const currentCustomerId = ref(null)
-// 客户商品列表
-const customerProducts = ref([])
-// 所有商品列表
-const allProducts = ref([])
-// 报价历史
-const priceHistories = ref([])
 // 表单数据
 const form = reactive({
   id: '',
@@ -299,29 +337,29 @@ const form = reactive({
   remark: '',
   is_active: true
 })
-// 商品关联表单
-const productForm = reactive({
-  id: '',
-  product_id: '',
-  price: 0,
-  is_active: true
-})
 // 表单验证规则
 const rules = {
   name: [{ required: true, message: '请输入客户名称', trigger: 'blur' }]
 }
-const productRules = {
-  product_id: [{ required: true, message: '请选择商品', trigger: 'change' }],
-  price: [{ required: true, message: '请输入价格', trigger: 'blur' }]
-}
 // 表单引用
 const formRef = ref(null)
-const productFormRef = ref(null)
+
+// 计算属性
+const activeCount = computed(() => {
+  return customers.value.filter(item => item.is_active).length
+})
 
 // 格式化日期
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-CN')
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 // 获取客户列表
@@ -339,8 +377,8 @@ const fetchCustomers = async () => {
       params.search = searchKeyword.value
     }
     const response = await getCustomers(params)
-    customers.value = response.data.customers
-    pagination.total = response.data.total_count
+    customers.value = response.data.customers || []
+    pagination.total = response.data.total_count || 0
   } catch (error) {
     ElMessage.error('获取客户列表失败')
     console.error(error)
@@ -363,7 +401,7 @@ const handleCurrentChange = (current) => {
 
 // 处理添加客户
 const handleAddCustomer = () => {
-  dialogTitle.value = '添加客户'
+  dialogTitle.value = '新建客户'
   resetForm()
   form.is_active = true
   dialogVisible.value = true
@@ -407,6 +445,12 @@ const handleEditCustomer = async (row) => {
   }
 }
 
+// 从详情页编辑客户
+const handleEditFromDetail = () => {
+  detailDialogVisible.value = false
+  handleEditCustomer(currentCustomer.value)
+}
+
 // 处理查看详情
 const handleViewDetail = async (row) => {
   try {
@@ -421,11 +465,16 @@ const handleViewDetail = async (row) => {
 
 // 处理删除客户
 const handleDeleteCustomer = (row) => {
-  ElMessageBox.confirm('确定要删除这个客户吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
+  ElMessageBox.confirm(
+    `确定要删除客户「${row.name}」吗？`, 
+    '提示', 
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+      confirmButtonClass: 'confirm-btn-danger'
+    }
+  ).then(async () => {
     submitLoading.value = true
     try {
       await deleteCustomer(row.id)
@@ -467,92 +516,11 @@ const handleSubmit = async () => {
 }
 
 // 处理商品关联
-const handleProductRelation = async (row) => {
-  currentCustomerId.value = row.id
-  currentCustomer.value = row
-  await fetchCustomerProducts()
-  productDialogVisible.value = true
-}
-
-// 获取客户商品列表
-const fetchCustomerProducts = async () => {
-  try {
-    const response = await getCustomerProducts(currentCustomerId.value)
-    customerProducts.value = response.data.customer_products
-  } catch (error) {
-    ElMessage.error('获取客户商品列表失败')
-    console.error(error)
+const handleProductRelation = (row) => {
+  if (detailDialogVisible.value) {
+    detailDialogVisible.value = false
   }
-}
-
-// 获取所有商品
-const fetchProducts = async () => {
-  try {
-    const response = await fetchAllProducts({ page_size: 1000 })
-    allProducts.value = response.data.products
-  } catch (error) {
-    ElMessage.error('获取商品列表失败')
-    console.error(error)
-  }
-}
-
-// 处理添加商品关联
-const handleAddProductRelation = () => {
-  productRelationDialogTitle.value = '添加商品关联'
-  Object.assign(productForm, {
-    id: '',
-    product_id: '',
-    price: 0,
-    is_active: true
-  })
-  fetchProducts()
-  addProductDialogVisible.value = true
-}
-
-// 处理编辑商品关联
-const handleEditProductRelation = (row) => {
-  productRelationDialogTitle.value = '编辑商品关联'
-  Object.assign(productForm, {
-    id: row.id,
-    product_id: row.product_id,
-    price: row.price,
-    is_active: row.is_active
-  })
-  fetchProducts()
-  addProductDialogVisible.value = true
-}
-
-// 处理提交商品关联
-const handleSubmitProductRelation = async () => {
-  if (!productFormRef.value) return
-  await productFormRef.value.validate(async (valid) => {
-    if (valid) {
-      productSubmitLoading.value = true
-      try {
-        await createOrUpdateCustomerProduct(currentCustomerId.value, productForm)
-        ElMessage.success('操作成功')
-        addProductDialogVisible.value = false
-        fetchCustomerProducts()
-      } catch (error) {
-        ElMessage.error(error?.response?.data?.error || '操作失败')
-        console.error(error?.response?.data || error)
-      } finally {
-        productSubmitLoading.value = false
-      }
-    }
-  })
-}
-
-// 处理查看报价历史
-const handleViewPriceHistory = async (row) => {
-  try {
-    const response = await getCustomerPriceHistory(currentCustomerId.value, row.product_id)
-    priceHistories.value = response.data.price_histories
-    priceHistoryDialogVisible.value = true
-  } catch (error) {
-    ElMessage.error('获取报价历史失败')
-    console.error(error)
-  }
+  router.push(`/customers/${row.id}/products`)
 }
 
 // 初始化
@@ -562,58 +530,341 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.customers {
+.customers-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
-  padding: 24px;
+  background: linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%);
+  padding: 24px 32px;
 }
 
-.main-card {
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+/* 页面标题 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.header-left {
+  flex: 1;
+}
+
+.page-title {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.5px;
+}
+
+.page-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.add-btn {
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
+  transition: all 0.3s ease;
 }
 
-.card-header {
+.add-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.45);
+}
+
+/* 统计卡片 */
+.stats-section {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.stat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 28px;
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #64748b;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* 内容卡片 */
+.content-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  padding: 24px 28px;
+  overflow: hidden;
+}
+
+/* 筛选部分 */
+.filter-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.card-header .title {
-  font-size: 20px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.header-actions {
+.filter-left {
   display: flex;
+  align-items: center;
   gap: 12px;
-  align-items: center;
 }
 
-.filter-section {
+.search-input {
+  width: 320px;
+}
+
+.search-input :deep(.el-input__wrapper) {
+  border-radius: 10px;
+  padding: 6px 16px;
+  box-shadow: 0 0 0 1px #e2e8f0 inset;
+  transition: all 0.3s ease;
+}
+
+.search-input :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #cbd5e1 inset;
+}
+
+.search-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #667eea inset;
+}
+
+.status-select {
+  width: 140px;
+}
+
+.status-select :deep(.el-select__wrapper) {
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px #e2e8f0 inset;
+}
+
+.search-btn {
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* 表格 */
+.customer-table {
+  width: 100%;
+}
+
+.customer-table :deep(.el-table__inner-wrapper::before) {
+  display: none;
+}
+
+.name-cell {
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
+.avatar-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.name-text {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.text-gray {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.action-buttons .el-button {
+  font-weight: 500;
+}
+
+/* 分页 */
 .pagination-container {
-  margin-top: 24px;
   display: flex;
   justify-content: flex-end;
+  padding-top: 24px;
 }
 
-.product-header {
-  display: flex;
-  justify-content: flex-end;
+/* 空状态 */
+.empty-state {
+  padding: 60px 0;
+}
+
+/* 对话框 */
+.customer-dialog :deep(.el-dialog),
+.detail-dialog :deep(.el-dialog) {
+  border-radius: 16px;
+}
+
+.customer-dialog :deep(.el-dialog__header),
+.detail-dialog :deep(.el-dialog__header) {
+  padding: 24px 28px 8px;
+}
+
+.customer-dialog :deep(.el-dialog__title),
+.detail-dialog :deep(.el-dialog__title) {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.customer-dialog :deep(.el-dialog__body),
+.detail-dialog :deep(.el-dialog__body) {
+  padding: 16px 28px 8px;
+}
+
+.customer-form {
+  padding: 8px 0;
+}
+
+.form-input :deep(.el-input__wrapper),
+.form-textarea :deep(.el-textarea__inner) {
+  border-radius: 10px;
+}
+
+.switch-wrapper {
+  padding: 4px 0;
 }
 
 .dialog-footer {
   display: flex;
-  justify-content: flex-end;
   gap: 12px;
+  justify-content: flex-end;
+  padding: 8px 28px 24px;
+}
+
+/* 详情对话框 */
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f0f4f8 0%, #e8eef3 100%);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.detail-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.detail-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.detail-content {
+  padding: 4px 0;
+}
+
+.detail-descriptions :deep(.el-descriptions__header .el-descriptions__cell) {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+}
+
+.detail-descriptions :deep(.el-descriptions__label) {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.desc-text {
+  color: #1e293b;
+}
+
+.detail-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 8px 28px 24px;
+}
+
+/* 响应式 */
+@media (max-width: 1024px) {
+  .customers-page {
+    padding: 16px;
+  }
+  
+  .stats-section {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
