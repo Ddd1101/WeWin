@@ -353,7 +353,7 @@ def get_customer_products(request, customer_id):
 
         product_list = []
         for cp in customer_products:
-            product_list.append({
+            product_data = {
                 'id': cp.id,
                 'customer_id': cp.customer_id,
                 'product_id': cp.product_id,
@@ -365,7 +365,13 @@ def get_customer_products(request, customer_id):
                 'is_active': cp.is_active,
                 'created_at': cp.created_at.isoformat(),
                 'updated_at': cp.updated_at.isoformat()
-            })
+            }
+            # 添加产品图片 URL
+            if cp.product.image:
+                product_data['product_image_url'] = request.build_absolute_uri(cp.product.image.url)
+            else:
+                product_data['product_image_url'] = None
+            product_list.append(product_data)
 
         return JsonResponse({'customer_products': product_list})
     except Customer.DoesNotExist:
