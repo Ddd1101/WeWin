@@ -67,15 +67,6 @@
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-          <el-icon><Money /></el-icon>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">¥{{ totalPrice.toFixed(2) }}</div>
-          <div class="stat-label">总报价</div>
-        </div>
-      </div>
-      <div class="stat-card">
         <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
           <el-icon><CircleCheck /></el-icon>
         </div>
@@ -521,7 +512,6 @@ import {
   Message, 
   Location, 
   Goods, 
-  Money, 
   CircleCheck,
   Edit,
   Delete,
@@ -597,10 +587,6 @@ const priceChartRef = ref(null)
 let priceChart = null
 
 // 计算属性
-const totalPrice = computed(() => {
-  return customerProducts.value.reduce((sum, item) => sum + (item.price || 0), 0)
-})
-
 const activeProductsCount = computed(() => {
   return customerProducts.value.filter(item => item.is_active).length
 })
@@ -1267,7 +1253,7 @@ onMounted(() => {
 /* 统计卡片 */
 .stats-section {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
   margin-bottom: 24px;
 }
