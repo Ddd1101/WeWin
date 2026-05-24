@@ -27,13 +27,19 @@ def calculate_finished_product_cost(finished):
     """
     total_cost = Decimal('0')
     
-    # 计算串珠成本
+    # 计算串珠成本（优先使用SKU成本）
     for fpb in finished.beads.all():
-        total_cost += fpb.bead.product.cost_price * fpb.quantity
+        if fpb.sku_id and fpb.sku:
+            total_cost += fpb.sku.cost_price * fpb.quantity
+        else:
+            total_cost += fpb.bead.product.cost_price * fpb.quantity
     
-    # 计算配件成本
+    # 计算配件成本（优先使用SKU成本）
     for fpa in finished.accessories.all():
-        total_cost += fpa.accessory.product.cost_price * fpa.quantity
+        if fpa.sku_id and fpa.sku:
+            total_cost += fpa.sku.cost_price * fpa.quantity
+        else:
+            total_cost += fpa.accessory.product.cost_price * fpa.quantity
     
     # 加上工费和弹性成本
     total_cost += finished.labor_cost
@@ -1105,40 +1111,50 @@ def get_products(request):
                         'labor_cost': float(finished.labor_cost),
                         'elastic_cost': float(finished.elastic_cost)
                     }
+                    # 计算总成本
+                    total_cost = Decimal('0')
                     # 获取成品的串珠组成
-                    for fpb in FinishedProductBead.objects.raw('SELECT id, finished_product_id, bead_id, quantity, created_at, sku_id FROM finished_product_bead WHERE finished_product_id = %s', [finished.product_id]):
+                    for fpb in FinishedProductBead.objects.select_related('bead__product', 'sku').filter(finished_product=finished):
                         bead_product = fpb.bead.product
                         bead = fpb.bead
-                        sku = fpb.sku if getattr(fpb, 'sku_id', None) else get_default_sku(bead_product)
+                        sku = fpb.sku if fpb.sku_id else get_default_sku(bead_product)
                         sku_payload = sku_to_dict(sku) if sku else None
+                        bead_cost_price = sku.cost_price if sku else bead_product.cost_price
+                        total_cost += bead_cost_price * fpb.quantity
                         product_data['finished']['beads'].append({
                             'bead_id': bead_product.id,
                             'sku_id': sku.id if sku else None,
                             'sku': sku_payload,
                             'bead_code': bead_product.code,
                             'bead_name': bead_product.name,
-                            'bead_cost_price': float((sku.cost_price if sku else bead_product.cost_price)),
+                            'bead_cost_price': float(bead_cost_price),
                             'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
                             'quantity': fpb.quantity,
-                            'bead_weight': float((sku.weight if sku else bead.weight)),
-                            'bead_quality_level': (sku.quality_level if sku else bead.quality_level),
-                            'bead_remark': (sku.remark if sku else bead.remark)
+                            'bead_weight': float(sku.weight if sku else bead.weight),
+                            'bead_quality_level': sku.quality_level if sku else bead.quality_level,
+                            'bead_remark': sku.remark if sku else bead.remark
                         })
                     # 获取成品的配件组成
-                    for fpa in FinishedProductAccessory.objects.raw('SELECT id, finished_product_id, accessory_id, quantity, created_at, sku_id FROM finished_product_accessory WHERE finished_product_id = %s', [finished.product_id]):
+                    for fpa in FinishedProductAccessory.objects.select_related('accessory__product', 'sku').filter(finished_product=finished):
                         acc_product = fpa.accessory.product
-                        sku = fpa.sku if getattr(fpa, 'sku_id', None) else get_default_sku(acc_product)
+                        sku = fpa.sku if fpa.sku_id else get_default_sku(acc_product)
                         sku_payload = sku_to_dict(sku) if sku else None
+                        accessory_cost_price = sku.cost_price if sku else acc_product.cost_price
+                        total_cost += accessory_cost_price * fpa.quantity
                         product_data['finished']['accessories'].append({
                             'accessory_id': acc_product.id,
                             'sku_id': sku.id if sku else None,
                             'sku': sku_payload,
                             'accessory_code': acc_product.code,
                             'accessory_name': acc_product.name,
-                            'accessory_cost_price': float((sku.cost_price if sku else acc_product.cost_price)),
+                            'accessory_cost_price': float(accessory_cost_price),
                             'accessory_image_url': request.build_absolute_uri(acc_product.image.url) if acc_product.image else None,
                             'quantity': fpa.quantity
                         })
+                    # 加上工费和弹性成本
+                    total_cost += finished.labor_cost
+                    total_cost += finished.elastic_cost
+                    product_data['cost_price'] = float(total_cost)
                 except FinishedProduct.DoesNotExist:
                     pass
 
@@ -1805,40 +1821,50 @@ def get_product_detail(request, product_id):
                     'labor_cost': float(finished.labor_cost),
                     'elastic_cost': float(finished.elastic_cost)
                 }
+                # 计算总成本
+                total_cost = Decimal('0')
                 # 获取成品的串珠组成
-                for fpb in FinishedProductBead.objects.raw('SELECT id, finished_product_id, bead_id, quantity, created_at, sku_id FROM finished_product_bead WHERE finished_product_id = %s', [finished.product_id]):
+                for fpb in FinishedProductBead.objects.select_related('bead__product', 'sku').filter(finished_product=finished):
                     bead_product = fpb.bead.product
                     bead = fpb.bead
-                    sku = fpb.sku if getattr(fpb, 'sku_id', None) else get_default_sku(bead_product)
+                    sku = fpb.sku if fpb.sku_id else get_default_sku(bead_product)
                     sku_payload = sku_to_dict(sku) if sku else None
+                    bead_cost_price = sku.cost_price if sku else bead_product.cost_price
+                    total_cost += bead_cost_price * fpb.quantity
                     product_data['finished']['beads'].append({
                         'bead_id': bead_product.id,
                         'sku_id': sku.id if sku else None,
                         'sku': sku_payload,
                         'bead_code': bead_product.code,
                         'bead_name': bead_product.name,
-                        'bead_cost_price': float((sku.cost_price if sku else bead_product.cost_price)),
+                        'bead_cost_price': float(bead_cost_price),
                         'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
                         'quantity': fpb.quantity,
-                        'bead_weight': float((sku.weight if sku else bead.weight)),
-                        'bead_quality_level': (sku.quality_level if sku else bead.quality_level),
-                        'bead_remark': (sku.remark if sku else bead.remark)
+                        'bead_weight': float(sku.weight if sku else bead.weight),
+                        'bead_quality_level': sku.quality_level if sku else bead.quality_level,
+                        'bead_remark': sku.remark if sku else bead.remark
                     })
                 # 获取成品的配件组成
-                for fpa in FinishedProductAccessory.objects.raw('SELECT id, finished_product_id, accessory_id, quantity, created_at, sku_id FROM finished_product_accessory WHERE finished_product_id = %s', [finished.product_id]):
+                for fpa in FinishedProductAccessory.objects.select_related('accessory__product', 'sku').filter(finished_product=finished):
                     acc_product = fpa.accessory.product
-                    sku = fpa.sku if getattr(fpa, 'sku_id', None) else get_default_sku(acc_product)
+                    sku = fpa.sku if fpa.sku_id else get_default_sku(acc_product)
                     sku_payload = sku_to_dict(sku) if sku else None
+                    accessory_cost_price = sku.cost_price if sku else acc_product.cost_price
+                    total_cost += accessory_cost_price * fpa.quantity
                     product_data['finished']['accessories'].append({
                         'accessory_id': acc_product.id,
                         'sku_id': sku.id if sku else None,
                         'sku': sku_payload,
                         'accessory_code': acc_product.code,
                         'accessory_name': acc_product.name,
-                        'accessory_cost_price': float((sku.cost_price if sku else acc_product.cost_price)),
+                        'accessory_cost_price': float(accessory_cost_price),
                         'accessory_image_url': request.build_absolute_uri(acc_product.image.url) if acc_product.image else None,
                         'quantity': fpa.quantity
                     })
+                # 加上工费和弹性成本
+                total_cost += finished.labor_cost
+                total_cost += finished.elastic_cost
+                product_data['cost_price'] = float(total_cost)
             except FinishedProduct.DoesNotExist:
                 pass
 
