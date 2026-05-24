@@ -194,10 +194,10 @@
           {{ getDefaultSku(scope.row)?.quality_level || '-' }}
         </template>
       </el-table-column>
-      <!-- 串珠和配件显示采购成本 -->
-      <el-table-column v-if="props.products.some(p => p.product_type === 'accessory' || p.product_type === 'bead')" label="采购成本(元/克)" width="130">
+      <!-- 只对串珠显示采购成本 -->
+      <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="采购成本(元/克)" width="130">
         <template #default="scope">
-          ¥{{ formatPrice(getDefaultSku(scope.row)?.purchase_cost, 2) }}
+          {{ scope.row.product_type === 'bead' ? '¥' + formatPrice(getDefaultSku(scope.row)?.purchase_cost, 2) : '-' }}
         </template>
       </el-table-column>
       <!-- 显示成本价格 -->
