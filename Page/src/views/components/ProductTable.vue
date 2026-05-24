@@ -182,37 +182,34 @@
       <el-table-column prop="code" label="货号" width="180" />
       <el-table-column prop="name" label="商品名称" />
       <el-table-column prop="product_type_display" label="商品类型" width="120" />
-      <!-- 配件显示规格 -->
-      <el-table-column v-if="props.products.some(p => p.product_type === 'accessory')" label="规格(mm)" width="100">
+      <!-- 配件和串珠显示规格 -->
+      <el-table-column v-if="props.products.some(p => p.product_type === 'accessory' || p.product_type === 'bead')" label="规格(mm)" width="100">
         <template #default="scope">
-          {{ scope.row.accessory?.size || '-' }}
+          {{ getDefaultSku(scope.row)?.size || '-' }}
         </template>
       </el-table-column>
-      <!-- 串珠显示规格和品质 -->
-      <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="规格(mm)" width="100">
-        <template #default="scope">
-          {{ scope.row.bead?.size || '-' }}
-        </template>
-      </el-table-column>
+      <!-- 串珠显示品质等级 -->
       <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="品质等级" width="100">
         <template #default="scope">
-          {{ scope.row.bead?.quality_level || '-' }}
+          {{ getDefaultSku(scope.row)?.quality_level || '-' }}
         </template>
       </el-table-column>
-      <!-- 串珠显示采购成本和单颗成本 -->
-      <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="采购成本(元/克)" width="130">
+      <!-- 串珠和配件显示采购成本 -->
+      <el-table-column v-if="props.products.some(p => p.product_type === 'accessory' || p.product_type === 'bead')" label="采购成本(元/克)" width="130">
         <template #default="scope">
-          ¥{{ formatPrice(scope.row.purchase_cost, 2) }}
+          ¥{{ formatPrice(getDefaultSku(scope.row)?.purchase_cost, 2) }}
         </template>
       </el-table-column>
+      <!-- 显示成本价格 -->
       <el-table-column label="成本价格" width="100">
         <template #default="scope">
-          ¥{{ scope.row.cost_price?.toFixed(2) }}
+          ¥{{ formatPrice(getDefaultSku(scope.row)?.cost_price) }}
         </template>
       </el-table-column>
+      <!-- 显示售卖价格 -->
       <el-table-column label="售卖价格" width="100">
         <template #default="scope">
-          ¥{{ scope.row.selling_price?.toFixed(2) }}
+          ¥{{ formatPrice(getDefaultSku(scope.row)?.selling_price) }}
         </template>
       </el-table-column>
       <el-table-column prop="location" label="库位" width="120" />
@@ -260,7 +257,22 @@ const emit = defineEmits(['select', 'select-all', 'edit', 'delete'])
 
 const searchQuery = ref('')
 const localFilter = ref({
-  is_active: '' })
+  is_active: ''
+})
+
+// 获取默认SKU的工具函数
+const getDefaultSku = (product) => {
+  if (!product.skus || product.skus.length === 0) {
+    return null
+  }
+  // 首先找 is_default 为 true 的
+  let defaultSku = product.skus.find(sku => sku.is_default)
+  // 如果没有找到，就用第一个
+  if (!defaultSku) {
+    defaultSku = product.skus[0]
+  }
+  return defaultSku
+}
 
 // 过滤后的产品列表
 const filteredProducts = computed(() => {
