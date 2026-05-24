@@ -268,85 +268,86 @@
           />
         </el-form-item>
         
-        <!-- 商品选择卡片列表 -->
-        <el-form-item label="选择商品" prop="product_id">
-          <div class="product-selection-grid">
-            <div 
-              v-for="product in filteredAllProducts" 
-              :key="product.id"
-              :class="['product-card-item', { selected: productForm.product_id === product.id }]"
-              @click="handleSelectProduct(product)"
-            >
-              <div class="product-card-image" @click.stop="handlePreviewImage(product)">
-                <el-image
-                  v-if="product.image_url"
-                  :src="product.image_url"
-                  fit="cover"
-                  class="product-thumbnail"
-                  :preview-src-list="[product.image_url]"
-                  :initial-index="0"
-                  preview-teleported
-                />
-                <div v-else class="product-no-image">
-                  <el-icon><Picture /></el-icon>
+        <!-- 商品和SKU选择区域 -->
+        <el-form-item label="商品与SKU" prop="product_id">
+          <div class="product-sku-selection-row">
+            <!-- 商品选择卡片列表 -->
+            <div class="product-selection-col">
+              <div class="section-label">选择商品</div>
+              <div class="product-selection-grid">
+                <div 
+                  v-for="product in filteredAllProducts" 
+                  :key="product.id"
+                  :class="['product-card-item', { selected: productForm.product_id === product.id }]"
+                  @click="handleSelectProduct(product)"
+                >
+                  <div class="product-card-image" @click.stop="handlePreviewImage(product)">
+                    <el-image
+                      v-if="product.image_url"
+                      :src="product.image_url"
+                      fit="cover"
+                      class="product-thumbnail"
+                      :preview-src-list="[product.image_url]"
+                      :initial-index="0"
+                      preview-teleported
+                    />
+                    <div v-else class="product-no-image">
+                      <el-icon><Picture /></el-icon>
+                    </div>
+                  </div>
+                  <div class="product-card-content">
+                    <div class="product-card-code">{{ product.code }}</div>
+                    <div class="product-card-name">{{ product.name }}</div>
+                    <div class="product-card-type">
+                      <el-tag size="small" :type="getProductTypeTag(product.product_type)">
+                        {{ getProductTypeName(product.product_type) }}
+                      </el-tag>
+                    </div>
+                    <div class="product-card-sku-count">
+                      <el-tag size="small" type="info">{{ product.skus?.length || 0 }} 个SKU</el-tag>
+                    </div>
+                  </div>
+                  <div v-if="productForm.product_id === product.id" class="product-check-icon">
+                    <el-icon><CircleCheck /></el-icon>
+                  </div>
                 </div>
               </div>
-              <div class="product-card-content">
-                <div class="product-card-code">{{ product.code }}</div>
-                <div class="product-card-name">{{ product.name }}</div>
-                <div class="product-card-type">
-                  <el-tag size="small" :type="getProductTypeTag(product.product_type)">
-                    {{ getProductTypeName(product.product_type) }}
-                  </el-tag>
-                </div>
-                <div class="product-card-sku-count">
-                  <el-tag size="small" type="info">{{ product.skus?.length || 0 }} 个SKU</el-tag>
+              <div v-if="filteredAllProducts.length === 0" class="empty-products">
+                <el-empty description="暂无符合条件的商品" :image-size="60" />
+              </div>
+            </div>
+            
+            <!-- SKU选择 -->
+            <div class="sku-selection-col">
+              <div class="section-label">选择SKU</div>
+              <div v-if="selectedProduct && selectedProduct.skus && selectedProduct.skus.length > 0" class="sku-selection-container">
+                <div 
+                  v-for="sku in selectedProduct.skus" 
+                  :key="sku.id"
+                  :class="['sku-option-card', { selected: productForm.sku_id === sku.id }]"
+                  @click="handleSelectSku(sku)"
+                >
+                  <div class="sku-option-info">
+                    <div class="sku-option-code">{{ sku.sku_code || '-' }}</div>
+                    <div class="sku-option-name">{{ sku.sku_name || sku.name || '-' }}</div>
+                    <div class="sku-option-specs">{{ getSkuSpecs(sku) }}</div>
+                  </div>
+                  <div class="sku-option-price">
+                    ¥{{ sku.selling_price?.toFixed(2) || sku.cost_price?.toFixed(2) || '0.00' }}
+                  </div>
+                  <div v-if="productForm.sku_id === sku.id" class="sku-check-icon">
+                    <el-icon><CircleCheck /></el-icon>
+                  </div>
                 </div>
               </div>
-              <div v-if="productForm.product_id === product.id" class="product-check-icon">
-                <el-icon><CircleCheck /></el-icon>
+              <div v-else-if="selectedProduct && (!selectedProduct.skus || selectedProduct.skus.length === 0)" class="no-sku-hint">
+                <el-alert title="该商品暂无SKU" type="info" :closable="false" />
+              </div>
+              <div v-else class="no-selection-hint">
+                <el-empty description="请先选择商品" :image-size="60" />
               </div>
             </div>
           </div>
-          <div v-if="filteredAllProducts.length === 0" class="empty-products">
-            <el-empty description="暂无符合条件的商品" />
-          </div>
-        </el-form-item>
-        
-        <!-- SKU选择 -->
-        <el-form-item 
-          v-if="selectedProduct && selectedProduct.skus && selectedProduct.skus.length > 0" 
-          label="选择SKU" 
-          prop="sku_id"
-        >
-          <div class="sku-selection-container">
-            <div 
-              v-for="sku in selectedProduct.skus" 
-              :key="sku.id"
-              :class="['sku-option-card', { selected: productForm.sku_id === sku.id }]"
-              @click="handleSelectSku(sku)"
-            >
-              <div class="sku-option-info">
-                <div class="sku-option-code">{{ sku.sku_code || '-' }}</div>
-                <div class="sku-option-name">{{ sku.sku_name || sku.name || '-' }}</div>
-                <div class="sku-option-specs">{{ getSkuSpecs(sku) }}</div>
-              </div>
-              <div class="sku-option-price">
-                ¥{{ sku.selling_price?.toFixed(2) || sku.cost_price?.toFixed(2) || '0.00' }}
-              </div>
-              <div v-if="productForm.sku_id === sku.id" class="sku-check-icon">
-                <el-icon><CircleCheck /></el-icon>
-              </div>
-            </div>
-          </div>
-        </el-form-item>
-        
-        <!-- 无SKU提示 -->
-        <el-form-item 
-          v-else-if="selectedProduct && (!selectedProduct.skus || selectedProduct.skus.length === 0)" 
-          label="SKU"
-        >
-          <el-alert title="该商品暂无SKU，将使用商品默认信息" type="info" :closable="false" />
         </el-form-item>
         
         <el-form-item label="客户报价" prop="price">
@@ -2091,6 +2092,42 @@ onMounted(() => {
 
 .sku-check-icon .el-icon {
   font-size: 16px;
+}
+
+/* 商品和SKU并排选择布局 */
+.product-sku-selection-row {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+}
+
+.product-selection-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.sku-selection-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.section-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.no-sku-hint,
+.no-selection-hint {
+  margin-top: 16px;
+}
+
+/* 调整商品选择网格以适应新布局 */
+.product-selection-col .product-selection-grid {
+  max-height: 350px;
 }
 
 /* 历史记录SKU显示 */
