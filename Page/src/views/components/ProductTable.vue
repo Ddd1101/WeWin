@@ -203,13 +203,13 @@
       <!-- 显示成本价格 -->
       <el-table-column label="成本价格" width="100">
         <template #default="scope">
-          ¥{{ formatPrice(getDefaultSku(scope.row)?.cost_price) }}
+          ¥{{ formatPrice(scope.row.product_type === 'finished' ? scope.row.cost_price : getDefaultSku(scope.row)?.cost_price) }}
         </template>
       </el-table-column>
       <!-- 显示售卖价格 -->
       <el-table-column label="售卖价格" width="100">
         <template #default="scope">
-          ¥{{ formatPrice(getDefaultSku(scope.row)?.selling_price) }}
+          ¥{{ formatPrice(scope.row.product_type === 'finished' ? scope.row.selling_price : getDefaultSku(scope.row)?.selling_price) }}
         </template>
       </el-table-column>
       <el-table-column prop="location" label="库位" width="120" />
