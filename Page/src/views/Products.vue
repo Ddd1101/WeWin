@@ -734,7 +734,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed, defineAsyncComponent, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Picture, Document, Grid, CircleCheck, Box, Delete, Check } from '@element-plus/icons-vue'
+import { Plus, Search, Picture, Document, Grid, CircleCheck, Box, Delete, Check, CirclePlus } from '@element-plus/icons-vue'
 import { getProductTypes, getProducts, createProduct, updateProduct, deleteProduct, getProductDetail, getAccessories, getBeads } from '@/api'
 
 // 产品表格组件
@@ -1432,14 +1432,15 @@ onMounted(() => {
 <style scoped>
 .products {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
-  padding: 24px;
+  background: linear-gradient(180deg, #f7f9fc 0%, #f0f4f8 100%);
+  padding: 0;
 }
 
 .main-card {
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
   border: none;
+  margin: 24px 40px;
 }
 
 .card-header {
@@ -1451,7 +1452,7 @@ onMounted(() => {
 .card-header .title {
   font-size: 20px;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1496,7 +1497,7 @@ onMounted(() => {
 }
 
 .product-dialog :deep(.el-dialog__header) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
   padding: 20px 24px;
   margin: 0;
 }
@@ -1571,7 +1572,7 @@ onMounted(() => {
 }
 
 .cost-item.total .value {
-  color: #667eea;
+  color: #3b82f6;
   font-size: 18px;
 }
 
@@ -1719,8 +1720,8 @@ onMounted(() => {
 .item-subtotal {
   font-size: 14px;
   font-weight: 600;
-  color: #667eea;
-  background: #f0f4ff;
+  color: #3b82f6;
+  background: #eff6ff;
   padding: 4px 10px;
   border-radius: 6px;
 }
@@ -1755,8 +1756,8 @@ onMounted(() => {
 }
 
 .image-uploader:hover {
-  border-color: #667eea;
-  background: #f0f4ff;
+  border-color: #3b82f6;
+  background: #eff6ff;
 }
 
 .image-uploader-icon {
@@ -1796,11 +1797,11 @@ onMounted(() => {
 /* 选择对话框样式 */
 .selection-dialog {
   --dialog-bg: #ffffff;
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
   --card-bg: #ffffff;
-  --text-primary: #1a1a2e;
-  --text-secondary: #6b7280;
-  --border-color: #e5e7eb;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
   --hover-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 }
 
@@ -1811,7 +1812,7 @@ onMounted(() => {
 }
 
 .selection-dialog :deep(.el-dialog__header) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
   padding: 24px 24px 20px;
   margin: 0;
 }
@@ -1838,25 +1839,25 @@ onMounted(() => {
 
 .search-input :deep(.el-input__wrapper) {
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 0 0 1px #e2e8f0 inset;
   padding: 0 16px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .search-input :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  box-shadow: 0 0 0 1px #cbd5e1 inset;
 }
 
 .search-input :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1), 0 4px 12px rgba(102, 126, 234, 0.15);
+  box-shadow: 0 0 0 2px #3b82f6 inset;
 }
 
 /* 卡片容器 */
 .cards-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 20px;
-  max-height: 450px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  max-height: 500px;
   overflow-y: auto;
   padding: 4px;
 }
@@ -1871,30 +1872,30 @@ onMounted(() => {
 }
 
 .cards-container::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(180deg, #3b82f6 0%, #8b5cf6 100%);
   border-radius: 4px;
 }
 
 /* 产品卡片 */
 .product-card {
   position: relative;
-  background: var(--card-bg);
-  border-radius: 16px;
+  background: #ffffff;
+  border-radius: 14px;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border: 2px solid transparent;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
 }
 
 .product-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 20px 40px rgba(102, 126, 234, 0.2);
-  border-color: #667eea;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
 }
 
 .product-card:hover .card-image-wrapper {
-  transform: scale(1.05);
+  transform: scale(1.02);
 }
 
 /* 卡片图片 */
@@ -1953,7 +1954,7 @@ onMounted(() => {
 .product-name {
   font-size: 15px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #1e293b;
   margin: 0 0 12px;
   line-height: 1.4;
   overflow: hidden;
@@ -1971,7 +1972,7 @@ onMounted(() => {
 .product-price {
   font-size: 18px;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1979,7 +1980,7 @@ onMounted(() => {
 
 .product-weight {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: #64748b;
   background: #f1f5f9;
   padding: 3px 8px;
   border-radius: 6px;
@@ -2018,6 +2019,16 @@ onMounted(() => {
   width: 100%;
   border-radius: 10px;
   font-weight: 600;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  border: none;
+  color: white;
+  height: 40px;
+  transition: all 0.2s ease;
+}
+
+.select-card-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 /* 空状态 */
@@ -2027,19 +2038,27 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 48px;
   color: #94a3b8;
 }
 
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-  opacity: 0.5;
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #cbd5e1;
+  margin-bottom: 12px;
+}
+
+.empty-state-icon .el-icon {
+  font-size: 40px;
 }
 
 .empty-state p {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 /* 对话框底部 */
