@@ -38,8 +38,11 @@ export const createOrUpdateCustomerProduct = (customerId, data) => {
 };
 
 // 获取客户商品报价历史
-export const getCustomerPriceHistory = (customerId, productId) => {
-  return customerApi.get(`/${customerId}/products/${productId}/price-history/`);
+export const getCustomerPriceHistory = (customerId, productId, params = {}) => {
+  return customerApi.get(
+    `/${customerId}/products/${productId}/price-history/`,
+    { params },
+  );
 };
 
 // 获取客户可见性配置
@@ -54,7 +57,9 @@ export const setCustomerVisibility = (customerId, data) => {
 
 // 删除客户可见性配置
 export const removeCustomerVisibility = (customerId, visibilityId) => {
-  return customerApi.delete(`/${customerId}/visibility/${visibilityId}/delete/`);
+  return customerApi.delete(
+    `/${customerId}/visibility/${visibilityId}/delete/`,
+  );
 };
 
 export default customerApi;
