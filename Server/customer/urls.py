@@ -12,6 +12,7 @@ urlpatterns = [
     # 客户商品关联
     path('<int:customer_id>/products/', views.get_customer_products, name='get-customer-products'),
     path('<int:customer_id>/products/create-or-update/', views.create_or_update_customer_product, name='create-or-update-customer-product'),
+    path('<int:customer_id>/products/<int:customer_product_id>/delete/', views.delete_customer_product, name='delete-customer-product'),
     path('<int:customer_id>/products/<int:product_id>/price-history/', views.get_customer_price_history, name='get-customer-price-history'),
     
     # 客户可见性配置

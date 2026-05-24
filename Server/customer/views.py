@@ -605,6 +605,32 @@ def set_customer_visibility(request, customer_id):
 
 @csrf_exempt
 @require_http_methods(['DELETE'])
+def delete_customer_product(request, customer_id, customer_product_id):
+    """删除客户商品关联"""
+    try:
+        current_user, error_response = authenticate_jwt(request)
+        if error_response:
+            return error_response
+
+        customer = Customer.objects.get(id=customer_id)
+
+        if not check_customer_permission(current_user, customer):
+            return JsonResponse({'error': '无权限操作客户商品'}, status=403)
+
+        customer_product = CustomerProduct.objects.get(id=customer_product_id, customer=customer)
+        customer_product.delete()
+
+        return JsonResponse({'message': '客户商品关联删除成功'})
+    except Customer.DoesNotExist:
+        return JsonResponse({'error': '客户不存在'}, status=404)
+    except CustomerProduct.DoesNotExist:
+        return JsonResponse({'error': '客户商品关联不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['DELETE'])
 def remove_customer_visibility(request, customer_id, visibility_id):
     """删除客户可见性配置"""
     try:

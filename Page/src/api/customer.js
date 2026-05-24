@@ -45,6 +45,13 @@ export const getCustomerPriceHistory = (customerId, productId, params = {}) => {
   );
 };
 
+// 删除客户商品关联
+export const deleteCustomerProduct = (customerId, customerProductId) => {
+  return customerApi.delete(
+    `/${customerId}/products/${customerProductId}/delete/`,
+  );
+};
+
 // 获取客户可见性配置
 export const getCustomerVisibility = (customerId) => {
   return customerApi.get(`/${customerId}/visibility/`);

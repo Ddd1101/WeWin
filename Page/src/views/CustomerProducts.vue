@@ -537,9 +537,10 @@ import {
   getCustomerDetail,
   getCustomerProducts,
   createOrUpdateCustomerProduct,
+  deleteCustomerProduct,
   getCustomerPriceHistory,
   getProducts as fetchAllProducts
-} from '@/api'
+} from "@/api";
 
 const route = useRoute()
 const router = useRouter()
@@ -830,10 +831,11 @@ const handleDeleteProductRelation = (row) => {
   ).then(async () => {
     productSubmitLoading.value = true
     try {
+      await deleteCustomerProduct(customerId.value, row.id)
       ElMessage.success('移除成功')
       fetchCustomerProducts()
     } catch (error) {
-      ElMessage.error('移除失败')
+      ElMessage.error(error?.response?.data?.error || '移除失败')
       console.error(error)
     } finally {
       productSubmitLoading.value = false
