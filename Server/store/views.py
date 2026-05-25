@@ -1120,6 +1120,7 @@ def get_products(request):
                         sku = fpb.sku if fpb.sku_id else get_default_sku(bead_product)
                         sku_payload = sku_to_dict(sku) if sku else None
                         bead_cost_price = sku.cost_price if sku else bead_product.cost_price
+                        bead_purchase_cost = sku.purchase_cost if sku else bead_product.purchase_cost
                         total_cost += bead_cost_price * fpb.quantity
                         product_data['finished']['beads'].append({
                             'bead_id': bead_product.id,
@@ -1128,6 +1129,7 @@ def get_products(request):
                             'bead_code': bead_product.code,
                             'bead_name': bead_product.name,
                             'bead_cost_price': float(bead_cost_price),
+                            'bead_purchase_cost': float(bead_purchase_cost) if bead_purchase_cost else None,
                             'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
                             'quantity': fpb.quantity,
                             'bead_weight': float(sku.weight if sku else bead.weight),
@@ -1830,6 +1832,7 @@ def get_product_detail(request, product_id):
                     sku = fpb.sku if fpb.sku_id else get_default_sku(bead_product)
                     sku_payload = sku_to_dict(sku) if sku else None
                     bead_cost_price = sku.cost_price if sku else bead_product.cost_price
+                    bead_purchase_cost = sku.purchase_cost if sku else bead_product.purchase_cost
                     total_cost += bead_cost_price * fpb.quantity
                     product_data['finished']['beads'].append({
                         'bead_id': bead_product.id,
@@ -1838,6 +1841,7 @@ def get_product_detail(request, product_id):
                         'bead_code': bead_product.code,
                         'bead_name': bead_product.name,
                         'bead_cost_price': float(bead_cost_price),
+                        'bead_purchase_cost': float(bead_purchase_cost) if bead_purchase_cost else None,
                         'bead_image_url': request.build_absolute_uri(bead_product.image.url) if bead_product.image else None,
                         'quantity': fpb.quantity,
                         'bead_weight': float(sku.weight if sku else bead.weight),

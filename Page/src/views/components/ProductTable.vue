@@ -55,11 +55,11 @@
                   </template>
                 </el-table-column>
                 <el-table-column prop="bead_name" label="名称" />
-                <el-table-column label="单价(元/克)" width="100">
+                <el-table-column label="单颗成本" width="100">
                   <template #default="scope">¥{{ scope.row.bead_cost_price.toFixed(2) }}</template>
                 </el-table-column>
-                <el-table-column label="单颗克重" width="90">
-                  <template #default="scope">{{ scope.row.bead_weight?.toFixed(3) || '-' }}</template>
+                <el-table-column label="采购成本(元/克)" width="120">
+                  <template #default="scope">{{ scope.row.bead_purchase_cost?.toFixed(2) ? '¥' + scope.row.bead_purchase_cost.toFixed(2) : '-' }}</template>
                 </el-table-column>
                 <el-table-column label="品质等级" width="80">
                   <template #default="scope">{{ scope.row.bead_quality_level || '-' }}</template>
