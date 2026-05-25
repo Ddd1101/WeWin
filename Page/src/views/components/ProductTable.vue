@@ -36,96 +36,160 @@
       <el-table-column type="expand">
         <template #default="scope">
           <div v-if="scope.row.product_type === 'finished' && scope.row.finished" class="finished-details">
-            <h4>成品组成明细</h4>
-            
-            <!-- 串珠列表 -->
-            <div class="section" v-if="scope.row.finished.beads.length > 0">
-              <h5>串珠</h5>
-              <el-table :data="scope.row.finished.beads" size="small" style="width: 100%">
-                <el-table-column label="缩略图" width="80">
-                  <template #default="scope">
-                    <el-image
-                      v-if="scope.row.bead_image_url"
-                      :src="scope.row.bead_image_url"
-                      style="width: 40px; height: 40px"
-                      fit="cover"
-                      :preview-src-list="[scope.row.bead_image_url]"
-                    />
-                    <span v-else style="color: #999">无图</span>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="bead_name" label="名称" />
-                <el-table-column label="单颗成本" width="100">
-                  <template #default="scope">¥{{ scope.row.bead_cost_price.toFixed(2) }}</template>
-                </el-table-column>
-                <el-table-column label="采购成本(元/克)" width="120">
-                  <template #default="scope">{{ scope.row.bead_purchase_cost?.toFixed(2) ? '¥' + scope.row.bead_purchase_cost.toFixed(2) : '-' }}</template>
-                </el-table-column>
-                <el-table-column label="品质等级" width="80">
-                  <template #default="scope">{{ scope.row.bead_quality_level || '-' }}</template>
-                </el-table-column>
-                <el-table-column label="备注" min-width="100">
-                  <template #default="scope">{{ scope.row.bead_remark || '-' }}</template>
-                </el-table-column>
-                <el-table-column label="数量" width="80">
-                  <template #default="scope">{{ scope.row.quantity }}</template>
-                </el-table-column>
-                <el-table-column label="小计" width="100">
-                  <template #default="scope">
-                    ¥{{ (scope.row.bead_cost_price * scope.row.quantity).toFixed(2) }}
-                  </template>
-                </el-table-column>
-              </el-table>
-            </div>
-            
-            <!-- 配件列表 -->
-            <div class="section" v-if="scope.row.finished.accessories.length > 0">
-              <h5>配件</h5>
-              <el-table :data="scope.row.finished.accessories" size="small" style="width: 100%">
-                <el-table-column label="缩略图" width="80">
-                  <template #default="scope">
-                    <el-image
-                      v-if="scope.row.accessory_image_url"
-                      :src="scope.row.accessory_image_url"
-                      style="width: 40px; height: 40px"
-                      fit="cover"
-                      :preview-src-list="[scope.row.accessory_image_url]"
-                    />
-                    <span v-else style="color: #999">无图</span>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="accessory_name" label="名称" />
-                <el-table-column label="单价" width="100">
-                  <template #default="scope">¥{{ scope.row.accessory_cost_price.toFixed(2) }}</template>
-                </el-table-column>
-                <el-table-column label="数量" width="80">
-                  <template #default="scope">{{ scope.row.quantity }}</template>
-                </el-table-column>
-                <el-table-column label="小计" width="100">
-                  <template #default="scope">
-                    ¥{{ (scope.row.accessory_cost_price * scope.row.quantity).toFixed(2) }}
-                  </template>
-                </el-table-column>
-              </el-table>
-            </div>
-            
-            <!-- 工费和弹性成本 -->
-            <div class="section">
-              <h5>其他成本</h5>
-              <div class="cost-item">
-                <span>工费：</span>
-                <span class="amount">¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
+            <div class="details-header">
+              <div class="header-icon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
               </div>
-              <div class="cost-item">
-                <span>弹性成本：</span>
-                <span class="amount">¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
+              <div class="header-title">
+                <h4>成品组成明细</h4>
               </div>
             </div>
             
-            <!-- 总成本 -->
-            <div class="total-cost">
-              <span>总成本：</span>
-              <span class="amount">¥{{ calculateTotalCost(scope.row.finished).toFixed(2) }}</span>
+            <div class="details-content">
+              <!-- 串珠列表 -->
+              <div class="section" v-if="scope.row.finished.beads.length > 0">
+                <div class="section-header">
+                  <div class="section-title">
+                    <span class="section-icon">💎</span>
+                    <h5>串珠</h5>
+                    <span class="count-badge">{{ scope.row.finished.beads.length }}</span>
+                  </div>
+                  <div class="section-summary">
+                    小计：<span class="summary-amount">¥{{ calculateBeadsTotal(scope.row.finished.beads).toFixed(2) }}</span>
+                  </div>
+                </div>
+                <div class="item-list">
+                  <div v-for="(bead, index) in scope.row.finished.beads" :key="index" class="item-card">
+                    <div class="item-image">
+                      <el-image
+                        v-if="bead.bead_image_url"
+                        :src="bead.bead_image_url"
+                        style="width: 60px; height: 60px"
+                        fit="cover"
+                        :preview-src-list="[bead.bead_image_url]"
+                      />
+                      <div v-else class="image-placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+                          <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+                          <path d="M21 15L16 10L5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="item-info">
+                      <div class="all-tags">
+                        <span v-if="bead.bead_code" class="item-tag code-tag">货号: {{ bead.bead_code }}</span>
+                        <span class="item-tag name-tag">品名: {{ bead.bead_name }}</span>
+                        <span class="item-tag quality-tag" v-if="bead.bead_quality_level">品级: {{ bead.bead_quality_level }}</span>
+                        <span class="item-tag spec-tag" v-if="bead.bead_size">规格: {{ bead.bead_size }}mm</span>
+                        <span class="item-tag price-tag" v-if="bead.bead_purchase_cost">采购：¥{{ bead.bead_purchase_cost.toFixed(2) }}/g</span>
+                      </div>
+                      <div class="item-remark" v-if="bead.bead_remark">{{ bead.bead_remark }}</div>
+                    </div>
+                    <div class="item-quantity">
+                      <span class="qty-label">数量</span>
+                      <span class="qty-value">{{ bead.quantity }}</span>
+                    </div>
+                    <div class="item-price">
+                      <div class="price-unit">¥{{ bead.bead_cost_price.toFixed(2) }}/颗</div>
+                      <div class="price-total">¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 配件列表 -->
+              <div class="section" v-if="scope.row.finished.accessories.length > 0">
+                <div class="section-header">
+                  <div class="section-title">
+                    <span class="section-icon">🔗</span>
+                    <h5>配件</h5>
+                    <span class="count-badge">{{ scope.row.finished.accessories.length }}</span>
+                  </div>
+                  <div class="section-summary">
+                    小计：<span class="summary-amount">¥{{ calculateAccessoriesTotal(scope.row.finished.accessories).toFixed(2) }}</span>
+                  </div>
+                </div>
+                <div class="item-list">
+                  <div v-for="(acc, index) in scope.row.finished.accessories" :key="index" class="item-card">
+                    <div class="item-image">
+                      <el-image
+                        v-if="acc.accessory_image_url"
+                        :src="acc.accessory_image_url"
+                        style="width: 60px; height: 60px"
+                        fit="cover"
+                        :preview-src-list="[acc.accessory_image_url]"
+                      />
+                      <div v-else class="image-placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+                          <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+                          <path d="M21 15L16 10L5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="item-info">
+                      <div class="all-tags">
+                        <span v-if="acc.accessory_code" class="item-tag code-tag">货号: {{ acc.accessory_code }}</span>
+                        <span class="item-tag name-tag">品名: {{ acc.accessory_name }}</span>
+                      </div>
+                    </div>
+                    <div class="item-quantity">
+                      <span class="qty-label">数量</span>
+                      <span class="qty-value">{{ acc.quantity }}</span>
+                    </div>
+                    <div class="item-price">
+                      <div class="price-unit">¥{{ acc.accessory_cost_price.toFixed(2) }}/件</div>
+                      <div class="price-total">¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 工费和弹性成本 -->
+              <div class="section costs-section">
+                <div class="section-header">
+                  <div class="section-title">
+                    <span class="section-icon">⚙️</span>
+                    <h5>其他成本</h5>
+                  </div>
+                </div>
+                <div class="costs-grid">
+                  <div class="cost-card">
+                    <div class="cost-icon">👷</div>
+                    <div class="cost-info">
+                      <div class="cost-label">工费</div>
+                      <div class="cost-value">¥{{ scope.row.finished.labor_cost.toFixed(2) }}</div>
+                    </div>
+                  </div>
+                  <div class="cost-card">
+                    <div class="cost-icon">📦</div>
+                    <div class="cost-info">
+                      <div class="cost-label">弹性成本</div>
+                      <div class="cost-value">¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 总成本 -->
+              <div class="total-section">
+                <div class="total-divider"></div>
+                <div class="total-content">
+                  <div class="total-label">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 1V23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M17 5H9.5C8.57174 5 7.6815 5.36875 7.02513 6.02513C6.36875 6.6815 6 7.57174 6 8.5C6 9.42826 6.36875 10.3185 7.02513 10.9749C7.6815 11.6313 8.57174 12 9.5 12H14.5C15.4283 12 16.3185 12.3687 16.9749 13.0251C17.6313 13.6815 18 14.5717 18 15.5C18 16.4283 17.6313 17.3185 16.9749 17.9749C16.3185 18.6313 15.4283 19 14.5 19H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    总成本
+                  </div>
+                  <div class="total-value">¥{{ calculateTotalCost(scope.row.finished).toFixed(2) }}</div>
+                </div>
+              </div>
             </div>
           </div>
           <div v-else-if="['bead', 'accessory'].includes(scope.row.product_type)" class="sku-details">
@@ -326,6 +390,14 @@ const formatPrice = (value, digits = 2) => {
   return num.toFixed(digits)
 }
 
+const calculateBeadsTotal = (beads) => {
+  return beads.reduce((sum, bead) => sum + bead.bead_cost_price * bead.quantity, 0)
+}
+
+const calculateAccessoriesTotal = (accessories) => {
+  return accessories.reduce((sum, acc) => sum + acc.accessory_cost_price * acc.quantity, 0)
+}
+
 const calculateTotalCost = (finished) => {
   let total = 0
   // 计算串珠成本
@@ -352,56 +424,436 @@ const calculateTotalCost = (finished) => {
 }
 
 /* 展开详情样式 */
-.sku-details,
-.finished-details {
+.sku-details {
   padding: 20px;
   background-color: #f8fafc;
   border-radius: 8px;
 }
 
-.sku-details h4,
-.finished-details h4 {
+.sku-details h4 {
   margin: 0 0 15px 0;
   color: #1e293b;
   font-size: 16px;
   font-weight: 600;
 }
 
-.finished-details h5 {
-  margin: 20px 0 10px 0;
-  color: #475569;
-  font-size: 14px;
-  border-left: 3px solid #667eea;
-  padding-left: 8px;
+.finished-details {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 16px;
+  overflow: hidden;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.details-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.header-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+}
+
+.header-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.header-title h4 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.header-title p {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.details-content {
+  padding: 24px;
 }
 
 .finished-details .section {
-  margin-bottom: 15px;
+  margin-bottom: 28px;
 }
 
-.finished-details .cost-item {
+.section-header {
   display: flex;
   justify-content: space-between;
-  padding: 8px 0;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-icon {
+  font-size: 20px;
+}
+
+.section-title h5 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+.section-summary {
   font-size: 14px;
   color: #64748b;
 }
 
-.finished-details .total-cost {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px 0;
+.summary-amount {
+  font-weight: 700;
+  color: #667eea;
   font-size: 16px;
-  font-weight: bold;
-  color: #1e293b;
-  border-top: 1px solid #e2e8f0;
-  margin-top: 10px;
-  padding-top: 15px;
+  margin-left: 4px;
 }
 
-.finished-details .amount {
-  font-weight: bold;
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item-card {
+  display: grid;
+  grid-template-columns: 76px 1fr 100px 120px;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+  border: 1px solid #f1f5f9;
+}
+
+.item-card:hover {
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.12);
+  transform: translateY(-2px);
+  border-color: #e0e7ff;
+}
+
+.item-image {
+  position: relative;
+}
+
+.item-image .el-image {
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.image-placeholder {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}
+
+.image-placeholder svg {
+  width: 28px;
+  height: 28px;
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.all-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.all-tags::-webkit-scrollbar {
+  height: 4px;
+}
+
+.all-tags::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+.item-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.item-tag.code-tag {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  color: #4338ca;
+}
+
+.item-tag.name-tag {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+}
+
+.item-tag.quality-tag {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+}
+
+.item-tag.spec-tag {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  color: #0369a1;
+}
+
+.item-tag.price-tag {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #166534;
+}
+
+.item-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+
+.item-remark {
+  font-size: 12px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.item-quantity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.qty-label {
+  font-size: 11px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.qty-value {
+  font-size: 20px;
+  font-weight: 700;
   color: #667eea;
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.item-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.price-unit {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.price-total {
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.costs-section .section-header {
+  border-bottom: none;
+  margin-bottom: 12px;
+  padding-bottom: 0;
+}
+
+.costs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.cost-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+.cost-card:hover {
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.12);
+  transform: translateY(-2px);
+}
+
+.cost-icon {
+  font-size: 32px;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-radius: 12px;
+}
+
+.cost-info {
+  flex: 1;
+}
+
+.cost-label {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.cost-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.total-section {
+  margin-top: 8px;
+}
+
+.total-divider {
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #cbd5e1 50%, transparent 100%);
+  margin-bottom: 20px;
+}
+
+.total-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  color: white;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+}
+
+.total-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.total-label svg {
+  width: 24px;
+  height: 24px;
+}
+
+.total-value {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .item-card {
+    grid-template-columns: 60px 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 12px;
+  }
+  
+  .item-image {
+    grid-row: 1 / 4;
+  }
+  
+  .item-info {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  
+  .item-quantity {
+    grid-column: 2;
+    grid-row: 2;
+    align-items: flex-start;
+  }
+  
+  .item-price {
+    grid-column: 2;
+    grid-row: 3;
+    align-items: flex-start;
+  }
+  
+  .costs-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
 

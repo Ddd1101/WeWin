@@ -1134,7 +1134,8 @@ def get_products(request):
                             'quantity': fpb.quantity,
                             'bead_weight': float(sku.weight if sku else bead.weight),
                             'bead_quality_level': sku.quality_level if sku else bead.quality_level,
-                            'bead_remark': sku.remark if sku else bead.remark
+                            'bead_remark': sku.remark if sku else bead.remark,
+                            'bead_size': sku.size if sku else bead.size
                         })
                     # 获取成品的配件组成
                     for fpa in FinishedProductAccessory.objects.select_related('accessory__product', 'sku').filter(finished_product=finished):
@@ -1846,7 +1847,8 @@ def get_product_detail(request, product_id):
                         'quantity': fpb.quantity,
                         'bead_weight': float(sku.weight if sku else bead.weight),
                         'bead_quality_level': sku.quality_level if sku else bead.quality_level,
-                        'bead_remark': sku.remark if sku else bead.remark
+                        'bead_remark': sku.remark if sku else bead.remark,
+                        'bead_size': sku.size if sku else bead.size
                     })
                 # 获取成品的配件组成
                 for fpa in FinishedProductAccessory.objects.select_related('accessory__product', 'sku').filter(finished_product=finished):
