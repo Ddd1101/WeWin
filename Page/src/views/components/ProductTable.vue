@@ -237,14 +237,24 @@
               <div class="total-section">
                 <div class="total-divider"></div>
                 <div class="total-content">
-                  <div class="total-label">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 1V23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                      <path d="M17 5H9.5C8.57174 5 7.6815 5.36875 7.02513 6.02513C6.36875 6.6815 6 7.57174 6 8.5C6 9.42826 6.36875 10.3185 7.02513 10.9749C7.6815 11.6313 8.57174 12 9.5 12H14.5C15.4283 12 16.3185 12.3687 16.9749 13.0251C17.6313 13.6815 18 14.5717 18 15.5C18 16.4283 17.6313 17.3185 16.9749 17.9749C16.3185 18.6313 15.4283 19 14.5 19H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    总成本
+                  <div class="total-row">
+                    <div class="total-label">
+                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 1V23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M17 5H9.5C8.57174 5 7.6815 5.36875 7.02513 6.02513C6.36875 6.6815 6 7.57174 6 8.5C6 9.42826 6.36875 10.3185 7.02513 10.9749C7.6815 11.6313 8.57174 12 9.5 12H14.5C15.4283 12 16.3185 12.3687 16.9749 13.0251C17.6313 13.6815 18 14.5717 18 15.5C18 16.4283 17.6313 17.3185 16.9749 17.9749C16.3185 18.6313 15.4283 19 14.5 19H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      总成本
+                    </div>
+                    <span class="total-value">¥{{ calculateTotalCost(scope.row.finished).toFixed(2) }}</span>
+                    <div class="total-selling" v-if="scope.row.selling_price">
+                      <span class="selling-label">售价</span>
+                      <span class="selling-value">¥{{ scope.row.selling_price.toFixed(2) }}</span>
+                    </div>
+                    <div class="total-profit" v-if="scope.row.selling_price">
+                      <span class="profit-label">利润率</span>
+                      <span class="profit-value">{{ calculateProfitRate(scope.row, scope.row.finished) }}%</span>
+                    </div>
                   </div>
-                  <div class="total-value">¥{{ calculateTotalCost(scope.row.finished).toFixed(2) }}</div>
                 </div>
               </div>
             </div>
@@ -577,6 +587,13 @@ const calculateTotalCost = (finished) => {
   total += finished.elastic_cost
   return total
 }
+
+const calculateProfitRate = (product, finished) => {
+  const totalCost = calculateTotalCost(finished)
+  const sellingPrice = product.selling_price || 0
+  if (totalCost <= 0 || sellingPrice <= 0) return 0
+  return ((sellingPrice - totalCost) / totalCost * 100).toFixed(1)
+}
 </script>
 
 <style scoped>
@@ -622,17 +639,17 @@ const calculateTotalCost = (finished) => {
 .details-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 24px;
+  gap: 12px;
+  padding: 16px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 
 .header-icon {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -640,53 +657,53 @@ const calculateTotalCost = (finished) => {
 }
 
 .header-icon svg {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
 }
 
 .header-title h4 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.3px;
 }
 
 .header-title p {
-  margin: 4px 0 0 0;
-  font-size: 13px;
+  margin: 2px 0 0 0;
+  font-size: 12px;
   opacity: 0.9;
 }
 
 .details-content {
-  padding: 24px;
+  padding: 16px 20px;
 }
 
 .finished-details .section {
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
   border-bottom: 2px solid #e2e8f0;
 }
 
 .section-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .section-icon {
-  font-size: 20px;
+  font-size: 16px;
 }
 
 .section-title h5 {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #1e293b;
 }
@@ -695,42 +712,42 @@ const calculateTotalCost = (finished) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 8px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .section-summary {
-  font-size: 14px;
+  font-size: 13px;
   color: #64748b;
 }
 
 .summary-amount {
   font-weight: 700;
   color: #667eea;
-  font-size: 16px;
+  font-size: 14px;
   margin-left: 4px;
 }
 
 .item-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .item-card {
   display: grid;
-  grid-template-columns: 76px 1fr 100px 120px;
-  gap: 16px;
+  grid-template-columns: 60px 1fr 80px 100px;
+  gap: 12px;
   align-items: center;
-  padding: 16px;
+  padding: 10px 14px;
   background: white;
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: all 0.2s ease;
   border: 1px solid #f1f5f9;
@@ -747,15 +764,17 @@ const calculateTotalCost = (finished) => {
 }
 
 .item-image .el-image {
-  border-radius: 10px;
+  border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  width: 44px !important;
+  height: 44px !important;
 }
 
 .image-placeholder {
-  width: 60px;
-  height: 60px;
+  width: 44px;
+  height: 44px;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -763,27 +782,27 @@ const calculateTotalCost = (finished) => {
 }
 
 .image-placeholder svg {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
 }
 
 .item-info {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
 }
 
 .all-tags {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: nowrap;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 
 .all-tags::-webkit-scrollbar {
-  height: 4px;
+  height: 3px;
 }
 
 .all-tags::-webkit-scrollbar-thumb {
@@ -794,10 +813,10 @@ const calculateTotalCost = (finished) => {
 .item-tag {
   display: inline-flex;
   align-items: center;
-  padding: 8px 14px;
-  font-size: 16px;
+  padding: 4px 10px;
+  font-size: 13px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .item-tag.code-tag {
@@ -826,7 +845,7 @@ const calculateTotalCost = (finished) => {
 }
 
 .item-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #1e293b;
   overflow: hidden;
@@ -837,7 +856,7 @@ const calculateTotalCost = (finished) => {
 
 
 .item-remark {
-  font-size: 12px;
+  font-size: 11px;
   color: #94a3b8;
   font-style: italic;
 }
@@ -846,43 +865,43 @@ const calculateTotalCost = (finished) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .qty-label {
-  font-size: 11px;
+  font-size: 10px;
   color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .qty-value {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   color: #667eea;
   background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .item-price {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: 3px;
 }
 
 .price-unit {
-  font-size: 12px;
+  font-size: 11px;
   color: #64748b;
 }
 
 .price-total {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
@@ -905,10 +924,10 @@ const calculateTotalCost = (finished) => {
 .cost-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 20px;
+  gap: 12px;
+  padding: 14px 16px;
   background: white;
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border: 1px solid #f1f5f9;
   transition: all 0.2s ease;
@@ -920,14 +939,14 @@ const calculateTotalCost = (finished) => {
 }
 
 .cost-icon {
-  font-size: 32px;
-  width: 56px;
-  height: 56px;
+  font-size: 24px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .cost-info {
@@ -935,53 +954,97 @@ const calculateTotalCost = (finished) => {
 }
 
 .cost-label {
-  font-size: 13px;
+  font-size: 12px;
   color: #64748b;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .cost-value {
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 700;
   color: #1e293b;
 }
 
 .total-section {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .total-divider {
   height: 2px;
   background: linear-gradient(90deg, transparent 0%, #cbd5e1 50%, transparent 100%);
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .total-content {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 24px;
+  padding: 14px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
+  border-radius: 12px;
   color: white;
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+}
+
+.total-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .total-label {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 16px;
+  gap: 8px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .total-label svg {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
+}
+
+.total-selling {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+.selling-label {
+  font-weight: 500;
+}
+
+.selling-value {
+  font-weight: 700;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.total-profit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+.profit-label {
+  font-weight: 500;
+}
+
+.profit-value {
+  font-weight: 700;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
 }
 
 .total-value {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.5px;
 }
