@@ -72,7 +72,7 @@ class ProductSku(models.Model):
     color = models.CharField(max_length=100, blank=True, null=True, verbose_name='颜色')
     purchase_cost = models.DecimalField(max_digits=12, decimal_places=4, default=0, verbose_name='采购成本(元/克)')
     cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='成本价格')
-    weight = models.DecimalField(max_digits=10, decimal_places=3, default=0, verbose_name='克重')
+    weight = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='克重')
     quality_level = models.IntegerField(default=5, verbose_name='品质等级(1-10)')
     selling_price = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='售卖价格')
     location = models.CharField(max_length=100, blank=True, null=True, verbose_name='库位')
@@ -105,7 +105,7 @@ class Bead(models.Model):
     material = models.CharField(max_length=100, blank=True, null=True, verbose_name='材质')
     size = models.IntegerField(blank=True, null=True, verbose_name='规格')
     color = models.CharField(max_length=100, blank=True, null=True, verbose_name='颜色')
-    weight = models.DecimalField(max_digits=10, decimal_places=3, default=0, verbose_name='单颗克重')
+    weight = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='单颗克重')
     quality_level = models.IntegerField(default=5, verbose_name='品质等级(1-10)')
     remark = models.TextField(blank=True, null=True, verbose_name='备注')
 

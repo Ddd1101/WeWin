@@ -268,7 +268,7 @@
                 <template #default="skuScope">¥{{ formatPrice(skuScope.row.cost_price) }}</template>
               </el-table-column>
               <el-table-column v-if="scope.row.product_type === 'bead'" label="克重" width="90">
-                <template #default="skuScope">{{ formatPrice(skuScope.row.weight, 3) }}g</template>
+                <template #default="skuScope">{{ formatPrice(skuScope.row.weight, 2) }}g</template>
               </el-table-column>
               <el-table-column label="品质" width="80">
                 <template #default="skuScope">{{ skuScope.row.quality_level || '-' }}</template>

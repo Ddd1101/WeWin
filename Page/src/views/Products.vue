@@ -392,7 +392,7 @@
               </div>
               <div class="sku-field" v-if="form.product_type === 'bead'">
                 <label>单颗克重(g)</label>
-                <el-input-number v-model="sku.weight" :min="0" :precision="3" controls-position="right" style="width:100%" />
+                <el-input-number v-model="sku.weight" :min="0" :precision="2" controls-position="right" style="width:100%" />
               </div>
               <div class="sku-field">
                 <label>售卖价格</label>
@@ -626,7 +626,7 @@
             <h4 class="product-name">{{ bead.name }}</h4>
             <div class="product-meta">
               <span class="product-price">¥{{ bead.cost_price.toFixed(2) }}/g</span>
-              <span v-if="bead.weight" class="product-weight">{{ bead.weight?.toFixed(3) }}g</span>
+              <span v-if="bead.weight" class="product-weight">{{ bead.weight?.toFixed(2) }}g</span>
             </div>
             <div class="product-badges">
               <span class="badge quality-badge">{{ bead.skus?.length || 0 }} 个SKU</span>
@@ -1325,7 +1325,7 @@ const setDefaultSku = (index) => {
 
 const skuLabel = (item, prefix = '') => {
   const sku = item.sku || item
-  const parts = [sku.sku_name || sku.name, sku.size ? `${sku.size}mm` : '', sku.weight ? `${Number(sku.weight).toFixed(3)}g` : '', sku.quality_level ? `品质${sku.quality_level}` : ''].filter(Boolean)
+  const parts = [sku.sku_name || sku.name, sku.size ? `${sku.size}mm` : '', sku.weight ? `${Number(sku.weight).toFixed(2)}g` : '', sku.quality_level ? `品质${sku.quality_level}` : ''].filter(Boolean)
   return `${prefix}${parts.join(' / ')}`
 }
 
