@@ -640,7 +640,7 @@ const calculateProfitRate = (product, finished) => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 4px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
@@ -675,19 +675,19 @@ const calculateProfitRate = (product, finished) => {
 }
 
 .details-content {
-  padding: 16px 20px;
+  padding: 4px 20px;
 }
 
 .finished-details .section {
-  margin-bottom: 20px;
+  margin-bottom: 6px;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
+  margin-bottom: 4px;
+  padding-bottom: 2px;
   border-bottom: 2px solid #e2e8f0;
 }
 
@@ -737,7 +737,7 @@ const calculateProfitRate = (product, finished) => {
 .item-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 3px;
 }
 
 .item-card {
@@ -745,7 +745,7 @@ const calculateProfitRate = (product, finished) => {
   grid-template-columns: 60px 1fr 80px 100px;
   gap: 12px;
   align-items: center;
-  padding: 10px 14px;
+  padding: 3px 14px;
   background: white;
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -911,21 +911,21 @@ const calculateProfitRate = (product, finished) => {
 
 .costs-section .section-header {
   border-bottom: none;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
   padding-bottom: 0;
 }
 
 .costs-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 4px;
 }
 
 .cost-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 4px 16px;
   background: white;
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -966,20 +966,20 @@ const calculateProfitRate = (product, finished) => {
 }
 
 .total-section {
-  margin-top: 6px;
+  margin-top: 1px;
 }
 
 .total-divider {
   height: 2px;
   background: linear-gradient(90deg, transparent 0%, #cbd5e1 50%, transparent 100%);
-  margin-bottom: 14px;
+  margin-bottom: 4px;
 }
 
 .total-content {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 14px 20px;
+  padding: 6px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 12px;
   color: white;
