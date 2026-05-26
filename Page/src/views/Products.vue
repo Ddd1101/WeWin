@@ -1325,8 +1325,15 @@ const setDefaultSku = (index) => {
 
 const skuLabel = (item, prefix = '') => {
   const sku = item.sku || item
-  const parts = [sku.sku_name || sku.name, sku.size ? `${sku.size}mm` : '', sku.weight ? `${Number(sku.weight).toFixed(2)}g` : '', sku.quality_level ? `品质${sku.quality_level}` : ''].filter(Boolean)
-  return `${prefix}${parts.join(' / ')}`
+  const parts = [sku.sku_name || sku.name, sku.size ? `${sku.size}mm` : '', sku.weight ? `${Number(sku.weight).toFixed(2)}g` : '']
+  // 添加采购成本或成本价格信息
+  if (sku.purchase_cost !== undefined && sku.purchase_cost !== null && sku.purchase_cost !== '') {
+    parts.push(`${Number(sku.purchase_cost).toFixed(2)}元/g`)
+  }
+  if (sku.cost_price !== undefined && sku.cost_price !== null && sku.cost_price !== '') {
+    parts.push(`${Number(sku.cost_price).toFixed(2)}元`)
+  }
+  return `${prefix}${parts.filter(Boolean).join(' / ')}`
 }
 
 
