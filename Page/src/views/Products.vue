@@ -631,7 +631,15 @@
             <div class="product-badges">
               <span class="badge quality-badge">{{ bead.skus?.length || 0 }} 个SKU</span>
             </div>
-            <el-select v-if="bead.skus?.length" v-model="bead.selectedSku" value-key="id" placeholder="选择SKU" style="width:100%; margin-top:8px" @click.stop>
+            <el-select
+              v-if="bead.skus?.length"
+              v-model="bead.selectedSku"
+              value-key="id"
+              placeholder="选择SKU"
+              style="width:100%; margin-top:8px"
+              :teleported="false"
+              @click.stop
+            >
               <el-option v-for="sku in bead.skus" :key="sku.id" :label="skuLabel(sku) || sku.sku_code" :value="sku" />
             </el-select>
           </div>
@@ -704,7 +712,15 @@
               <span class="product-price">¥{{ accessory.cost_price.toFixed(2) }}</span>
             </div>
             <div class="product-badges"><span class="badge quality-badge">{{ accessory.skus?.length || 0 }} 个SKU</span></div>
-            <el-select v-if="accessory.skus?.length" v-model="accessory.selectedSku" value-key="id" placeholder="选择SKU" style="width:100%; margin-top:8px" @click.stop>
+            <el-select
+              v-if="accessory.skus?.length"
+              v-model="accessory.selectedSku"
+              value-key="id"
+              placeholder="选择SKU"
+              style="width:100%; margin-top:8px"
+              :teleported="false"
+              @click.stop
+            >
               <el-option v-for="sku in accessory.skus" :key="sku.id" :label="skuLabel(sku) || sku.sku_code" :value="sku" />
             </el-select>
           </div>
@@ -1888,11 +1904,16 @@ onMounted(() => {
   position: relative;
   background: #ffffff;
   border-radius: 14px;
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   border: 1px solid #e2e8f0;
+}
+
+.product-card:has(.el-select__wrapper.is-focused),
+.product-card:has(.el-select-dropdown) {
+  z-index: 5;
 }
 
 .product-card:hover {
@@ -1911,6 +1932,7 @@ onMounted(() => {
   width: 100%;
   min-height: 160px;
   max-height: 220px;
+  border-radius: 14px 14px 0 0;
   overflow: hidden;
   transition: transform 0.4s ease;
   display: flex;
