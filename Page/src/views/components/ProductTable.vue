@@ -591,8 +591,8 @@ const calculateTotalCost = (finished) => {
 const calculateProfitRate = (product, finished) => {
   const totalCost = calculateTotalCost(finished)
   const sellingPrice = product.selling_price || 0
-  if (totalCost <= 0 || sellingPrice <= 0) return 0
-  return ((sellingPrice - totalCost) / totalCost * 100).toFixed(1)
+  if (sellingPrice <= 0) return 0
+  return ((sellingPrice - totalCost) / sellingPrice * 100).toFixed(1)
 }
 </script>
 
