@@ -103,6 +103,10 @@
               </div>
               <div class="header-title">
                 <h4>成品组成明细</h4>
+                <div class="composition-summary">
+                  <span>{{ calculateBeadQuantity(scope.row.finished) }}颗串珠</span>
+                  <span>{{ calculateAccessoryQuantity(scope.row.finished) }}个配件</span>
+                </div>
               </div>
             </div>
             
@@ -143,7 +147,7 @@
                         <span class="item-tag name-tag">品名: {{ bead.bead_name }}</span>
                         <span class="item-tag quality-tag" v-if="bead.bead_quality_level">品级: {{ bead.bead_quality_level }}</span>
                         <span class="item-tag spec-tag" v-if="bead.bead_size">规格: {{ bead.bead_size }}mm</span>
-                        <span class="item-tag price-tag" v-if="bead.bead_purchase_cost">采购：¥{{ bead.bead_purchase_cost.toFixed(2) }}/g</span>
+                        <span class="item-tag price-tag">克价：¥{{ formatPrice(bead.bead_purchase_cost, 2) }}/g</span>
                       </div>
                       <div class="item-remark" v-if="bead.bead_remark">{{ bead.bead_remark }}</div>
                     </div>
@@ -572,6 +576,18 @@ const calculateAccessoriesTotal = (accessories) => {
   return accessories.reduce((sum, acc) => sum + acc.accessory_cost_price * acc.quantity, 0)
 }
 
+const calculateTotalQuantity = (items = []) => {
+  return items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+}
+
+const calculateBeadQuantity = (finished) => {
+  return calculateTotalQuantity(finished?.beads)
+}
+
+const calculateAccessoryQuantity = (finished) => {
+  return calculateTotalQuantity(finished?.accessories)
+}
+
 const calculateTotalCost = (finished) => {
   let total = 0
   // 计算串珠成本
@@ -666,6 +682,33 @@ const calculateProfitRate = (product, finished) => {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.3px;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.composition-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.composition-summary span {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .header-title p {
