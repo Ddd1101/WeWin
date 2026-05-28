@@ -1631,11 +1631,20 @@ def update_product(request, product_id):
                                 company=product.company
                             )
                             bead = Bead.objects.get(product=bead_product)
-                            FinishedProductBead.objects.create(
-                                finished_product=finished,
-                                bead=bead,
-                                quantity=to_integer(bead_data['quantity'], 1)
-                            )
+                            if sku_schema_ready():
+                                sku = ProductSku.objects.filter(id=bead_data.get('sku_id'), product=bead_product).first() or ensure_default_sku(bead_product, bead)
+                                FinishedProductBead.objects.create(
+                                    finished_product=finished,
+                                    bead=bead,
+                                    sku=sku,
+                                    quantity=to_integer(bead_data['quantity'], 1)
+                                )
+                            else:
+                                FinishedProductBead.objects.create(
+                                    finished_product=finished,
+                                    bead=bead,
+                                    quantity=to_integer(bead_data['quantity'], 1)
+                                )
                         except (Product.DoesNotExist, Bead.DoesNotExist):
                             pass
 
@@ -1653,11 +1662,20 @@ def update_product(request, product_id):
                                 company=product.company
                             )
                             accessory = Accessory.objects.get(product=accessory_product)
-                            FinishedProductAccessory.objects.create(
-                                finished_product=finished,
-                                accessory=accessory,
-                                quantity=to_integer(acc['quantity'], 1)
-                            )
+                            if sku_schema_ready():
+                                sku = ProductSku.objects.filter(id=acc.get('sku_id'), product=accessory_product).first() or ensure_default_sku(accessory_product, accessory)
+                                FinishedProductAccessory.objects.create(
+                                    finished_product=finished,
+                                    accessory=accessory,
+                                    sku=sku,
+                                    quantity=to_integer(acc['quantity'], 1)
+                                )
+                            else:
+                                FinishedProductAccessory.objects.create(
+                                    finished_product=finished,
+                                    accessory=accessory,
+                                    quantity=to_integer(acc['quantity'], 1)
+                                )
                         except (Product.DoesNotExist, Accessory.DoesNotExist):
                             pass
                 
