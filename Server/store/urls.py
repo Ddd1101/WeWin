@@ -26,4 +26,8 @@ urlpatterns = [
     path('products/accessories/', views.get_accessories, name='get-accessories'),
     path('products/beads/', views.get_beads, name='get-beads'),
     path('products/<int:product_id>/skus/', views.get_product_skus, name='get-product-skus'),
+    
+    # 价格历史相关路由
+    path('price-history/', views.get_price_history, name='get-price-history'),
+    path('price-chart/', views.get_price_chart_data, name='get-price-chart-data'),
 ]

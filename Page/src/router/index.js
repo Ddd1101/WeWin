@@ -29,26 +29,6 @@ const routes = [
         meta: { title: "数据概览", icon: "DataAnalysis" },
       },
       {
-        path: "customers",
-        name: "Customers",
-        meta: { title: "客户管理", icon: "User" },
-        redirect: "/customers/list",
-        children: [
-          {
-            path: "list",
-            name: "CustomerList",
-            component: () => import("../views/Customers.vue"),
-            meta: { title: "客户列表", icon: "List" },
-          },
-          {
-            path: ":id/products",
-            name: "CustomerProducts",
-            component: () => import("../views/CustomerProducts.vue"),
-            meta: { title: "客户商品管理", icon: "Goods", hidden: true },
-          },
-        ],
-      },
-      {
         path: "stores",
         name: "Stores",
         meta: { title: "店铺管理", icon: "Shop" },
@@ -69,10 +49,44 @@ const routes = [
         ],
       },
       {
-        path: "products",
-        name: "Products",
-        component: () => import("../views/Products.vue"),
-        meta: { title: "商品管理", icon: "Goods" },
+        path: "product-center",
+        name: "ProductCenter",
+        meta: { title: "商品中心", icon: "Goods" },
+        redirect: "/product-center/products",
+        children: [
+          {
+            path: "products",
+            name: "Products",
+            component: () => import("../views/Products.vue"),
+            meta: { title: "商品管理", icon: "List" },
+          },
+          {
+            path: "price-management",
+            name: "PriceManagement",
+            component: () => import("../views/PriceManagement.vue"),
+            meta: { title: "价格管理", icon: "Money" },
+          },
+        ],
+      },
+      {
+        path: "customers",
+        name: "Customers",
+        meta: { title: "客户管理", icon: "User" },
+        redirect: "/customers/list",
+        children: [
+          {
+            path: "list",
+            name: "CustomerList",
+            component: () => import("../views/Customers.vue"),
+            meta: { title: "客户列表", icon: "List" },
+          },
+          {
+            path: ":id/products",
+            name: "CustomerProducts",
+            component: () => import("../views/CustomerProducts.vue"),
+            meta: { title: "客户商品管理", icon: "Goods", hidden: true },
+          },
+        ],
       },
       {
         path: "inventory",

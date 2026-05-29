@@ -131,7 +131,16 @@ export const getBeads = () => {
 };
 
 export const getProductSkus = (id) => {
-  return storeApi.get(`/products/${id}/skus/`);
+    return storeApi.get(`/products/${id}/skus/`);
+};
+
+// 价格历史相关
+export const getPriceHistory = (params = {}) => {
+    return storeApi.get('/price-history/', { params });
+};
+
+export const getPriceChartData = (params = {}) => {
+    return storeApi.get('/price-chart/', { params });
 };
 
 export default storeApi;
