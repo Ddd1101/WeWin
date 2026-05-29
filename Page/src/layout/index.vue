@@ -1,11 +1,13 @@
 <template>
   <el-container class="layout-container">
-    <el-aside width="200px" class="aside">
+    <el-aside :width="isCollapsed ? '64px' : '200px'" class="aside" :class="{ 'is-collapsed': isCollapsed }">
       <div class="logo">
-        <h2>电商ERP</h2>
+        <h2 v-if="!isCollapsed">电商ERP</h2>
+        <h2 v-else>W</h2>
       </div>
       <el-menu
         :default-active="activeMenu"
+        :collapse="isCollapsed"
         router
         background-color="#304156"
         text-color="#bfcbd9"
@@ -36,6 +38,9 @@
     <el-container class="main-container">
       <el-header class="header">
         <div class="header-left">
+          <div class="collapse-btn" @click="toggleCollapse">
+            <el-icon><Fold v-if="!isCollapsed" /><Expand v-else /></el-icon>
+          </div>
         </div>
         <div class="header-right">
           <el-dropdown @command="handleCommand">
@@ -61,15 +66,29 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, ArrowDown } from '@element-plus/icons-vue'
+import { User, ArrowDown, Fold, Expand } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+
+const isCollapsed = ref(false)
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+  if (isMobile.value) {
+    isCollapsed.value = true
+  }
+}
+
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value
+}
 
 const activeMenu = computed(() => route.path)
 
@@ -107,6 +126,15 @@ const handleCommand = async (command) => {
     router.push('/profile')
   }
 }
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 </script>
 
 <style scoped>
@@ -116,6 +144,15 @@ const handleCommand = async (command) => {
 .aside {
   background-color: #304156;
   overflow-x: hidden;
+  transition: width 0.3s ease;
+  border-right: none !important;
+  box-shadow: none !important;
+}
+.aside.is-collapsed {
+  width: 64px;
+}
+.aside :deep(.el-menu) {
+  border-right: none !important;
 }
 .logo {
   height: 60px;
@@ -124,10 +161,13 @@ const handleCommand = async (command) => {
   justify-content: center;
   color: #fff;
   border-bottom: 1px solid #1f2d3d;
+  transition: all 0.3s ease;
 }
 .logo h2 {
   font-size: 18px;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .main-container {
   display: flex;
@@ -140,6 +180,25 @@ const handleCommand = async (command) => {
   justify-content: space-between;
   align-items: center;
   padding: 0 20px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+}
+.collapse-btn {
+  cursor: pointer;
+  font-size: 20px;
+  color: #606266;
+  padding: 10px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.collapse-btn:hover {
+  background-color: #f5f7fa;
+  color: #409EFF;
 }
 .header-right .user-info {
   cursor: pointer;
