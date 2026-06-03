@@ -315,7 +315,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="code" label="货号" width="180" />
-      <el-table-column prop="name" label="商品名称" />
+      <el-table-column prop="name" label="商品名称" min-width="120" />
       <el-table-column prop="product_type_display" label="商品类型" width="120" />
       <!-- 配件和串珠显示规格 -->
       <el-table-column v-if="props.products.some(p => p.product_type === 'accessory' || p.product_type === 'bead')" label="规格(mm)" width="100">
@@ -347,7 +347,16 @@
           ¥{{ formatPrice(scope.row.product_type === 'finished' ? scope.row.selling_price : getDefaultSku(scope.row)?.selling_price) }}
         </template>
       </el-table-column>
-      <el-table-column prop="location" label="库位" width="120" />
+      <!-- 显示利润率 -->
+      <el-table-column v-if="props.products.some(p => p.product_type === 'finished')" label="利润率" width="90">
+        <template #default="scope">
+          <span v-if="scope.row.product_type === 'finished' && scope.row.selling_price > 0" :style="{ color: calculateProfitRate(scope.row, scope.row.finished) >= 30 ? '#10b981' : calculateProfitRate(scope.row, scope.row.finished) >= 15 ? '#f59e0b' : '#ef4444' }">
+            {{ calculateProfitRate(scope.row, scope.row.finished) }}%
+          </span>
+          <span v-else style="color: #999">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="location" label="库位" width="150" />
       <el-table-column prop="supplier" label="供应商" />
       <el-table-column prop="is_active" label="状态" width="80">
         <template #default="scope">
@@ -605,10 +614,10 @@ const calculateTotalCost = (finished) => {
 }
 
 const calculateProfitRate = (product, finished) => {
-  const totalCost = calculateTotalCost(finished)
+  const costPrice = product.cost_price || 0
   const sellingPrice = product.selling_price || 0
   if (sellingPrice <= 0) return 0
-  return ((sellingPrice - totalCost) / sellingPrice * 100).toFixed(1)
+  return ((sellingPrice - costPrice) / sellingPrice * 100).toFixed(1)
 }
 </script>
 
