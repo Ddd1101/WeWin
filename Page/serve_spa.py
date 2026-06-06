@@ -31,7 +31,12 @@ class SPARequestHandler(http.server.SimpleHTTPRequestHandler):
 
 
 def main():
-    with socketserver.TCPServer(('0.0.0.0', PORT), SPARequestHandler) as httpd:
+    class ThreadingReusableTCPServer(socketserver.ThreadingTCPServer):
+        allow_reuse_address = True
+        request_queue_size = 128
+        daemon_threads = True
+
+    with ThreadingReusableTCPServer(('0.0.0.0', PORT), SPARequestHandler) as httpd:
         print(f"SPA server running on http://0.0.0.0:{PORT}")
         print(f"Serving directory: {DIRECTORY}")
         httpd.serve_forever()
