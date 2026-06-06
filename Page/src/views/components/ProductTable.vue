@@ -58,8 +58,8 @@
     </div>
 
     <!-- 筛选区域 -->
-    <div class="filter-container">
-      <el-form :inline="true" class="demo-form-inline">
+    <div class="filter-container" :class="{ 'filter-mobile': isMobile }">
+      <el-form :inline="!isMobile" class="demo-form-inline" :class="{ 'mobile-form': isMobile }">
         <el-form-item label="搜索">
           <el-input v-model="searchQuery" placeholder="搜索商品名称或货号" clearable>
             <template #prefix>
@@ -68,7 +68,7 @@
           </el-input>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="localFilter.is_active" placeholder="选择状态" style="width: 120px">
+          <el-select v-model="localFilter.is_active" placeholder="选择状态" :style="{ width: isMobile ? '100%' : '120px' }">
             <el-option label="全部" value="" />
             <el-option label="启用" :value="true" />
             <el-option label="禁用" :value="false" />
@@ -82,8 +82,9 @@
       </el-form>
     </div>
 
-    <!-- 表格 -->
+    <!-- 桌面端表格 -->
     <el-table
+      v-if="!isMobile"
       ref="tableRef"
       :data="filteredProducts"
       style="width: 100%"
@@ -271,18 +272,166 @@
       </el-table-column>
     </el-table>
 
+    <!-- 手机端卡片列表 -->
+    <div v-if="isMobile" class="mobile-list" v-loading="loading">
+      <div v-for="row in filteredProducts" :key="row.id" class="mobile-card">
+        <div class="mobile-card-main" @click="toggleMobileExpand(row)">
+          <div class="mobile-card-left">
+            <img
+              v-if="row.image_url"
+              :src="row.image_url"
+              class="mobile-card-img"
+              @click.stop="openPreview(row.image_url)"
+              alt="商品图片"
+            />
+            <div v-else class="mobile-card-no-img">无图</div>
+          </div>
+          <div class="mobile-card-info">
+            <div class="mobile-card-name">{{ row.name }}</div>
+            <div class="mobile-card-code">{{ row.code }}</div>
+            <div class="mobile-card-prices">
+              <span class="mobile-price">成本: ¥{{ formatPrice(row.product_type === 'finished' ? row.cost_price : getDefaultSku(row)?.cost_price) }}</span>
+              <span class="mobile-price">售价: ¥{{ formatPrice(row.product_type === 'finished' ? row.selling_price : getDefaultSku(row)?.selling_price) }}</span>
+            </div>
+          </div>
+          <div class="mobile-card-right">
+            <el-tag :type="row.is_active ? 'success' : 'danger'" size="small">
+              {{ row.is_active ? '启用' : '禁用' }}
+            </el-tag>
+            <span class="mobile-expand-icon">{{ mobileExpandedIds.has(row.id) ? '▲' : '▼' }}</span>
+          </div>
+        </div>
+        <!-- 手机端展开详情 -->
+        <div v-if="mobileExpandedIds.has(row.id)" class="mobile-card-expand">
+          <!-- 手串成品展开 -->
+          <div v-if="row.product_type === 'finished' && row.finished" class="finished-details mobile-finished-details">
+            <table class="detail-table mobile-detail-table" v-if="row.finished.beads.length > 0">
+              <thead>
+                <tr>
+                  <th colspan="9" class="detail-table-header">串珠（{{ row.finished.beads.length }}种，小计 ¥{{ calculateBeadsTotal(row.finished.beads).toFixed(2) }}）</th>
+                </tr>
+                <tr>
+                  <th style="width:28px"></th>
+                  <th>货号</th>
+                  <th>品名</th>
+                  <th>品级</th>
+                  <th>规格</th>
+                  <th>单价</th>
+                  <th>数量</th>
+                  <th>小计</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(bead, index) in row.finished.beads" :key="index">
+                  <td><img v-if="bead.bead_image_url" :src="bead.bead_image_url" class="detail-thumb" @click="openPreview(bead.bead_image_url)" /></td>
+                  <td>{{ bead.bead_code || '-' }}</td>
+                  <td>{{ bead.bead_name }}</td>
+                  <td>{{ bead.bead_quality_level || '-' }}</td>
+                  <td>{{ bead.bead_size ? bead.bead_size + 'mm' : '-' }}</td>
+                  <td>¥{{ bead.bead_cost_price.toFixed(2) }}</td>
+                  <td>{{ bead.quantity }}</td>
+                  <td>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <table class="detail-table mobile-detail-table" v-if="row.finished.accessories.length > 0">
+              <thead>
+                <tr>
+                  <th colspan="6" class="detail-table-header">配件（{{ row.finished.accessories.length }}种，小计 ¥{{ calculateAccessoriesTotal(row.finished.accessories).toFixed(2) }}）</th>
+                </tr>
+                <tr>
+                  <th style="width:28px"></th>
+                  <th>货号</th>
+                  <th>品名</th>
+                  <th>单价</th>
+                  <th>数量</th>
+                  <th>小计</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(acc, index) in row.finished.accessories" :key="index">
+                  <td><img v-if="acc.accessory_image_url" :src="acc.accessory_image_url" class="detail-thumb" @click="openPreview(acc.accessory_image_url)" /></td>
+                  <td>{{ acc.accessory_code || '-' }}</td>
+                  <td>{{ acc.accessory_name }}</td>
+                  <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
+                  <td>{{ acc.quantity }}</td>
+                  <td>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="detail-summary">
+              <span>工费: ¥{{ row.finished.labor_cost.toFixed(2) }}</span>
+              <span>弹性成本: ¥{{ row.finished.elastic_cost.toFixed(2) }}</span>
+            </div>
+          </div>
+          <!-- 串珠/配件展开 -->
+          <div v-else-if="['bead', 'accessory'].includes(row.product_type)" class="sku-details mobile-sku-details">
+            <h4>SKU列表</h4>
+            <div v-if="row.skus && row.skus.length > 0" class="mobile-sku-list">
+              <div v-for="(sku, idx) in row.skus" :key="idx" class="mobile-sku-item">
+                <div class="mobile-sku-row"><span class="mobile-sku-label">编码:</span> {{ sku.sku_code }}</div>
+                <div class="mobile-sku-row"><span class="mobile-sku-label">名称:</span> {{ sku.sku_name || sku.name || '-' }}</div>
+                <div class="mobile-sku-row"><span class="mobile-sku-label">规格:</span> {{ sku.size ? sku.size + 'mm' : '-' }}</div>
+                <div class="mobile-sku-row"><span class="mobile-sku-label">成本:</span> ¥{{ formatPrice(sku.cost_price) }}</div>
+                <div class="mobile-sku-row"><span class="mobile-sku-label">售价:</span> ¥{{ formatPrice(sku.selling_price) }}</div>
+                <div v-if="row.product_type === 'bead'" class="mobile-sku-row"><span class="mobile-sku-label">克重:</span> {{ formatPrice(sku.weight, 2) }}g</div>
+                <div class="mobile-sku-row"><span class="mobile-sku-label">品质:</span> {{ sku.quality_level || '-' }}</div>
+                <el-tag v-if="sku.is_default" size="small" style="margin-top:4px">默认</el-tag>
+              </div>
+            </div>
+            <el-empty v-else description="暂无SKU" :image-size="60" />
+          </div>
+          <div v-else class="mobile-no-detail">无明细</div>
+          <!-- 操作按钮 -->
+          <div class="mobile-card-actions">
+            <el-button size="small" @click="$emit('edit', row)">编辑</el-button>
+            <el-button size="small" type="danger" @click="$emit('delete', row)">删除</el-button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 空状态 -->
     <el-empty v-if="filteredProducts.length === 0 && !loading" description="暂无数据" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 
 const tableRef = ref(null)
 
+// 手机端检测
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
+
+// 手机端展开行控制
+const mobileExpandedIds = ref(new Set())
+const toggleMobileExpand = (row) => {
+  if (mobileExpandedIds.value.has(row.id)) {
+    mobileExpandedIds.value.delete(row.id)
+  } else {
+    mobileExpandedIds.value.add(row.id)
+  }
+  // 触发响应式更新
+  mobileExpandedIds.value = new Set(mobileExpandedIds.value)
+}
+
 const collapseAll = () => {
+  if (isMobile.value) {
+    mobileExpandedIds.value = new Set()
+    return
+  }
   if (!tableRef.value) return
   filteredProducts.value.forEach(row => {
     tableRef.value.toggleRowExpansion(row, false)
@@ -615,6 +764,169 @@ const calculateProfitRate = (product, finished) => {
 .detail-total {
   font-weight: 700;
   color: #303133;
+}
+
+/* 手机端筛选区 */
+.filter-mobile {
+  padding: 12px;
+}
+.filter-mobile .mobile-form .el-form-item {
+  margin-right: 0;
+  margin-bottom: 8px;
+  width: 100%;
+}
+.filter-mobile .mobile-form .el-form-item__content {
+  width: 100%;
+}
+.filter-mobile .mobile-form .el-input,
+.filter-mobile .mobile-form .el-select {
+  width: 100% !important;
+}
+
+/* 手机端卡片列表 */
+.mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mobile-card {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+.mobile-card-main {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  gap: 10px;
+  cursor: pointer;
+}
+.mobile-card-left {
+  flex-shrink: 0;
+}
+.mobile-card-img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.mobile-card-no-img {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+  border-radius: 6px;
+  color: #999;
+  font-size: 12px;
+}
+.mobile-card-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.mobile-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mobile-card-code {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 2px;
+}
+.mobile-card-prices {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.mobile-price {
+  font-size: 12px;
+  color: #64748b;
+}
+.mobile-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.mobile-expand-icon {
+  font-size: 10px;
+  color: #c0c4cc;
+  margin-top: 2px;
+}
+
+/* 手机端展开详情 */
+.mobile-card-expand {
+  padding: 8px 12px 12px;
+  border-top: 1px solid #ebeef5;
+  background: #fafbfc;
+}
+.mobile-finished-details {
+  padding: 0;
+}
+.mobile-detail-table {
+  font-size: 12px;
+}
+.mobile-detail-table th,
+.mobile-detail-table td {
+  padding: 4px 6px;
+  font-size: 12px;
+}
+.mobile-detail-table thead tr:nth-child(2) th {
+  font-size: 11px;
+}
+.mobile-detail-table-header {
+  font-size: 12px;
+  padding: 6px !important;
+}
+
+/* 手机端SKU列表 */
+.mobile-sku-details {
+  padding: 0;
+}
+.mobile-sku-details h4 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.mobile-sku-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mobile-sku-item {
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.mobile-sku-row {
+  padding: 2px 0;
+  color: #606266;
+}
+.mobile-sku-label {
+  color: #909399;
+  margin-right: 4px;
+}
+.mobile-no-detail {
+  color: #999;
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+}
+.mobile-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
 }
 </style>
 
