@@ -602,8 +602,9 @@ const calculateProfitRate = (product, finished) => {
   display: flex;
   gap: 24px;
   padding: 8px 10px;
-  font-size: 13px;
-  color: #606266;
+  font-size: 14px;
+  font-weight: 700;
+  color: #303133;
   border-top: 2px solid #ebeef5;
 }
 
