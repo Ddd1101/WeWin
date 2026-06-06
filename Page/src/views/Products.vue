@@ -80,8 +80,9 @@
           v-model:current-page="pagination.currentPage"
           v-model:page-size="pagination.pageSize"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
+          :layout="isMobile ? 'total, prev, pager, next' : 'total, sizes, prev, pager, next, jumper'"
           :total="pagination.total"
+          :small="isMobile"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
         />
@@ -92,19 +93,20 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="780px"
+      :width="isMobile ? '95%' : '780px'"
       class="product-dialog"
       @close="resetForm"
       :close-on-click-modal="false"
+      :fullscreen="isMobile"
     >
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="110px">
+      <el-form :model="form" :rules="rules" ref="formRef" :label-width="isMobile ? '80px' : '110px'">
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="货号" prop="code">
               <el-input v-model="form.code" placeholder="请输入货号" clearable />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="商品名称" prop="name">
               <el-input v-model="form.name" placeholder="请输入商品名称" clearable />
             </el-form-item>
@@ -112,7 +114,7 @@
         </el-row>
         
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="商品类型" prop="product_type">
               <el-select v-model="form.product_type" placeholder="选择商品类型" style="width: 100%">
                 <el-option 
@@ -124,7 +126,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="状态" prop="is_active">
               <el-switch v-model="form.is_active" active-text="启用" inactive-text="禁用" />
             </el-form-item>
@@ -149,7 +151,7 @@
             </el-form-item>
           </el-col>
           <!-- 配件和成品显示成本价格 -->
-          <el-col v-if="form.product_type === 'finished'" :span="12">
+          <el-col v-if="form.product_type === 'finished'" :xs="24" :sm="12">
             <el-form-item label="成本价格" prop="cost_price">
               <el-input-number 
                 v-model="form.cost_price" 
@@ -175,7 +177,7 @@
             </el-form-item>
           </el-col>
           <!-- 串珠/配件售价归入SKU，成品保留售价 -->
-          <el-col v-if="form.product_type === 'finished'" :span="12">
+          <el-col v-if="form.product_type === 'finished'" :xs="24" :sm="12">
             <el-form-item label="售卖价格" prop="selling_price">
               <el-input-number v-model="form.selling_price" :min="0" :step="0.01" :precision="2" style="width: 100%" />
             </el-form-item>
@@ -193,12 +195,12 @@
         <!-- 成品特有价格字段 -->
         <template v-if="form.product_type === 'finished'">
           <el-row :gutter="20">
-            <el-col :span="12">
+            <el-col :xs="24" :sm="12">
               <el-form-item label="工费">
                 <el-input-number v-model="form.labor_cost" :min="0" :step="0.01" :precision="2" style="width: 100%" />
               </el-form-item>
             </el-col>
-            <el-col :span="12">
+            <el-col :xs="24" :sm="12">
               <el-form-item label="弹性成本">
                 <el-input-number v-model="form.elastic_cost" :min="0" :step="0.01" :precision="2" style="width: 100%" />
               </el-form-item>
@@ -207,12 +209,12 @@
         </template>
         
         <el-row v-if="form.product_type === 'finished'" :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="库位">
               <el-input v-model="form.location" placeholder="请输入库位" clearable />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="供应商">
               <el-input v-model="form.supplier" placeholder="请输入供应商" clearable />
             </el-form-item>
@@ -587,8 +589,9 @@
     <el-dialog
       v-model="beadDialogVisible"
       title="选择串珠"
-      width="900px"
+      :width="isMobile ? '95%' : '900px'"
       class="selection-dialog"
+      :fullscreen="isMobile"
     >
       <div class="dialog-search-wrapper">
         <el-input v-model="beadSearch" placeholder="搜索串珠名称或货号..." class="search-input">
@@ -671,8 +674,9 @@
     <el-dialog
       v-model="accessoryDialogVisible"
       title="选择配件"
-      width="900px"
+      :width="isMobile ? '95%' : '900px'"
       class="selection-dialog"
+      :fullscreen="isMobile"
     >
       <div class="dialog-search-wrapper">
         <el-input v-model="accessorySearch" placeholder="搜索配件名称或货号..." class="search-input">
@@ -751,13 +755,26 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, defineAsyncComponent, watch } from 'vue'
+import { ref, reactive, onMounted, computed, defineAsyncComponent, watch, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Picture, Document, Grid, CircleCheck, Box, Delete, Check, CirclePlus } from '@element-plus/icons-vue'
 import { getProductTypes, getProducts, createProduct, updateProduct, deleteProduct, getProductDetail, getAccessories, getBeads } from '@/api'
 
 // 产品表格组件
 const ProductTable = defineAsyncComponent(() => import('./components/ProductTable.vue'))
+
+// 手机端检测
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 
 // 商品类型
 const productTypes = ref([])
@@ -2128,21 +2145,102 @@ onMounted(() => {
 /* 响应式适配 */
 @media (max-width: 768px) {
   .products {
+    padding: 0;
+  }
+
+  .main-card {
+    margin: 8px;
+    border-radius: 10px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .tab-label {
+    font-size: 13px;
+  }
+
+  .pagination-container {
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  .cost-summary {
+    padding: 10px;
+  }
+
+  .cost-item {
+    font-size: 13px;
+  }
+
+  .cost-item.total .value {
+    font-size: 16px;
+  }
+
+  .item-card {
+    padding: 10px 12px;
+  }
+
+  .item-controls {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .item-subtotal {
+    font-size: 13px;
+  }
+
+  .cards-container {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  .card-image-wrapper {
+    min-height: 100px;
+    max-height: 150px;
+  }
+
+  .product-name {
+    font-size: 13px;
+  }
+
+  .product-price {
+    font-size: 15px;
+  }
+
+  .product-dialog :deep(.el-dialog__body) {
+    padding: 12px;
+    max-height: 80vh;
+  }
+
+  .selection-dialog :deep(.el-dialog__body) {
     padding: 12px;
   }
-  
-  .cards-container {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
+
+  .sku-grid {
+    grid-template-columns: 1fr;
   }
-  
-  .card-image-wrapper {
-    height: 120px;
+
+  .sku-field.span-2 {
+    grid-column: 1;
   }
-  
-  .header-actions {
-    flex-direction: column;
-    gap: 8px;
+}
+
+@media (max-width: 900px) and (min-width: 769px) {
+  .sku-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sku-field.span-2 {
+    grid-column: 1 / -1;
   }
 }
 .sku-card {
@@ -2206,15 +2304,4 @@ onMounted(() => {
 .sku-field.span-full {
   grid-column: 1 / -1;
 }
-
-@media (max-width: 900px) {
-  .sku-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .sku-field.span-2 {
-    grid-column: 1 / -1;
-  }
-}
-
 </style>
