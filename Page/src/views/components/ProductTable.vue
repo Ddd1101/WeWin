@@ -77,12 +77,14 @@
         <el-form-item>
           <el-button type="primary" @click="handleFilter">查询</el-button>
           <el-button @click="resetFilter">重置</el-button>
+          <el-button @click="collapseAll">收起展开</el-button>
         </el-form-item>
       </el-form>
     </div>
 
     <!-- 表格 -->
     <el-table
+      ref="tableRef"
       :data="filteredProducts"
       style="width: 100%"
       row-key="id"
@@ -273,6 +275,15 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { Search } from '@element-plus/icons-vue'
+
+const tableRef = ref(null)
+
+const collapseAll = () => {
+  if (!tableRef.value) return
+  filteredProducts.value.forEach(row => {
+    tableRef.value.toggleRowExpansion(row, false)
+  })
+}
 
 const props = defineProps({
   products: {
