@@ -32,9 +32,10 @@
             @select-all="handleSelectAll"
             @edit="handleEditProduct"
             @delete="handleDeleteProduct"
+            @sort-change="handleSortChange"
           />
         </el-tab-pane>
-        
+
         <el-tab-pane label="串珠" name="bead">
           <template #label>
             <span class="tab-label">
@@ -50,9 +51,10 @@
             @select-all="handleSelectAll"
             @edit="handleEditProduct"
             @delete="handleDeleteProduct"
+            @sort-change="handleSortChange"
           />
         </el-tab-pane>
-        
+
         <el-tab-pane label="手串配件" name="accessory">
           <template #label>
             <span class="tab-label">
@@ -68,6 +70,7 @@
             @select-all="handleSelectAll"
             @edit="handleEditProduct"
             @delete="handleDeleteProduct"
+            @sort-change="handleSortChange"
           />
         </el-tab-pane>
       </el-tabs>
@@ -429,12 +432,12 @@
           <el-divider content-position="left">成品组成</el-divider>
           <div class="cost-summary" v-if="form.beads.length > 0 || form.accessories.length > 0">
             <div class="cost-item">
-              <span class="label">串珠成本：</span>
-              <span class="value">¥{{ beadsCost.toFixed(2) }}</span>
+              <span class="label">串珠数量：</span>
+              <span class="value">{{ form.beads.reduce((sum, b) => sum + (b.quantity || 0), 0) }}颗（{{ form.beads.length }}种）</span>
             </div>
             <div class="cost-item">
-              <span class="label">配件成本：</span>
-              <span class="value">¥{{ accessoriesCost.toFixed(2) }}</span>
+              <span class="label">配件数量：</span>
+              <span class="value">{{ form.accessories.reduce((sum, a) => sum + (a.quantity || 0), 0) }}个（{{ form.accessories.length }}种）</span>
             </div>
             <div class="cost-item">
               <span class="label">工费：</span>
@@ -797,7 +800,7 @@ const filterForm = reactive({
 // 分页信息
 const pagination = reactive({
   currentPage: 1,
-  pageSize: 20,
+  pageSize: 50,
   total: 0
 })
 // 对话框状态
@@ -886,6 +889,11 @@ const accessorySearch = ref('')
 const beadSearch = ref('')
 // 当前选中的标签页
 const activeTab = ref('finished')
+// 排序状态
+const sortState = reactive({
+  prop: '',
+  order: ''
+})
 
 // 计算串珠成本
 const beadsCost = computed(() => {
@@ -1005,6 +1013,11 @@ const fetchProducts = async () => {
     if (filterForm.is_active !== '') {
       params.is_active = filterForm.is_active
     }
+    // 排序参数
+    if (sortState.prop && sortState.order) {
+      const prefix = sortState.order === 'descending' ? '-' : ''
+      params.ordering = `${prefix}${sortState.prop}`
+    }
     const response = await getProducts(params)
     products.value = response.data.products
     pagination.total = response.data.total_count
@@ -1021,6 +1034,16 @@ const handleTabChange = () => {
   selectedIds.value = []
   pagination.currentPage = 1
   filterForm.is_active = ''
+  sortState.prop = ''
+  sortState.order = ''
+  fetchProducts()
+}
+
+// 处理排序变化
+const handleSortChange = ({ prop, order }) => {
+  sortState.prop = prop
+  sortState.order = order
+  pagination.currentPage = 1
   fetchProducts()
 }
 

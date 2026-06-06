@@ -77,190 +77,84 @@
         <el-form-item>
           <el-button type="primary" @click="handleFilter">查询</el-button>
           <el-button @click="resetFilter">重置</el-button>
+          <el-button @click="collapseAll">收起展开</el-button>
         </el-form-item>
       </el-form>
     </div>
 
     <!-- 表格 -->
-    <el-table 
-      :data="filteredProducts" 
-      style="width: 100%" 
+    <el-table
+      ref="tableRef"
+      :data="filteredProducts"
+      style="width: 100%"
       row-key="id"
       v-loading="loading"
       @selection-change="handleSelectionChange"
+      @sort-change="handleSortChange"
     >
       <el-table-column type="selection" width="55" />
       <el-table-column type="expand">
         <template #default="scope">
           <div v-if="scope.row.product_type === 'finished' && scope.row.finished" class="finished-details">
-            <div class="details-header">
-              <div class="header-icon">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </div>
-              <div class="header-title">
-                <h4>成品组成明细</h4>
-                <div class="composition-summary">
-                  <span>{{ calculateBeadQuantity(scope.row.finished) }}颗串珠</span>
-                  <span>{{ calculateAccessoryQuantity(scope.row.finished) }}个配件</span>
-                </div>
-              </div>
-            </div>
-            
-            <div class="details-content">
-              <!-- 串珠列表 -->
-              <div class="section" v-if="scope.row.finished.beads.length > 0">
-                <div class="section-header">
-                  <div class="section-title">
-                    <span class="section-icon">💎</span>
-                    <h5>串珠</h5>
-                    <span class="count-badge">{{ scope.row.finished.beads.length }}</span>
-                  </div>
-                  <div class="section-summary">
-                    小计：<span class="summary-amount">¥{{ calculateBeadsTotal(scope.row.finished.beads).toFixed(2) }}</span>
-                  </div>
-                </div>
-                <div class="item-list">
-                  <div v-for="(bead, index) in scope.row.finished.beads" :key="index" class="item-card">
-                    <div class="item-image">
-                      <img
-                        v-if="bead.bead_image_url"
-                        :src="bead.bead_image_url"
-                        style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; cursor: pointer;"
-                        @click="openPreview(bead.bead_image_url)"
-                        alt="串珠图片"
-                      />
-                      <div v-else class="image-placeholder">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
-                          <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
-                          <path d="M21 15L16 10L5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                      </div>
-                    </div>
-                    <div class="item-info">
-                      <div class="all-tags">
-                        <span v-if="bead.bead_code" class="item-tag code-tag">货号: {{ bead.bead_code }}</span>
-                        <span class="item-tag name-tag">品名: {{ bead.bead_name }}</span>
-                        <span class="item-tag quality-tag" v-if="bead.bead_quality_level">品级: {{ bead.bead_quality_level }}</span>
-                        <span class="item-tag spec-tag" v-if="bead.bead_size">规格: {{ bead.bead_size }}mm</span>
-                        <span class="item-tag price-tag">克价：¥{{ formatPrice(bead.bead_purchase_cost, 2) }}/g</span>
-                      </div>
-                      <div class="item-remark" v-if="bead.bead_remark">{{ bead.bead_remark }}</div>
-                    </div>
-                    <div class="item-quantity">
-                      <span class="qty-label">数量</span>
-                      <span class="qty-value">{{ bead.quantity }}</span>
-                    </div>
-                    <div class="item-price">
-                      <div class="price-unit">¥{{ bead.bead_cost_price.toFixed(2) }}/颗</div>
-                      <div class="price-total">¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- 配件列表 -->
-              <div class="section" v-if="scope.row.finished.accessories.length > 0">
-                <div class="section-header">
-                  <div class="section-title">
-                    <span class="section-icon">🔗</span>
-                    <h5>配件</h5>
-                    <span class="count-badge">{{ scope.row.finished.accessories.length }}</span>
-                  </div>
-                  <div class="section-summary">
-                    小计：<span class="summary-amount">¥{{ calculateAccessoriesTotal(scope.row.finished.accessories).toFixed(2) }}</span>
-                  </div>
-                </div>
-                <div class="item-list">
-                  <div v-for="(acc, index) in scope.row.finished.accessories" :key="index" class="item-card">
-                    <div class="item-image">
-                      <img
-                        v-if="acc.accessory_image_url"
-                        :src="acc.accessory_image_url"
-                        style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; cursor: pointer;"
-                        @click="openPreview(acc.accessory_image_url)"
-                        alt="配件图片"
-                      />
-                      <div v-else class="image-placeholder">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
-                          <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
-                          <path d="M21 15L16 10L5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                      </div>
-                    </div>
-                    <div class="item-info">
-                      <div class="all-tags">
-                        <span v-if="acc.accessory_code" class="item-tag code-tag">货号: {{ acc.accessory_code }}</span>
-                        <span class="item-tag name-tag">品名: {{ acc.accessory_name }}</span>
-                      </div>
-                    </div>
-                    <div class="item-quantity">
-                      <span class="qty-label">数量</span>
-                      <span class="qty-value">{{ acc.quantity }}</span>
-                    </div>
-                    <div class="item-price">
-                      <div class="price-unit">¥{{ acc.accessory_cost_price.toFixed(2) }}/件</div>
-                      <div class="price-total">¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- 工费和弹性成本 -->
-              <div class="section costs-section">
-                <div class="section-header">
-                  <div class="section-title">
-                    <span class="section-icon">⚙️</span>
-                    <h5>其他成本</h5>
-                  </div>
-                </div>
-                <div class="costs-grid">
-                  <div class="cost-card">
-                    <div class="cost-icon">👷</div>
-                    <div class="cost-info">
-                      <div class="cost-label">工费</div>
-                      <div class="cost-value">¥{{ scope.row.finished.labor_cost.toFixed(2) }}</div>
-                    </div>
-                  </div>
-                  <div class="cost-card">
-                    <div class="cost-icon">📦</div>
-                    <div class="cost-info">
-                      <div class="cost-label">弹性成本</div>
-                      <div class="cost-value">¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- 总成本 -->
-              <div class="total-section">
-                <div class="total-divider"></div>
-                <div class="total-content">
-                  <div class="total-row">
-                    <div class="total-label">
-                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 1V23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M17 5H9.5C8.57174 5 7.6815 5.36875 7.02513 6.02513C6.36875 6.6815 6 7.57174 6 8.5C6 9.42826 6.36875 10.3185 7.02513 10.9749C7.6815 11.6313 8.57174 12 9.5 12H14.5C15.4283 12 16.3185 12.3687 16.9749 13.0251C17.6313 13.6815 18 14.5717 18 15.5C18 16.4283 17.6313 17.3185 16.9749 17.9749C16.3185 18.6313 15.4283 19 14.5 19H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                      总成本
-                    </div>
-                    <span class="total-value">¥{{ calculateTotalCost(scope.row.finished).toFixed(2) }}</span>
-                    <div class="total-selling" v-if="scope.row.selling_price">
-                      <span class="selling-label">售价</span>
-                      <span class="selling-value">¥{{ scope.row.selling_price.toFixed(2) }}</span>
-                    </div>
-                    <div class="total-profit" v-if="scope.row.selling_price">
-                      <span class="profit-label">利润率</span>
-                      <span class="profit-value">{{ calculateProfitRate(scope.row, scope.row.finished) }}%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <table class="detail-table" v-if="scope.row.finished.beads.length > 0">
+              <thead>
+                <tr>
+                  <th colspan="9" class="detail-table-header">串珠（{{ scope.row.finished.beads.length }}种，小计 ¥{{ calculateBeadsTotal(scope.row.finished.beads).toFixed(2) }}）</th>
+                </tr>
+                <tr>
+                  <th style="width:36px"></th>
+                  <th>货号</th>
+                  <th>品名</th>
+                  <th>品级</th>
+                  <th>规格</th>
+                  <th>克价</th>
+                  <th>单价</th>
+                  <th>数量</th>
+                  <th>小计</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(bead, index) in scope.row.finished.beads" :key="index">
+                  <td><img v-if="bead.bead_image_url" :src="bead.bead_image_url" class="detail-thumb" @click="openPreview(bead.bead_image_url)" /></td>
+                  <td>{{ bead.bead_code || '-' }}</td>
+                  <td>{{ bead.bead_name }}</td>
+                  <td>{{ bead.bead_quality_level || '-' }}</td>
+                  <td>{{ bead.bead_size ? bead.bead_size + 'mm' : '-' }}</td>
+                  <td>¥{{ formatPrice(bead.bead_purchase_cost, 2) }}/g</td>
+                  <td>¥{{ bead.bead_cost_price.toFixed(2) }}</td>
+                  <td>{{ bead.quantity }}</td>
+                  <td>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <table class="detail-table" v-if="scope.row.finished.accessories.length > 0">
+              <thead>
+                <tr>
+                  <th colspan="6" class="detail-table-header">配件（{{ scope.row.finished.accessories.length }}种，小计 ¥{{ calculateAccessoriesTotal(scope.row.finished.accessories).toFixed(2) }}）</th>
+                </tr>
+                <tr>
+                  <th style="width:36px"></th>
+                  <th>货号</th>
+                  <th>品名</th>
+                  <th>单价</th>
+                  <th>数量</th>
+                  <th>小计</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(acc, index) in scope.row.finished.accessories" :key="index">
+                  <td><img v-if="acc.accessory_image_url" :src="acc.accessory_image_url" class="detail-thumb" @click="openPreview(acc.accessory_image_url)" /></td>
+                  <td>{{ acc.accessory_code || '-' }}</td>
+                  <td>{{ acc.accessory_name }}</td>
+                  <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
+                  <td>{{ acc.quantity }}</td>
+                  <td>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="detail-summary">
+              <span>工费: ¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
+              <span>弹性成本: ¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
             </div>
           </div>
           <div v-else-if="['bead', 'accessory'].includes(scope.row.product_type)" class="sku-details">
@@ -314,7 +208,7 @@
           <span v-else style="color: #999">无图</span>
         </template>
       </el-table-column>
-      <el-table-column prop="code" label="货号" width="180" />
+      <el-table-column prop="code" label="货号" width="180" sortable="custom" />
       <el-table-column prop="name" label="商品名称" min-width="120" />
       <el-table-column prop="product_type_display" label="商品类型" width="120" />
       <!-- 配件和串珠显示规格 -->
@@ -357,7 +251,11 @@
         </template>
       </el-table-column>
       <el-table-column prop="location" label="库位" width="150" />
-      <el-table-column prop="supplier" label="供应商" />
+      <el-table-column prop="created_at" label="创建时间" width="180">
+        <template #default="scope">
+          {{ scope.row.created_at ? new Date(scope.row.created_at).toLocaleString('zh-CN') : '-' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="is_active" label="状态" width="80">
         <template #default="scope">
           <el-tag :type="scope.row.is_active ? 'success' : 'danger'">
@@ -382,6 +280,15 @@
 import { ref, computed } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 
+const tableRef = ref(null)
+
+const collapseAll = () => {
+  if (!tableRef.value) return
+  filteredProducts.value.forEach(row => {
+    tableRef.value.toggleRowExpansion(row, false)
+  })
+}
+
 const props = defineProps({
   products: {
     type: Array,
@@ -397,7 +304,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select', 'select-all', 'edit', 'delete'])
+const emit = defineEmits(['select', 'select-all', 'edit', 'delete', 'sort-change'])
 
 const searchQuery = ref('')
 const localFilter = ref({
@@ -564,6 +471,10 @@ const handleSelectionChange = (selection) => {
   }
 }
 
+const handleSortChange = ({ prop, order }) => {
+  emit('sort-change', { prop, order })
+}
+
 const handleEdit = (row) => {
   emit('edit', row)
 }
@@ -644,495 +555,66 @@ const calculateProfitRate = (product, finished) => {
 }
 
 .finished-details {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 16px;
-  overflow: hidden;
-  animation: fadeIn 0.3s ease-out;
+  padding: 12px 20px;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.details-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.header-icon {
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(10px);
-}
-
-.header-icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.header-title h4 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.composition-summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.composition-summary span {
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.header-title p {
-  margin: 2px 0 0 0;
-  font-size: 12px;
-  opacity: 0.9;
-}
-
-.details-content {
-  padding: 4px 20px;
-}
-
-.finished-details .section {
-  margin-bottom: 6px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-  padding-bottom: 2px;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.section-icon {
-  font-size: 16px;
-}
-
-.section-title h5 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 10px;
-}
-
-.section-summary {
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
   font-size: 13px;
-  color: #64748b;
 }
 
-.summary-amount {
-  font-weight: 700;
-  color: #667eea;
-  font-size: 14px;
-  margin-left: 4px;
-}
-
-.item-list {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.item-card {
-  display: grid;
-  grid-template-columns: 60px 1fr 80px 100px;
-  gap: 12px;
-  align-items: center;
-  padding: 3px 14px;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
-  border: 1px solid #f1f5f9;
-}
-
-.item-card:hover {
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.12);
-  transform: translateY(-2px);
-  border-color: #e0e7ff;
-}
-
-.item-image {
-  position: relative;
-}
-
-.item-image .el-image {
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  width: 44px !important;
-  height: 44px !important;
-}
-
-.image-placeholder {
-  width: 44px;
-  height: 44px;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-}
-
-.image-placeholder svg {
-  width: 22px;
-  height: 22px;
-}
-
-.item-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.all-tags {
-  display: flex;
-  gap: 4px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-
-.all-tags::-webkit-scrollbar {
-  height: 3px;
-}
-
-.all-tags::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 2px;
-}
-
-.item-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 6px;
-}
-
-.item-tag.code-tag {
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-  color: #4338ca;
-}
-
-.item-tag.name-tag {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
-}
-
-.item-tag.quality-tag {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #92400e;
-}
-
-.item-tag.spec-tag {
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-  color: #0369a1;
-}
-
-.item-tag.price-tag {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #166534;
-}
-
-.item-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.detail-table th,
+.detail-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #ebeef5;
+  text-align: left;
   white-space: nowrap;
 }
 
-
-
-.item-remark {
-  font-size: 11px;
-  color: #94a3b8;
-  font-style: italic;
-}
-
-.item-quantity {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
-
-.qty-label {
-  font-size: 10px;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.qty-value {
-  font-size: 16px;
-  font-weight: 700;
-  color: #667eea;
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-}
-
-.item-price {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-}
-
-.price-unit {
-  font-size: 11px;
-  color: #64748b;
-}
-
-.price-total {
-  font-size: 15px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.costs-section .section-header {
-  border-bottom: none;
-  margin-bottom: 4px;
-  padding-bottom: 0;
-}
-
-.costs-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
-}
-
-.cost-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 16px;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: 1px solid #f1f5f9;
-  transition: all 0.2s ease;
-}
-
-.cost-card:hover {
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.12);
-  transform: translateY(-2px);
-}
-
-.cost-icon {
-  font-size: 24px;
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border-radius: 10px;
-}
-
-.cost-info {
-  flex: 1;
-}
-
-.cost-label {
-  font-size: 12px;
-  color: #64748b;
-  margin-bottom: 2px;
-}
-
-.cost-value {
-  font-size: 17px;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.total-section {
-  margin-top: 1px;
-}
-
-.total-divider {
-  height: 2px;
-  background: linear-gradient(90deg, transparent 0%, #cbd5e1 50%, transparent 100%);
-  margin-bottom: 4px;
-}
-
-.total-content {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 6px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  color: white;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
-}
-
-.total-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.total-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
+.detail-table thead tr:nth-child(2) th {
+  background: #f5f7fa;
+  color: #909399;
   font-weight: 600;
-}
-
-.total-label svg {
-  width: 18px;
-  height: 18px;
-}
-
-.total-selling {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   font-size: 12px;
-  opacity: 0.95;
 }
 
-.selling-label {
-  font-weight: 500;
-}
-
-.selling-value {
+.detail-table-header {
+  background: #f5f7fa;
+  color: #303133;
   font-weight: 700;
-  padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  font-size: 13px;
+  text-align: left;
+  padding: 8px 10px !important;
 }
 
-.total-profit {
+.detail-table tbody tr:hover {
+  background: #f5f7fa;
+}
+
+.detail-thumb {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.detail-summary {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  opacity: 0.95;
-}
-
-.profit-label {
-  font-weight: 500;
-}
-
-.profit-value {
+  gap: 24px;
+  padding: 8px 10px;
+  font-size: 14px;
   font-weight: 700;
-  padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  color: #303133;
+  border-top: 2px solid #ebeef5;
 }
 
-.total-value {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .item-card {
-    grid-template-columns: 60px 1fr;
-    grid-template-rows: auto auto auto;
-    gap: 12px;
-  }
-  
-  .item-image {
-    grid-row: 1 / 4;
-  }
-  
-  .item-info {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  
-  .item-quantity {
-    grid-column: 2;
-    grid-row: 2;
-    align-items: flex-start;
-  }
-  
-  .item-price {
-    grid-column: 2;
-    grid-row: 3;
-    align-items: flex-start;
-  }
-  
-  .costs-grid {
-    grid-template-columns: 1fr;
-  }
+.detail-total {
+  font-weight: 700;
+  color: #303133;
 }
 </style>
 

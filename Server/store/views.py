@@ -795,7 +795,7 @@ def get_orders(request, store_id):
         orders = orders.order_by('-create_time')
         
         page = int(request.GET.get('page', 1))
-        page_size = int(request.GET.get('page_size', 20))
+        page_size = int(request.GET.get('page_size', 50))
         offset = (page - 1) * page_size
         
         total_count = orders.count()
@@ -1045,9 +1045,16 @@ def get_products(request):
         if is_active is not None:
             products = products.filter(is_active=is_active == 'true')
 
+        # 排序
+        ordering = request.GET.get('ordering', '')
+        if ordering in ('code', '-code'):
+            products = products.order_by(ordering)
+        elif ordering:
+            products = products.order_by(ordering)
+
         # 分页
         page = int(request.GET.get('page', 1))
-        page_size = int(request.GET.get('page_size', 20))
+        page_size = int(request.GET.get('page_size', 50))
         offset = (page - 1) * page_size
         
         total_count = products.count()
