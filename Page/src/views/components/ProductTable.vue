@@ -251,7 +251,11 @@
         </template>
       </el-table-column>
       <el-table-column prop="location" label="库位" width="150" />
-      <el-table-column prop="supplier" label="供应商" />
+      <el-table-column prop="created_at" label="创建时间" width="180">
+        <template #default="scope">
+          {{ scope.row.created_at ? new Date(scope.row.created_at).toLocaleString('zh-CN') : '-' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="is_active" label="状态" width="80">
         <template #default="scope">
           <el-tag :type="scope.row.is_active ? 'success' : 'danger'">
