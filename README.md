@@ -20,13 +20,24 @@
 | 重启 | `./stop_frontend.sh && ./start_frontend.sh` |
 | 重载配置（不中断服务） | `/usr/sbin/nginx -s reload` |
 
+### 前端代码更新
+
+1. 进入前端目录构建：
+   ```bash
+   cd Page && npm run build
+   ```
+2. 重载 nginx（不中断服务）：
+   ```bash
+   /usr/sbin/nginx -s reload
+   ```
+
 ### 访问地址
 
 `http://<服务器IP>:8080`
 
 ### 日志位置
 
-`nginx/logs/access.log` 和 `nginx/logs/error.log`（项目目录下）
+`/tmp/nginx_access.log` 和 `/tmp/nginx_error.log`
 
 ### 配置说明
 

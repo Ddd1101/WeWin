@@ -12,8 +12,8 @@ echo "============================================"
 echo "Starting WeWin frontend service..."
 echo "============================================"
 
-# Ensure log directory exists
-mkdir -p "$PROJECT_DIR/nginx/logs"
+# Ensure temp directories exist
+mkdir -p /tmp/nginx_client_body /tmp/nginx_proxy /tmp/nginx_fastcgi /tmp/nginx_uwsgi /tmp/nginx_scgi
 
 # Stop any existing frontend processes
 echo "Checking for existing frontend service..."
@@ -45,6 +45,6 @@ if [ $? -eq 0 ]; then
     echo "============================================"
 else
     echo "ERROR: Failed to start nginx"
-    echo "Check logs: $PROJECT_DIR/nginx/logs/error.log"
+    echo "Check logs: /tmp/nginx_error.log"
     exit 1
 fi
