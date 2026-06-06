@@ -432,12 +432,12 @@
           <el-divider content-position="left">成品组成</el-divider>
           <div class="cost-summary" v-if="form.beads.length > 0 || form.accessories.length > 0">
             <div class="cost-item">
-              <span class="label">串珠成本：</span>
-              <span class="value">¥{{ beadsCost.toFixed(2) }}</span>
+              <span class="label">串珠数量：</span>
+              <span class="value">{{ form.beads.reduce((sum, b) => sum + (b.quantity || 0), 0) }}颗（{{ form.beads.length }}种）</span>
             </div>
             <div class="cost-item">
-              <span class="label">配件成本：</span>
-              <span class="value">¥{{ accessoriesCost.toFixed(2) }}</span>
+              <span class="label">配件数量：</span>
+              <span class="value">{{ form.accessories.reduce((sum, a) => sum + (a.quantity || 0), 0) }}个（{{ form.accessories.length }}种）</span>
             </div>
             <div class="cost-item">
               <span class="label">工费：</span>
