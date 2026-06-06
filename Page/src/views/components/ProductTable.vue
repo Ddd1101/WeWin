@@ -82,12 +82,13 @@
     </div>
 
     <!-- 表格 -->
-    <el-table 
-      :data="filteredProducts" 
-      style="width: 100%" 
+    <el-table
+      :data="filteredProducts"
+      style="width: 100%"
       row-key="id"
       v-loading="loading"
       @selection-change="handleSelectionChange"
+      @sort-change="handleSortChange"
     >
       <el-table-column type="selection" width="55" />
       <el-table-column type="expand">
@@ -314,7 +315,7 @@
           <span v-else style="color: #999">无图</span>
         </template>
       </el-table-column>
-      <el-table-column prop="code" label="货号" width="180" />
+      <el-table-column prop="code" label="货号" width="180" sortable="custom" />
       <el-table-column prop="name" label="商品名称" min-width="120" />
       <el-table-column prop="product_type_display" label="商品类型" width="120" />
       <!-- 配件和串珠显示规格 -->
@@ -397,7 +398,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select', 'select-all', 'edit', 'delete'])
+const emit = defineEmits(['select', 'select-all', 'edit', 'delete', 'sort-change'])
 
 const searchQuery = ref('')
 const localFilter = ref({
@@ -562,6 +563,10 @@ const handleSelectionChange = (selection) => {
   } else {
     emit('select-all', ids)
   }
+}
+
+const handleSortChange = ({ prop, order }) => {
+  emit('sort-change', { prop, order })
 }
 
 const handleEdit = (row) => {
