@@ -209,9 +209,9 @@
           <span v-else style="color: #999">无图</span>
         </template>
       </el-table-column>
-      <el-table-column prop="code" label="货号" width="180" sortable="custom" />
+      <el-table-column prop="code" label="货号" :width="activeTab === 'bead' ? 120 : 180" sortable="custom" />
       <el-table-column prop="name" label="商品名称" min-width="120" />
-      <el-table-column prop="product_type_display" label="商品类型" width="120" />
+      <el-table-column v-if="activeTab !== 'bead'" prop="product_type_display" label="商品类型" width="120" />
       <!-- 配件和串珠显示规格 -->
       <el-table-column v-if="props.products.some(p => p.product_type === 'accessory' || p.product_type === 'bead')" label="规格(mm)" width="100">
         <template #default="scope">
@@ -450,6 +450,10 @@ const props = defineProps({
   selectedIds: {
     type: Array,
     default: () => []
+  },
+  activeTab: {
+    type: String,
+    default: 'finished'
   }
 })
 
