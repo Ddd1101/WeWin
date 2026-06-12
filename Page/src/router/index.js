@@ -105,7 +105,7 @@ const routes = [
         meta: {
           title: "企业管理",
           icon: "OfficeBuilding",
-          requiresAdmin: true,
+          requiresCompanyAccess: true,
         },
       },
     ],

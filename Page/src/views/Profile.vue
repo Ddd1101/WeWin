@@ -20,6 +20,10 @@
         <el-form-item label="所属企业" prop="company">
           <el-input v-model="profile.company" disabled />
         </el-form-item>
+
+        <el-form-item label="企业编号" prop="companyCode">
+          <el-input v-model="profile.companyCode" disabled />
+        </el-form-item>
         
         <el-form-item label="联系电话" prop="phone">
           <el-input v-model="profile.phone" placeholder="请输入联系电话" />
@@ -82,6 +86,7 @@ const profile = ref({
   username: '',
   userType: '',
   company: '',
+  companyCode: '',
   phone: '',
   email: '',
   realName: ''
@@ -194,6 +199,7 @@ const loadUserInfo = () => {
         username: userInfo.username,
         userType: userInfo.user_type_display,
         company: userInfo.company_name || '无',
+        companyCode: userInfo.company_code || '无',
         phone: userInfo.phone || '',
         email: userInfo.email || '',
         realName: userInfo.real_name || userInfo.username

@@ -100,7 +100,9 @@
             <table class="detail-table" v-if="scope.row.finished.beads.length > 0">
               <thead>
                 <tr>
-                  <th colspan="9" class="detail-table-header">串珠（{{ scope.row.finished.beads.length }}种，小计 ¥{{ calculateBeadsTotal(scope.row.finished.beads).toFixed(2) }}）</th>
+                  <th :colspan="isEnterpriseUser ? 7 : 9" class="detail-table-header">
+                    串珠（{{ scope.row.finished.beads.length }}种<span v-if="!isEnterpriseUser">，小计 ¥{{ calculateBeadsTotal(scope.row.finished.beads).toFixed(2) }}</span>）
+                  </th>
                 </tr>
                 <tr>
                   <th style="width:36px"></th>
@@ -108,10 +110,10 @@
                   <th>品名</th>
                   <th>品级</th>
                   <th>规格</th>
-                  <th>克价</th>
-                  <th>单价</th>
+                  <th v-if="!isEnterpriseUser">克价</th>
+                  <th v-if="!isEnterpriseUser">单价</th>
                   <th>数量</th>
-                  <th>小计</th>
+                  <th v-if="!isEnterpriseUser">小计</th>
                 </tr>
               </thead>
               <tbody>
@@ -121,25 +123,27 @@
                   <td>{{ bead.bead_name }}</td>
                   <td>{{ bead.bead_quality_level || '-' }}</td>
                   <td>{{ bead.bead_size ? bead.bead_size + 'mm' : '-' }}</td>
-                  <td>¥{{ formatPrice(bead.bead_purchase_cost, 2) }}/g</td>
-                  <td>¥{{ bead.bead_cost_price.toFixed(2) }}</td>
+                  <td v-if="!isEnterpriseUser">¥{{ formatPrice(bead.bead_purchase_cost, 2) }}/g</td>
+                  <td v-if="!isEnterpriseUser">¥{{ bead.bead_cost_price.toFixed(2) }}</td>
                   <td>{{ bead.quantity }}</td>
-                  <td>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
+                  <td v-if="!isEnterpriseUser">¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
                 </tr>
               </tbody>
             </table>
             <table class="detail-table" v-if="scope.row.finished.accessories.length > 0">
               <thead>
                 <tr>
-                  <th colspan="6" class="detail-table-header">配件（{{ scope.row.finished.accessories.length }}种，小计 ¥{{ calculateAccessoriesTotal(scope.row.finished.accessories).toFixed(2) }}）</th>
+                  <th :colspan="isEnterpriseUser ? 4 : 6" class="detail-table-header">
+                    配件（{{ scope.row.finished.accessories.length }}种<span v-if="!isEnterpriseUser">，小计 ¥{{ calculateAccessoriesTotal(scope.row.finished.accessories).toFixed(2) }}</span>）
+                  </th>
                 </tr>
                 <tr>
                   <th style="width:36px"></th>
                   <th>货号</th>
                   <th>品名</th>
-                  <th>单价</th>
+                  <th v-if="!isEnterpriseUser">单价</th>
                   <th>数量</th>
-                  <th>小计</th>
+                  <th v-if="!isEnterpriseUser">小计</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,15 +151,15 @@
                   <td><img v-if="acc.accessory_image_url" :src="acc.accessory_image_url" class="detail-thumb" @click="openPreview(acc.accessory_image_url)" /></td>
                   <td>{{ acc.accessory_code || '-' }}</td>
                   <td>{{ acc.accessory_name }}</td>
-                  <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
+                  <td v-if="!isEnterpriseUser">¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
                   <td>{{ acc.quantity }}</td>
-                  <td>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
+                  <td v-if="!isEnterpriseUser">¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
                 </tr>
               </tbody>
             </table>
             <div class="detail-summary">
-              <span>工费: ¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
-              <span>弹性成本: ¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
+              <span v-if="!isEnterpriseUser">工费: ¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
+              <span v-if="!isEnterpriseUser">弹性成本: ¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
             </div>
           </div>
           <div v-else-if="['bead', 'accessory'].includes(scope.row.product_type)" class="sku-details">
@@ -170,10 +174,10 @@
                 <template #default="skuScope">{{ skuScope.row.size || '-' }}</template>
               </el-table-column>
               <el-table-column prop="color" label="颜色" width="100" />
-              <el-table-column label="采购成本(元/克)" width="110">
+              <el-table-column v-if="scope.row.product_type === 'bead' && !(isEnterpriseUser && activeTab === 'bead')" label="采购成本(元/克)" width="110">
                 <template #default="skuScope">¥{{ formatPrice(skuScope.row.purchase_cost, 2) }}</template>
               </el-table-column>
-              <el-table-column label="成本" width="100">
+              <el-table-column v-if="!(isEnterpriseUser && ['bead', 'accessory'].includes(activeTab))" label="成本" width="100">
                 <template #default="skuScope">¥{{ formatPrice(skuScope.row.cost_price) }}</template>
               </el-table-column>
               <el-table-column v-if="scope.row.product_type === 'bead'" label="克重" width="90">
@@ -224,14 +228,14 @@
           {{ getDefaultSku(scope.row)?.quality_level || '-' }}
         </template>
       </el-table-column>
-      <!-- 只对串珠显示采购成本 -->
-      <el-table-column v-if="props.products.some(p => p.product_type === 'bead')" label="采购成本(元/克)" width="130">
+      <!-- 只对串珠显示采购成本，普通企业用户在串珠页隐藏 -->
+      <el-table-column v-if="props.products.some(p => p.product_type === 'bead') && !(isEnterpriseUser && activeTab === 'bead')" label="采购成本(元/克)" width="130">
         <template #default="scope">
           {{ scope.row.product_type === 'bead' ? '¥' + formatPrice(getDefaultSku(scope.row)?.purchase_cost, 2) : '-' }}
         </template>
       </el-table-column>
-      <!-- 显示成本价格 -->
-      <el-table-column label="成本价格" width="100">
+      <!-- 显示成本价格，普通企业用户隐藏所有标签页的成本价格 -->
+      <el-table-column v-if="!(isEnterpriseUser && ['finished', 'bead', 'accessory'].includes(activeTab))" label="成本价格" width="100">
         <template #default="scope">
           ¥{{ formatPrice(scope.row.product_type === 'finished' ? scope.row.cost_price : getDefaultSku(scope.row)?.cost_price) }}
         </template>
@@ -243,7 +247,7 @@
         </template>
       </el-table-column>
       <!-- 显示利润率 -->
-      <el-table-column v-if="props.products.some(p => p.product_type === 'finished')" label="利润率" width="90">
+      <el-table-column v-if="props.products.some(p => p.product_type === 'finished') && !(isEnterpriseUser && activeTab === 'finished')" label="利润率" width="90">
         <template #default="scope">
           <span v-if="scope.row.product_type === 'finished' && scope.row.selling_price > 0" :style="{ color: calculateProfitRate(scope.row, scope.row.finished) >= 30 ? '#10b981' : calculateProfitRate(scope.row, scope.row.finished) >= 15 ? '#f59e0b' : '#ef4444' }">
             {{ calculateProfitRate(scope.row, scope.row.finished) }}%
@@ -290,7 +294,7 @@
             <div class="mobile-card-name">{{ row.name }}</div>
             <div class="mobile-card-code">{{ row.code }}</div>
             <div class="mobile-card-prices">
-              <span class="mobile-price">成本: ¥{{ formatPrice(row.product_type === 'finished' ? row.cost_price : getDefaultSku(row)?.cost_price) }}</span>
+              <span v-if="!isEnterpriseUser" class="mobile-price">成本: ¥{{ formatPrice(row.product_type === 'finished' ? row.cost_price : getDefaultSku(row)?.cost_price) }}</span>
               <span class="mobile-price">售价: ¥{{ formatPrice(row.product_type === 'finished' ? row.selling_price : getDefaultSku(row)?.selling_price) }}</span>
             </div>
           </div>
@@ -308,7 +312,9 @@
             <table class="detail-table mobile-detail-table" v-if="row.finished.beads.length > 0">
               <thead>
                 <tr>
-                  <th colspan="9" class="detail-table-header">串珠（{{ row.finished.beads.length }}种，小计 ¥{{ calculateBeadsTotal(row.finished.beads).toFixed(2) }}）</th>
+                  <th :colspan="isEnterpriseUser ? 7 : 9" class="detail-table-header">
+                    串珠（{{ row.finished.beads.length }}种<span v-if="!isEnterpriseUser">，小计 ¥{{ calculateBeadsTotal(row.finished.beads).toFixed(2) }}</span>）
+                  </th>
                 </tr>
                 <tr>
                   <th style="width:28px"></th>
@@ -316,9 +322,9 @@
                   <th>品名</th>
                   <th>品级</th>
                   <th>规格</th>
-                  <th>单价</th>
+                  <th v-if="!isEnterpriseUser">单价</th>
                   <th>数量</th>
-                  <th>小计</th>
+                  <th v-if="!isEnterpriseUser">小计</th>
                 </tr>
               </thead>
               <tbody>
@@ -328,24 +334,26 @@
                   <td>{{ bead.bead_name }}</td>
                   <td>{{ bead.bead_quality_level || '-' }}</td>
                   <td>{{ bead.bead_size ? bead.bead_size + 'mm' : '-' }}</td>
-                  <td>¥{{ bead.bead_cost_price.toFixed(2) }}</td>
+                  <td v-if="!isEnterpriseUser">¥{{ bead.bead_cost_price.toFixed(2) }}</td>
                   <td>{{ bead.quantity }}</td>
-                  <td>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
+                  <td v-if="!isEnterpriseUser">¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
                 </tr>
               </tbody>
             </table>
             <table class="detail-table mobile-detail-table" v-if="row.finished.accessories.length > 0">
               <thead>
                 <tr>
-                  <th colspan="6" class="detail-table-header">配件（{{ row.finished.accessories.length }}种，小计 ¥{{ calculateAccessoriesTotal(row.finished.accessories).toFixed(2) }}）</th>
+                  <th :colspan="isEnterpriseUser ? 4 : 6" class="detail-table-header">
+                    配件（{{ row.finished.accessories.length }}种<span v-if="!isEnterpriseUser">，小计 ¥{{ calculateAccessoriesTotal(row.finished.accessories).toFixed(2) }}</span>）
+                  </th>
                 </tr>
                 <tr>
                   <th style="width:28px"></th>
                   <th>货号</th>
                   <th>品名</th>
-                  <th>单价</th>
+                  <th v-if="!isEnterpriseUser">单价</th>
                   <th>数量</th>
-                  <th>小计</th>
+                  <th v-if="!isEnterpriseUser">小计</th>
                 </tr>
               </thead>
               <tbody>
@@ -353,15 +361,15 @@
                   <td><img v-if="acc.accessory_image_url" :src="acc.accessory_image_url" class="detail-thumb" @click="openPreview(acc.accessory_image_url)" /></td>
                   <td>{{ acc.accessory_code || '-' }}</td>
                   <td>{{ acc.accessory_name }}</td>
-                  <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
+                  <td v-if="!isEnterpriseUser">¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
                   <td>{{ acc.quantity }}</td>
-                  <td>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
+                  <td v-if="!isEnterpriseUser">¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
                 </tr>
               </tbody>
             </table>
             <div class="detail-summary">
-              <span>工费: ¥{{ row.finished.labor_cost.toFixed(2) }}</span>
-              <span>弹性成本: ¥{{ row.finished.elastic_cost.toFixed(2) }}</span>
+              <span v-if="!isEnterpriseUser">工费: ¥{{ row.finished.labor_cost.toFixed(2) }}</span>
+              <span v-if="!isEnterpriseUser">弹性成本: ¥{{ row.finished.elastic_cost.toFixed(2) }}</span>
             </div>
           </div>
           <!-- 串珠/配件展开 -->
@@ -399,8 +407,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Search } from '@element-plus/icons-vue'
+import { useUserStore } from '../../store/user'
 
+const userStore = useUserStore()
 const tableRef = ref(null)
+
+// 是否为普通企业用户
+const isEnterpriseUser = computed(() => userStore.userInfo.user_type === 'enterprise_user')
 
 // 手机端检测
 const isMobile = ref(false)

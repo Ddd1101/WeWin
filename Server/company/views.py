@@ -30,10 +30,17 @@ def get_companies(request):
 
         current_user = User.objects.get(id=payload['user_id'])
         
-        if current_user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+        # 超级管理员和网站管理员可以查看所有企业
+        if current_user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            companies = Company.objects.all()
+        # 企业负责人只能查看自己所属的企业
+        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
+            if current_user.company:
+                companies = Company.objects.filter(id=current_user.company.id)
+            else:
+                companies = Company.objects.none()
+        else:
             return JsonResponse({'error': '无权限查看企业列表'}, status=403)
-
-        companies = Company.objects.all()
         company_list = []
         for company in companies:
             company_list.append({
@@ -149,11 +156,15 @@ def update_company(request, company_id):
             return JsonResponse({'error': '无效的Token'}, status=401)
 
         current_user = User.objects.get(id=payload['user_id'])
-        
-        if current_user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
-            return JsonResponse({'error': '无权限更新企业'}, status=403)
 
         company = Company.objects.get(id=company_id)
+
+        # 超级管理员可以修改所有企业，企业负责人只能修改自己所属的企业
+        if current_user.user_type == UserType.ENTERPRISE_LEADER:
+            if current_user.company_id != company.id:
+                return JsonResponse({'error': '无权限更新该企业'}, status=403)
+        elif current_user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            return JsonResponse({'error': '无权限更新企业'}, status=403)
         data = json.loads(request.body)
 
         if 'name' in data:

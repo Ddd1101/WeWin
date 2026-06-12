@@ -104,6 +104,12 @@ const menuRoutes = computed(() => {
         continue
       }
     }
+    if (child.meta?.requiresCompanyAccess) {
+      const userType = userStore.userInfo.user_type
+      if (!(userType === 'super_admin' || userType === 'site_admin' || userType === 'enterprise_leader')) {
+        continue
+      }
+    }
     result.push(child)
   }
   
