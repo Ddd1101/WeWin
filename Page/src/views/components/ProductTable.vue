@@ -104,26 +104,26 @@
                 </tr>
                 <tr>
                   <th style="width:36px"></th>
-                  <th>货号</th>
-                  <th>品名</th>
-                  <th>品级</th>
-                  <th>规格</th>
-                  <th>克价</th>
-                  <th>单价</th>
-                  <th>数量</th>
-                  <th>小计</th>
+                  <th style="width:80px">货号</th>
+                  <th style="width:120px">SKU名称</th>
+                  <th style="width:50px">数量</th>
+                  <th style="width:80px">克价</th>
+                  <th style="width:70px">单价</th>
+                  <th style="width:60px">规格</th>
+                  <th style="width:50px">品级</th>
+                  <th style="width:70px">小计</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(bead, index) in scope.row.finished.beads" :key="index">
                   <td><img v-if="bead.bead_image_url" :src="bead.bead_image_url" class="detail-thumb" @click="openPreview(bead.bead_image_url)" /></td>
                   <td>{{ bead.bead_code || '-' }}</td>
-                  <td>{{ bead.bead_name }}</td>
-                  <td>{{ bead.bead_quality_level || '-' }}</td>
-                  <td>{{ bead.bead_size ? bead.bead_size + 'mm' : '-' }}</td>
+                  <td>{{ bead.sku?.name || bead.sku?.sku_name || bead.bead_name }}</td>
+                  <td>{{ bead.quantity }}</td>
                   <td>¥{{ formatPrice(bead.bead_purchase_cost, 2) }}/g</td>
                   <td>¥{{ bead.bead_cost_price.toFixed(2) }}</td>
-                  <td>{{ bead.quantity }}</td>
+                  <td>{{ bead.bead_size ? bead.bead_size + 'mm' : '-' }}</td>
+                  <td>{{ bead.bead_quality_level || '-' }}</td>
                   <td>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
                 </tr>
               </tbody>
@@ -135,20 +135,20 @@
                 </tr>
                 <tr>
                   <th style="width:36px"></th>
-                  <th>货号</th>
-                  <th>品名</th>
-                  <th>单价</th>
-                  <th>数量</th>
-                  <th>小计</th>
+                  <th style="width:80px">货号</th>
+                  <th style="width:120px">SKU名称</th>
+                  <th style="width:50px">数量</th>
+                  <th style="width:70px">单价</th>
+                  <th style="width:70px">小计</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(acc, index) in scope.row.finished.accessories" :key="index">
                   <td><img v-if="acc.accessory_image_url" :src="acc.accessory_image_url" class="detail-thumb" @click="openPreview(acc.accessory_image_url)" /></td>
                   <td>{{ acc.accessory_code || '-' }}</td>
-                  <td>{{ acc.accessory_name }}</td>
-                  <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
+                  <td>{{ acc.sku?.name || acc.sku?.sku_name || acc.accessory_name }}</td>
                   <td>{{ acc.quantity }}</td>
+                  <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
                   <td>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
                 </tr>
               </tbody>
@@ -211,7 +211,7 @@
       </el-table-column>
       <el-table-column prop="code" label="货号" width="180" sortable="custom" />
       <el-table-column prop="name" label="商品名称" min-width="120" />
-      <el-table-column prop="product_type_display" label="商品类型" width="120" />
+      <el-table-column v-if="!props.hideProductType" prop="product_type_display" label="商品类型" width="120" />
       <!-- 配件和串珠显示规格 -->
       <el-table-column v-if="props.products.some(p => p.product_type === 'accessory' || p.product_type === 'bead')" label="规格(mm)" width="100">
         <template #default="scope">
@@ -312,24 +312,26 @@
                 </tr>
                 <tr>
                   <th style="width:28px"></th>
-                  <th>货号</th>
-                  <th>品名</th>
-                  <th>品级</th>
-                  <th>规格</th>
-                  <th>单价</th>
-                  <th>数量</th>
-                  <th>小计</th>
+                  <th style="width:80px">货号</th>
+                  <th style="width:120px">SKU名称</th>
+                  <th style="width:50px">数量</th>
+                  <th style="width:80px">克价</th>
+                  <th style="width:70px">单价</th>
+                  <th style="width:60px">规格</th>
+                  <th style="width:50px">品级</th>
+                  <th style="width:70px">小计</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(bead, index) in row.finished.beads" :key="index">
                   <td><img v-if="bead.bead_image_url" :src="bead.bead_image_url" class="detail-thumb" @click="openPreview(bead.bead_image_url)" /></td>
                   <td>{{ bead.bead_code || '-' }}</td>
-                  <td>{{ bead.bead_name }}</td>
-                  <td>{{ bead.bead_quality_level || '-' }}</td>
-                  <td>{{ bead.bead_size ? bead.bead_size + 'mm' : '-' }}</td>
-                  <td>¥{{ bead.bead_cost_price.toFixed(2) }}</td>
+                  <td>{{ bead.sku?.name || bead.sku?.sku_name || bead.bead_name }}</td>
                   <td>{{ bead.quantity }}</td>
+                  <td>¥{{ formatPrice(bead.bead_purchase_cost, 2) }}/g</td>
+                  <td>¥{{ bead.bead_cost_price.toFixed(2) }}</td>
+                  <td>{{ bead.bead_size ? bead.bead_size + 'mm' : '-' }}</td>
+                  <td>{{ bead.bead_quality_level || '-' }}</td>
                   <td>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
                 </tr>
               </tbody>
@@ -341,20 +343,20 @@
                 </tr>
                 <tr>
                   <th style="width:28px"></th>
-                  <th>货号</th>
-                  <th>品名</th>
-                  <th>单价</th>
-                  <th>数量</th>
-                  <th>小计</th>
+                  <th style="width:80px">货号</th>
+                  <th style="width:120px">SKU名称</th>
+                  <th style="width:50px">数量</th>
+                  <th style="width:70px">单价</th>
+                  <th style="width:70px">小计</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(acc, index) in row.finished.accessories" :key="index">
                   <td><img v-if="acc.accessory_image_url" :src="acc.accessory_image_url" class="detail-thumb" @click="openPreview(acc.accessory_image_url)" /></td>
                   <td>{{ acc.accessory_code || '-' }}</td>
-                  <td>{{ acc.accessory_name }}</td>
-                  <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
+                  <td>{{ acc.sku?.name || acc.sku?.sku_name || acc.accessory_name }}</td>
                   <td>{{ acc.quantity }}</td>
+                  <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
                   <td>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
                 </tr>
               </tbody>
@@ -450,6 +452,10 @@ const props = defineProps({
   selectedIds: {
     type: Array,
     default: () => []
+  },
+  hideProductType: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -709,6 +715,7 @@ const calculateProfitRate = (product, finished) => {
 
 .detail-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   margin-bottom: 12px;
   font-size: 13px;
@@ -720,6 +727,8 @@ const calculateProfitRate = (product, finished) => {
   border-bottom: 1px solid #ebeef5;
   text-align: left;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .detail-table thead tr:nth-child(2) th {

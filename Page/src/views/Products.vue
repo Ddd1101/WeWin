@@ -28,6 +28,7 @@
             :products="products"
             :loading="loading"
             :selected-ids="selectedIds"
+            :hide-product-type="activeTab === 'finished'"
             @select="handleSelect"
             @select-all="handleSelectAll"
             @edit="handleEditProduct"
