@@ -1220,8 +1220,8 @@ const handleImageSelect = (event) => {
     return
   }
   
-  if (file.size > 10 * 1024 * 1024) {
-    ElMessage.error('图片大小不能超过 10MB')
+  if (file.size > 100 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过 100MB')
     return
   }
   
