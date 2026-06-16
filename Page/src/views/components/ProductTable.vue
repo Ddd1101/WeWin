@@ -273,8 +273,9 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="scope">
+          <el-button v-if="scope.row.product_type === 'finished'" size="small" type="warning" @click="openSimulate(scope.row)">模拟</el-button>
           <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
           <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
         </template>
@@ -395,6 +396,7 @@
           <div v-else class="mobile-no-detail">无明细</div>
           <!-- 操作按钮 -->
           <div class="mobile-card-actions">
+            <el-button v-if="row.product_type === 'finished'" size="small" type="warning" @click="openSimulate(row)">模拟</el-button>
             <el-button size="small" @click="$emit('edit', row)">编辑</el-button>
             <el-button size="small" type="danger" @click="$emit('delete', row)">删除</el-button>
           </div>
@@ -404,6 +406,96 @@
 
     <!-- 空状态 -->
     <el-empty v-if="filteredProducts.length === 0 && !loading" description="暂无数据" />
+
+    <!-- 模拟克价对话框 -->
+    <el-dialog v-model="simulateVisible" title="克价模拟" :width="isMobile ? '95%' : '1200px'" :fullscreen="isMobile">
+      <div v-if="simulateRow" class="simulate-content">
+        <div class="simulate-info">
+          <span>货号: {{ simulateRow.code }}</span>
+          <span>商品名称: {{ simulateRow.name }}</span>
+          <span>售价: ¥{{ simulateRow.selling_price.toFixed(2) }}</span>
+        </div>
+        <!-- 串珠模拟 -->
+        <table class="detail-table simulate-table" v-if="simulateBeads.length > 0">
+          <thead>
+            <tr>
+              <th colspan="9" class="detail-table-header">串珠（{{ simulateBeads.length }}种，共{{ calculateBeadsQuantity(simulateBeads) }}颗）</th>
+            </tr>
+            <tr>
+              <th style="width:140px">SKU名称</th>
+              <th style="width:50px">数量</th>
+              <th style="width:60px">克重</th>
+              <th style="width:80px">原克价</th>
+              <th style="width:140px">新克价(元/克)</th>
+              <th style="width:70px">原单价</th>
+              <th style="width:70px">新单价</th>
+              <th style="width:70px">原小计</th>
+              <th style="width:70px">新小计</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(bead, index) in simulateBeads" :key="'b'+index">
+              <td class="simulate-text">{{ bead.sku?.name || bead.sku?.sku_name || bead.bead_name }}</td>
+              <td>{{ bead.quantity }}</td>
+              <td>{{ bead.bead_weight ? bead.bead_weight.toFixed(2) + 'g' : '-' }}</td>
+              <td>¥{{ formatPrice(bead.bead_purchase_cost, 2) }}</td>
+              <td>
+                <el-input-number v-model="bead.newPurchaseCost" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input" />
+              </td>
+              <td>¥{{ bead.bead_cost_price.toFixed(2) }}</td>
+              <td>¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0)).toFixed(2) }}</td>
+              <td>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
+              <td>¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0) * bead.quantity).toFixed(2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <!-- 配件模拟 -->
+        <table class="detail-table simulate-table" v-if="simulateAccessories.length > 0">
+          <thead>
+            <tr>
+              <th colspan="7" class="detail-table-header">配件（{{ simulateAccessories.length }}种，共{{ calculateAccessoriesQuantity(simulateAccessories) }}个）</th>
+            </tr>
+            <tr>
+              <th style="width:140px">SKU名称</th>
+              <th style="width:50px">数量</th>
+              <th style="width:80px">原单价</th>
+              <th style="width:130px">新单价</th>
+              <th style="width:70px">原小计</th>
+              <th style="width:70px">新小计</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(acc, index) in simulateAccessories" :key="'a'+index">
+              <td class="simulate-text">{{ acc.sku?.name || acc.sku?.sku_name || acc.accessory_name }}</td>
+              <td>{{ acc.quantity }}</td>
+              <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
+              <td>
+                <el-input-number v-model="acc.newCostPrice" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input" />
+              </td>
+              <td>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
+              <td>¥{{ (acc.newCostPrice * acc.quantity).toFixed(2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="simulate-summary">
+          <div class="summary-row">
+            <span>原成本: <b>¥{{ simulateOriginalCost.toFixed(2) }}</b></span>
+            <span>新成本: <b :style="{ color: simulateNewCost > simulateOriginalCost ? '#ef4444' : '#10b981' }">¥{{ simulateNewCost.toFixed(2) }}</b></span>
+            <span>成本变动: <b :style="{ color: simulateNewCost > simulateOriginalCost ? '#ef4444' : '#10b981' }">{{ simulateNewCost > simulateOriginalCost ? '+' : '' }}¥{{ (simulateNewCost - simulateOriginalCost).toFixed(2) }}</b></span>
+          </div>
+          <div class="summary-row">
+            <span>原利润: <b>¥{{ (simulateRow.selling_price - simulateOriginalCost).toFixed(2) }}</b></span>
+            <span>新利润: <b :style="{ color: (simulateRow.selling_price - simulateNewCost) >= 0 ? '#10b981' : '#ef4444' }">¥{{ (simulateRow.selling_price - simulateNewCost).toFixed(2) }}</b></span>
+            <span>原利润率: <b>{{ simulateRow.selling_price > 0 ? ((simulateRow.selling_price - simulateOriginalCost) / simulateRow.selling_price * 100).toFixed(1) : 0 }}%</b></span>
+            <span>新利润率: <b :style="{ color: simulateNewProfitRate >= 30 ? '#10b981' : simulateNewProfitRate >= 15 ? '#f59e0b' : '#ef4444' }">{{ simulateNewProfitRate }}%</b></span>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="resetSimulate">重置</el-button>
+        <el-button type="primary" @click="simulateVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -702,6 +794,63 @@ const calculateProfitRate = (product, finished) => {
   if (sellingPrice <= 0) return 0
   return ((sellingPrice - costPrice) / sellingPrice * 100).toFixed(1)
 }
+
+// 模拟克价相关
+const simulateVisible = ref(false)
+const simulateRow = ref(null)
+const simulateBeads = ref([])
+const simulateAccessories = ref([])
+
+const openSimulate = (row) => {
+  simulateRow.value = row
+  simulateBeads.value = (row.finished?.beads || []).map(b => ({
+    ...b,
+    newPurchaseCost: b.bead_purchase_cost || 0
+  }))
+  simulateAccessories.value = (row.finished?.accessories || []).map(a => ({
+    ...a,
+    newCostPrice: a.accessory_cost_price || 0
+  }))
+  simulateVisible.value = true
+}
+
+const resetSimulate = () => {
+  simulateBeads.value.forEach(b => {
+    b.newPurchaseCost = b.bead_purchase_cost || 0
+  })
+  simulateAccessories.value.forEach(a => {
+    a.newCostPrice = a.accessory_cost_price || 0
+  })
+}
+
+const simulateOriginalCost = computed(() => {
+  if (!simulateRow.value?.finished) return 0
+  const f = simulateRow.value.finished
+  let total = 0
+  f.beads.forEach(b => { total += b.bead_cost_price * b.quantity })
+  f.accessories.forEach(a => { total += a.accessory_cost_price * a.quantity })
+  total += f.labor_cost + f.elastic_cost
+  return total
+})
+
+const simulateNewCost = computed(() => {
+  if (!simulateRow.value?.finished) return 0
+  const f = simulateRow.value.finished
+  let total = 0
+  simulateBeads.value.forEach(b => {
+    total += (b.newPurchaseCost * (b.bead_weight || 0)) * b.quantity
+  })
+  simulateAccessories.value.forEach(a => {
+    total += a.newCostPrice * a.quantity
+  })
+  total += f.labor_cost + f.elastic_cost
+  return total
+})
+
+const simulateNewProfitRate = computed(() => {
+  if (!simulateRow.value || simulateRow.value.selling_price <= 0) return '0.0'
+  return ((simulateRow.value.selling_price - simulateNewCost.value) / simulateRow.value.selling_price * 100).toFixed(1)
+})
 </script>
 
 <style scoped>
@@ -953,6 +1102,73 @@ const calculateProfitRate = (product, finished) => {
   gap: 8px;
   margin-top: 8px;
   justify-content: flex-end;
+}
+
+.simulate-content {
+  padding: 0 4px;
+}
+
+.simulate-info {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.simulate-table {
+  font-size: 13px;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.simulate-table th,
+.simulate-table td {
+  padding: 8px 6px;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.simulate-table .simulate-text {
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.simulate-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.simulate-input :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+
+.simulate-summary {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+
+.summary-row {
+  display: flex;
+  gap: 32px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.summary-row:last-child {
+  margin-bottom: 0;
+}
+
+.summary-row b {
+  color: #303133;
 }
 </style>
 
