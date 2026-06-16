@@ -410,74 +410,149 @@
     <!-- 模拟克价对话框 -->
     <el-dialog v-model="simulateVisible" title="克价模拟" :width="isMobile ? '95%' : '1200px'" :fullscreen="isMobile">
       <div v-if="simulateRow" class="simulate-content">
-        <div class="simulate-info">
+        <div class="simulate-info" :class="{ 'simulate-info-mobile': isMobile }">
           <span>货号: {{ simulateRow.code }}</span>
           <span>商品名称: {{ simulateRow.name }}</span>
           <span>售价: ¥{{ simulateRow.selling_price.toFixed(2) }}</span>
         </div>
-        <!-- 串珠模拟 -->
-        <table class="detail-table simulate-table" v-if="simulateBeads.length > 0">
-          <thead>
-            <tr>
-              <th colspan="9" class="detail-table-header">串珠（{{ simulateBeads.length }}种，共{{ calculateBeadsQuantity(simulateBeads) }}颗）</th>
-            </tr>
-            <tr>
-              <th style="width:140px">SKU名称</th>
-              <th style="width:50px">数量</th>
-              <th style="width:60px">克重</th>
-              <th style="width:80px">原克价</th>
-              <th style="width:140px">新克价(元/克)</th>
-              <th style="width:70px">原单价</th>
-              <th style="width:70px">新单价</th>
-              <th style="width:70px">原小计</th>
-              <th style="width:70px">新小计</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(bead, index) in simulateBeads" :key="'b'+index">
-              <td class="simulate-text">{{ bead.sku?.name || bead.sku?.sku_name || bead.bead_name }}</td>
-              <td>{{ bead.quantity }}</td>
-              <td>{{ bead.bead_weight ? bead.bead_weight.toFixed(2) + 'g' : '-' }}</td>
-              <td>¥{{ formatPrice(bead.bead_purchase_cost, 2) }}</td>
-              <td>
-                <el-input-number v-model="bead.newPurchaseCost" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input" />
-              </td>
-              <td>¥{{ bead.bead_cost_price.toFixed(2) }}</td>
-              <td>¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0)).toFixed(2) }}</td>
-              <td>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
-              <td>¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0) * bead.quantity).toFixed(2) }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <!-- 配件模拟 -->
-        <table class="detail-table simulate-table" v-if="simulateAccessories.length > 0">
-          <thead>
-            <tr>
-              <th colspan="7" class="detail-table-header">配件（{{ simulateAccessories.length }}种，共{{ calculateAccessoriesQuantity(simulateAccessories) }}个）</th>
-            </tr>
-            <tr>
-              <th style="width:140px">SKU名称</th>
-              <th style="width:50px">数量</th>
-              <th style="width:80px">原单价</th>
-              <th style="width:130px">新单价</th>
-              <th style="width:70px">原小计</th>
-              <th style="width:70px">新小计</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(acc, index) in simulateAccessories" :key="'a'+index">
-              <td class="simulate-text">{{ acc.sku?.name || acc.sku?.sku_name || acc.accessory_name }}</td>
-              <td>{{ acc.quantity }}</td>
-              <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
-              <td>
-                <el-input-number v-model="acc.newCostPrice" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input" />
-              </td>
-              <td>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
-              <td>¥{{ (acc.newCostPrice * acc.quantity).toFixed(2) }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="simulate-summary">
+
+        <!-- 桌面端：表格布局 -->
+        <template v-if="!isMobile">
+          <table class="detail-table simulate-table" v-if="simulateBeads.length > 0">
+            <thead>
+              <tr>
+                <th colspan="9" class="detail-table-header">串珠（{{ simulateBeads.length }}种，共{{ calculateBeadsQuantity(simulateBeads) }}颗）</th>
+              </tr>
+              <tr>
+                <th style="width:140px">SKU名称</th>
+                <th style="width:50px">数量</th>
+                <th style="width:60px">克重</th>
+                <th style="width:80px">原克价</th>
+                <th style="width:140px">新克价(元/克)</th>
+                <th style="width:70px">原单价</th>
+                <th style="width:70px">新单价</th>
+                <th style="width:70px">原小计</th>
+                <th style="width:70px">新小计</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(bead, index) in simulateBeads" :key="'b'+index">
+                <td class="simulate-text">{{ bead.sku?.name || bead.sku?.sku_name || bead.bead_name }}</td>
+                <td>{{ bead.quantity }}</td>
+                <td>{{ bead.bead_weight ? bead.bead_weight.toFixed(2) + 'g' : '-' }}</td>
+                <td>¥{{ formatPrice(bead.bead_purchase_cost, 2) }}</td>
+                <td>
+                  <el-input-number v-model="bead.newPurchaseCost" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input" />
+                </td>
+                <td>¥{{ bead.bead_cost_price.toFixed(2) }}</td>
+                <td>¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0)).toFixed(2) }}</td>
+                <td>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
+                <td>¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0) * bead.quantity).toFixed(2) }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <table class="detail-table simulate-table" v-if="simulateAccessories.length > 0">
+            <thead>
+              <tr>
+                <th colspan="7" class="detail-table-header">配件（{{ simulateAccessories.length }}种，共{{ calculateAccessoriesQuantity(simulateAccessories) }}个）</th>
+              </tr>
+              <tr>
+                <th style="width:140px">SKU名称</th>
+                <th style="width:50px">数量</th>
+                <th style="width:80px">原单价</th>
+                <th style="width:130px">新单价</th>
+                <th style="width:70px">原小计</th>
+                <th style="width:70px">新小计</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(acc, index) in simulateAccessories" :key="'a'+index">
+                <td class="simulate-text">{{ acc.sku?.name || acc.sku?.sku_name || acc.accessory_name }}</td>
+                <td>{{ acc.quantity }}</td>
+                <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
+                <td>
+                  <el-input-number v-model="acc.newCostPrice" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input" />
+                </td>
+                <td>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
+                <td>¥{{ (acc.newCostPrice * acc.quantity).toFixed(2) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+
+        <!-- 手机端：卡片式布局 -->
+        <template v-else>
+          <div v-if="simulateBeads.length > 0" class="simulate-mobile-section">
+            <div class="simulate-mobile-title">串珠（{{ simulateBeads.length }}种，共{{ calculateBeadsQuantity(simulateBeads) }}颗）</div>
+            <div v-for="(bead, index) in simulateBeads" :key="'mb'+index" class="simulate-mobile-card">
+              <div class="simulate-mobile-card-header">{{ bead.sku?.name || bead.sku?.sku_name || bead.bead_name }}</div>
+              <div class="simulate-mobile-grid">
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">数量</span>
+                  <span>{{ bead.quantity }}</span>
+                </div>
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">克重</span>
+                  <span>{{ bead.bead_weight ? bead.bead_weight.toFixed(2) + 'g' : '-' }}</span>
+                </div>
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">原克价</span>
+                  <span>¥{{ formatPrice(bead.bead_purchase_cost, 2) }}</span>
+                </div>
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">新克价</span>
+                  <el-input-number v-model="bead.newPurchaseCost" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input-mobile" />
+                </div>
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">原单价</span>
+                  <span>¥{{ bead.bead_cost_price.toFixed(2) }}</span>
+                </div>
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">新单价</span>
+                  <span>¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0)).toFixed(2) }}</span>
+                </div>
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">原小计</span>
+                  <span>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</span>
+                </div>
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">新小计</span>
+                  <span :style="{ color: (bead.newPurchaseCost * (bead.bead_weight || 0) * bead.quantity) > (bead.bead_cost_price * bead.quantity) ? '#ef4444' : '#10b981' }">¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0) * bead.quantity).toFixed(2) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="simulateAccessories.length > 0" class="simulate-mobile-section">
+            <div class="simulate-mobile-title">配件（{{ simulateAccessories.length }}种，共{{ calculateAccessoriesQuantity(simulateAccessories) }}个）</div>
+            <div v-for="(acc, index) in simulateAccessories" :key="'ma'+index" class="simulate-mobile-card">
+              <div class="simulate-mobile-card-header">{{ acc.sku?.name || acc.sku?.sku_name || acc.accessory_name }}</div>
+              <div class="simulate-mobile-grid">
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">数量</span>
+                  <span>{{ acc.quantity }}</span>
+                </div>
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">原单价</span>
+                  <span>¥{{ acc.accessory_cost_price.toFixed(2) }}</span>
+                </div>
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">新单价</span>
+                  <el-input-number v-model="acc.newCostPrice" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input-mobile" />
+                </div>
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">原小计</span>
+                  <span>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</span>
+                </div>
+                <div class="simulate-mobile-row">
+                  <span class="simulate-mobile-label">新小计</span>
+                  <span :style="{ color: (acc.newCostPrice * acc.quantity) > (acc.accessory_cost_price * acc.quantity) ? '#ef4444' : '#10b981' }">¥{{ (acc.newCostPrice * acc.quantity).toFixed(2) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div class="simulate-summary" :class="{ 'simulate-summary-mobile': isMobile }">
           <div class="summary-row">
             <span>原成本: <b>¥{{ simulateOriginalCost.toFixed(2) }}</b></span>
             <span>新成本: <b :style="{ color: simulateNewCost > simulateOriginalCost ? '#ef4444' : '#10b981' }">¥{{ simulateNewCost.toFixed(2) }}</b></span>
@@ -492,8 +567,10 @@
         </div>
       </div>
       <template #footer>
-        <el-button @click="resetSimulate">重置</el-button>
-        <el-button type="primary" @click="simulateVisible = false">关闭</el-button>
+        <div :class="{ 'simulate-footer-mobile': isMobile }">
+          <el-button @click="resetSimulate">{{ isMobile ? '重置' : '重置' }}</el-button>
+          <el-button type="primary" @click="simulateVisible = false">{{ isMobile ? '关闭' : '关闭' }}</el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -1116,6 +1193,20 @@ const simulateNewProfitRate = computed(() => {
   color: #606266;
 }
 
+.simulate-info-mobile {
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  background: #fafafa;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.simulate-info-mobile span {
+  word-break: break-all;
+}
+
 .simulate-table {
   font-size: 13px;
   table-layout: fixed;
@@ -1148,6 +1239,77 @@ const simulateNewProfitRate = computed(() => {
   box-shadow: 0 0 0 1px #dcdfe6 inset;
 }
 
+/* 手机端卡片式布局 */
+.simulate-mobile-section {
+  margin-bottom: 14px;
+}
+
+.simulate-mobile-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-radius: 6px 6px 0 0;
+}
+
+.simulate-mobile-card {
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-top: none;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.simulate-mobile-card:last-child {
+  border-radius: 0 0 6px 6px;
+}
+
+.simulate-mobile-card-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303133;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px dashed #ebeef5;
+  word-break: break-all;
+}
+
+.simulate-mobile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+.simulate-mobile-row {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #606266;
+}
+
+.simulate-mobile-row:nth-child(4),
+.simulate-mobile-row:nth-child(8) {
+  grid-column: 1 / -1;
+}
+
+.simulate-mobile-label {
+  color: #909399;
+  margin-right: 8px;
+  min-width: 44px;
+  flex-shrink: 0;
+}
+
+.simulate-input-mobile {
+  flex: 1;
+  min-width: 0;
+}
+
+.simulate-input-mobile :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+
 .simulate-summary {
   margin-top: 16px;
   padding: 12px 16px;
@@ -1170,6 +1332,27 @@ const simulateNewProfitRate = computed(() => {
 .summary-row b {
   color: #303133;
 }
+
+.simulate-summary-mobile {
+  padding: 10px 12px;
+  margin-top: 12px;
+}
+
+.simulate-summary-mobile .summary-row {
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 12px;
+}
+
+.simulate-footer-mobile {
+  display: flex;
+  gap: 10px;
+}
+
+.simulate-footer-mobile .el-button {
+  flex: 1;
+}
+
 </style>
 
 <style>
