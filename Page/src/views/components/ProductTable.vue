@@ -251,6 +251,15 @@
           <span v-else style="color: #999">-</span>
         </template>
       </el-table-column>
+      <!-- 显示利润值 -->
+      <el-table-column v-if="props.products.some(p => p.product_type === 'finished')" label="利润" width="90">
+        <template #default="scope">
+          <span v-if="scope.row.product_type === 'finished'" :style="{ color: (scope.row.selling_price - scope.row.cost_price) >= 0 ? '#10b981' : '#ef4444' }">
+            ¥{{ (scope.row.selling_price - scope.row.cost_price).toFixed(2) }}
+          </span>
+          <span v-else style="color: #999">-</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="location" label="库位" width="150" />
       <el-table-column prop="created_at" label="创建时间" width="180">
         <template #default="scope">
