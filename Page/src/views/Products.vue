@@ -8,6 +8,15 @@
             <el-button v-if="selectedIds.length > 0" type="danger" size="small" @click="handleBatchDelete">
               批量删除 ({{ selectedIds.length }})
             </el-button>
+            <el-button
+              v-if="activeTab === 'finished'"
+              type="success"
+              @click="handleExportProducts"
+              :loading="exportLoading"
+            >
+              <el-icon><Download /></el-icon>
+              导出明细
+            </el-button>
             <el-button type="primary" @click="handleAddProduct">
               <el-icon><Plus /></el-icon>
               添加商品
@@ -758,8 +767,9 @@
 <script setup>
 import { ref, reactive, onMounted, computed, defineAsyncComponent, watch, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Picture, Document, Grid, CircleCheck, Box, Delete, Check, CirclePlus } from '@element-plus/icons-vue'
+import { Plus, Search, Picture, Document, Grid, CircleCheck, Box, Delete, Check, CirclePlus, Download } from '@element-plus/icons-vue'
 import { getProductTypes, getProducts, createProduct, updateProduct, deleteProduct, getProductDetail, getAccessories, getBeads } from '@/api'
+import { exportFinishedProducts } from '@/utils/exportProducts'
 
 // 产品表格组件
 const ProductTable = defineAsyncComponent(() => import('./components/ProductTable.vue'))
@@ -790,6 +800,7 @@ const selectedIds = ref([])
 // 加载状态
 const loading = ref(false)
 const submitLoading = ref(false)
+const exportLoading = ref(false)
 // 筛选后的配件列表
 const filteredAccessories = computed(() => {
   if (!accessorySearch.value) {
@@ -1044,6 +1055,38 @@ const fetchProducts = async () => {
     console.error(error)
   } finally {
     loading.value = false
+  }
+}
+
+// 导出成品明细
+const handleExportProducts = async () => {
+  exportLoading.value = true
+  try {
+    // 获取全量成品数据（不分页）
+    const allProducts = []
+    let page = 1
+    const pageSize = 200
+    while (true) {
+      const response = await getProducts({
+        product_type: 'finished',
+        page,
+        page_size: pageSize
+      })
+      allProducts.push(...response.data.products)
+      if (allProducts.length >= response.data.total_count) break
+      page++
+    }
+    if (allProducts.length === 0) {
+      ElMessage.warning('没有可导出的成品数据')
+      return
+    }
+    exportFinishedProducts(allProducts)
+    ElMessage.success(`成功导出 ${allProducts.length} 个成品明细`)
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败，请重试')
+  } finally {
+    exportLoading.value = false
   }
 }
 
