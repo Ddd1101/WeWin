@@ -100,7 +100,7 @@
             <table class="detail-table" v-if="scope.row.finished.beads.length > 0">
               <thead>
                 <tr>
-                  <th colspan="9" class="detail-table-header">串珠（{{ scope.row.finished.beads.length }}种，小计 ¥{{ calculateBeadsTotal(scope.row.finished.beads).toFixed(2) }}）</th>
+                  <th colspan="9" class="detail-table-header">串珠（{{ scope.row.finished.beads.length }}种，共{{ calculateBeadsQuantity(scope.row.finished.beads) }}颗，小计 ¥{{ calculateBeadsTotal(scope.row.finished.beads).toFixed(2) }}）</th>
                 </tr>
                 <tr>
                   <th style="width:36px"></th>
@@ -131,7 +131,7 @@
             <table class="detail-table" v-if="scope.row.finished.accessories.length > 0">
               <thead>
                 <tr>
-                  <th colspan="6" class="detail-table-header">配件（{{ scope.row.finished.accessories.length }}种，小计 ¥{{ calculateAccessoriesTotal(scope.row.finished.accessories).toFixed(2) }}）</th>
+                  <th colspan="6" class="detail-table-header">配件（{{ scope.row.finished.accessories.length }}种，共{{ calculateAccessoriesQuantity(scope.row.finished.accessories) }}个，小计 ¥{{ calculateAccessoriesTotal(scope.row.finished.accessories).toFixed(2) }}）</th>
                 </tr>
                 <tr>
                   <th style="width:36px"></th>
@@ -308,7 +308,7 @@
             <table class="detail-table mobile-detail-table" v-if="row.finished.beads.length > 0">
               <thead>
                 <tr>
-                  <th colspan="9" class="detail-table-header">串珠（{{ row.finished.beads.length }}种，小计 ¥{{ calculateBeadsTotal(row.finished.beads).toFixed(2) }}）</th>
+                  <th colspan="9" class="detail-table-header">串珠（{{ row.finished.beads.length }}种，共{{ calculateBeadsQuantity(row.finished.beads) }}颗，小计 ¥{{ calculateBeadsTotal(row.finished.beads).toFixed(2) }}）</th>
                 </tr>
                 <tr>
                   <th style="width:28px"></th>
@@ -339,7 +339,7 @@
             <table class="detail-table mobile-detail-table" v-if="row.finished.accessories.length > 0">
               <thead>
                 <tr>
-                  <th colspan="6" class="detail-table-header">配件（{{ row.finished.accessories.length }}种，小计 ¥{{ calculateAccessoriesTotal(row.finished.accessories).toFixed(2) }}）</th>
+                  <th colspan="6" class="detail-table-header">配件（{{ row.finished.accessories.length }}种，共{{ calculateAccessoriesQuantity(row.finished.accessories) }}个，小计 ¥{{ calculateAccessoriesTotal(row.finished.accessories).toFixed(2) }}）</th>
                 </tr>
                 <tr>
                   <th style="width:28px"></th>
@@ -649,6 +649,14 @@ const calculateBeadsTotal = (beads) => {
 
 const calculateAccessoriesTotal = (accessories) => {
   return accessories.reduce((sum, acc) => sum + acc.accessory_cost_price * acc.quantity, 0)
+}
+
+const calculateBeadsQuantity = (beads) => {
+  return beads.reduce((sum, bead) => sum + (Number(bead.quantity) || 0), 0)
+}
+
+const calculateAccessoriesQuantity = (accessories) => {
+  return accessories.reduce((sum, acc) => sum + (Number(acc.quantity) || 0), 0)
 }
 
 const calculateTotalQuantity = (items = []) => {
