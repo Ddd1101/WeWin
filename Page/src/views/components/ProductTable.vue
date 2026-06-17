@@ -111,7 +111,7 @@
                   <th style="width:70px">单价</th>
                   <th style="width:60px">规格</th>
                   <th style="width:50px">品级</th>
-                  <th style="width:70px">小计</th>
+                  <th style="width:80px">小计</th>
                 </tr>
               </thead>
               <tbody>
@@ -139,7 +139,7 @@
                   <th style="width:120px">SKU名称</th>
                   <th style="width:50px">数量</th>
                   <th style="width:70px">单价</th>
-                  <th style="width:70px">小计</th>
+                  <th style="width:80px">小计</th>
                 </tr>
               </thead>
               <tbody>
@@ -329,7 +329,7 @@
                   <th style="width:70px">单价</th>
                   <th style="width:60px">规格</th>
                   <th style="width:50px">品级</th>
-                  <th style="width:70px">小计</th>
+                  <th style="width:80px">小计</th>
                 </tr>
               </thead>
               <tbody>
@@ -357,7 +357,7 @@
                   <th style="width:120px">SKU名称</th>
                   <th style="width:50px">数量</th>
                   <th style="width:70px">单价</th>
-                  <th style="width:70px">小计</th>
+                  <th style="width:80px">小计</th>
                 </tr>
               </thead>
               <tbody>
@@ -954,10 +954,10 @@ const simulateNewProfitRate = computed(() => {
 
 .finished-details {
   padding: 12px 20px;
+  overflow-x: auto;
 }
 
 .detail-table {
-  width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   margin-bottom: 12px;
@@ -979,6 +979,7 @@ const simulateNewProfitRate = computed(() => {
   color: #909399;
   font-weight: 600;
   font-size: 12px;
+  text-align: left;
 }
 
 .detail-table-header {
