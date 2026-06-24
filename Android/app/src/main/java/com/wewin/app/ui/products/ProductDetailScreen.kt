@@ -483,17 +483,27 @@ private fun FinishedBeadItemRow(item: FinishedBeadItemDto) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "成本：¥${"%.2f".format(item.bead_cost_price)}",
+                    text = "克价：${item.bead_purchase_cost?.let { "¥${"%.2f".format(it)}/g" } ?: "-"}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                item.sku?.let { sku ->
-                    Text(
-                        text = "SKU：${sku.sku_code ?: "-"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = "单价：¥${"%.2f".format(item.bead_cost_price)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "小计：¥${"%.2f".format(item.bead_cost_price * item.quantity)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            item.sku?.let { sku ->
+                Text(
+                    text = "SKU：${sku.sku_code ?: "-"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

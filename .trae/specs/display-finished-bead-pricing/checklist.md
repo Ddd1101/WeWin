@@ -1,0 +1,8 @@
+- [x] `FinishedBeadItemRow` 中"单价"标签替换原"成本"标签，值来自 `item.bead_cost_price`
+- [x] `FinishedBeadItemRow` 新增"克价"展示，值来自 `item.bead_purchase_cost`，null 时显示"-"
+- [x] `FinishedBeadItemRow` 新增"小计"展示，值为 `bead_cost_price × quantity`，保留两位小数
+- [x] 克价格式为 `¥xx.xx/g`，单价和小计格式为 `¥xx.xx`
+- [x] 三项价格与原有信息（名称、数量、货号、SKU）布局层次清晰，不重叠不溢出
+- [x] 未修改后端 API、DTO、数据模型
+- [x] 未修改 Vue 前端代码
+- [x] 工程可编译通过（`./gradlew assembleDebug` 无错误）
