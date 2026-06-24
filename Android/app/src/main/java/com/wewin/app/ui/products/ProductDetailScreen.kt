@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -52,12 +53,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -66,6 +71,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.wewin.app.data.remote.dto.AccessoryDto
 import com.wewin.app.data.remote.dto.BeadDto
 import com.wewin.app.data.remote.dto.FinishedAccessoryItemDto
@@ -877,6 +884,8 @@ private fun SimulateBottomSheet(
     val beads = finished.beads
     val accessories = finished.accessories
     val sheetState = rememberModalBottomSheetState()
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
 
     // 用列表索引作为 key，因为 bead_id 是大类货号 id，同一货号下不同 SKU 会冲突
     val beadNewPrices = remember {
@@ -901,7 +910,8 @@ private fun SimulateBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -958,7 +968,9 @@ private fun SimulateBottomSheet(
                     SimulateBeadRow(
                         bead = bead,
                         newPriceText = beadNewPrices[index] ?: "",
-                        onNewPriceChange = { beadNewPrices[index] = it }
+                        onNewPriceChange = { beadNewPrices[index] = it },
+                        scrollState = scrollState,
+                        coroutineScope = coroutineScope
                     )
                 }
             }
@@ -974,7 +986,9 @@ private fun SimulateBottomSheet(
                     SimulateAccessoryRow(
                         accessory = acc,
                         newPriceText = accessoryNewPrices[index] ?: "",
-                        onNewPriceChange = { accessoryNewPrices[index] = it }
+                        onNewPriceChange = { accessoryNewPrices[index] = it },
+                        scrollState = scrollState,
+                        coroutineScope = coroutineScope
                     )
                 }
             }
@@ -1060,8 +1074,12 @@ private fun SectionHeader(
 private fun SimulateBeadRow(
     bead: FinishedBeadItemDto,
     newPriceText: String,
-    onNewPriceChange: (String) -> Unit
+    onNewPriceChange: (String) -> Unit,
+    scrollState: androidx.compose.foundation.ScrollState,
+    coroutineScope: kotlinx.coroutines.CoroutineScope
 ) {
+    var fieldYInRoot by remember { mutableStateOf(0f) }
+
     val newPrice = newPriceText.toDoubleOrNull() ?: 0.0
     val originalSubtotal = (bead.bead_purchase_cost ?: 0.0) * bead.bead_weight * bead.quantity
     val newSubtotal = newPrice * bead.bead_weight * bead.quantity
@@ -1128,7 +1146,19 @@ private fun SimulateBeadRow(
                     label = { Text("新克价/g") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .onGloballyPositioned { fieldYInRoot = it.positionInRoot().y }
+                        .onFocusChanged { state ->
+                            if (state.isFocused) {
+                                coroutineScope.launch {
+                                    delay(300)
+                                    val fieldYInContent = (fieldYInRoot + scrollState.value).toInt()
+                                    val target = (fieldYInContent - 150).coerceIn(0, scrollState.maxValue)
+                                    scrollState.animateScrollTo(target)
+                                }
+                            }
+                        }
                 )
                 // 快捷调整按钮
                 FilledIconButton(
@@ -1233,8 +1263,12 @@ private fun SimulateBeadRow(
 private fun SimulateAccessoryRow(
     accessory: FinishedAccessoryItemDto,
     newPriceText: String,
-    onNewPriceChange: (String) -> Unit
+    onNewPriceChange: (String) -> Unit,
+    scrollState: androidx.compose.foundation.ScrollState,
+    coroutineScope: kotlinx.coroutines.CoroutineScope
 ) {
+    var fieldYInRoot by remember { mutableStateOf(0f) }
+
     val newPrice = newPriceText.toDoubleOrNull() ?: 0.0
     val originalSubtotal = accessory.accessory_cost_price * accessory.quantity
     val newSubtotal = newPrice * accessory.quantity
@@ -1298,7 +1332,19 @@ private fun SimulateAccessoryRow(
                     label = { Text("新单价") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .onGloballyPositioned { fieldYInRoot = it.positionInRoot().y }
+                        .onFocusChanged { state ->
+                            if (state.isFocused) {
+                                coroutineScope.launch {
+                                    delay(300)
+                                    val fieldYInContent = (fieldYInRoot + scrollState.value).toInt()
+                                    val target = (fieldYInContent - 150).coerceIn(0, scrollState.maxValue)
+                                    scrollState.animateScrollTo(target)
+                                }
+                            }
+                        }
                 )
                 FilledIconButton(
                     onClick = {
