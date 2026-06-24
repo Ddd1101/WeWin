@@ -156,6 +156,10 @@ private fun ProductDetailContent(
     ) {
         item { ProductImage(imageUrl = product.image_url) }
 
+        if (product.product_type == "finished") {
+            item { PriceHeroCard(product = product) }
+        }
+
         item { BasicInfoCard(product = product) }
 
         product.bead?.let { bead ->
@@ -236,6 +240,88 @@ private fun ProductImage(imageUrl: String?) {
 }
 
 @Composable
+private fun PriceHeroCard(product: ProductDto) {
+    val profit = product.selling_price - product.cost_price
+    val rate = if (product.selling_price > 0) {
+        (profit / product.selling_price) * 100
+    } else null
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MetricItem(
+                    label = "成本",
+                    value = "¥${"%.2f".format(product.cost_price)}",
+                    valueColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                MetricItem(
+                    label = "售价",
+                    value = "¥${"%.2f".format(product.selling_price)}",
+                    valueColor = MaterialTheme.colorScheme.error,
+                    valueWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MetricItem(
+                    label = "利润",
+                    value = "¥${"%.2f".format(profit)}",
+                    valueColor = if (profit >= 0) Color(0xFF10B981) else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f)
+                )
+                MetricItem(
+                    label = "利润率",
+                    value = if (rate != null) "${"%.1f".format(rate)}%" else "-",
+                    valueColor = when {
+                        rate == null -> MaterialTheme.colorScheme.onSurface
+                        rate >= 30 -> Color(0xFF10B981)
+                        rate >= 15 -> Color(0xFFF59E0B)
+                        else -> MaterialTheme.colorScheme.error
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricItem(
+    label: String,
+    value: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier,
+    valueWeight: FontWeight = FontWeight.SemiBold
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = valueWeight,
+            color = valueColor
+        )
+    }
+}
+
+@Composable
 private fun BasicInfoCard(product: ProductDto) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -271,20 +357,22 @@ private fun BasicInfoCard(product: ProductDto) {
             HorizontalDivider()
 
             InfoRow(label = "商品名称", value = product.name)
-            InfoRow(
-                label = "采购成本",
-                value = "¥${"%.2f".format(product.purchase_cost)} /克"
-            )
-            InfoRow(
-                label = "单颗成本",
-                value = "¥${"%.2f".format(product.cost_price)}"
-            )
-            InfoRow(
-                label = "售价",
-                value = "¥${"%.2f".format(product.selling_price)}",
-                valueColor = MaterialTheme.colorScheme.error,
-                valueWeight = FontWeight.Bold
-            )
+            if (product.product_type != "finished") {
+                InfoRow(
+                    label = "采购成本",
+                    value = "¥${"%.2f".format(product.purchase_cost)} /克"
+                )
+                InfoRow(
+                    label = "单颗成本",
+                    value = "¥${"%.2f".format(product.cost_price)}"
+                )
+                InfoRow(
+                    label = "售价",
+                    value = "¥${"%.2f".format(product.selling_price)}",
+                    valueColor = MaterialTheme.colorScheme.error,
+                    valueWeight = FontWeight.Bold
+                )
+            }
             InfoRow(label = "库位", value = product.location)
             InfoRow(label = "供应商", value = product.supplier)
             InfoRow(label = "所属企业", value = product.company_name)
@@ -362,7 +450,7 @@ private fun FinishedInfoCard(finished: FinishedDto) {
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "串珠组成",
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(4.dp))
@@ -376,7 +464,7 @@ private fun FinishedInfoCard(finished: FinishedDto) {
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "配件组成",
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(4.dp))
@@ -391,123 +479,146 @@ private fun FinishedInfoCard(finished: FinishedDto) {
 @Composable
 private fun FinishedBeadItemRow(item: FinishedBeadItemDto) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(10.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Left accent: quantity badge
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "x${item.quantity}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // Right: name + details
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = item.bead_name ?: "未命名",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
+                    fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = "x${item.quantity}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            item.bead_code?.let {
-                Text(
-                    text = "货号：$it",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "克价：${item.bead_purchase_cost?.let { "¥${"%.2f".format(it)}/g" } ?: "-"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "单价：¥${"%.2f".format(item.bead_cost_price)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "小计：¥${"%.2f".format(item.bead_cost_price * item.quantity)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            item.sku?.let { sku ->
-                Text(
-                    text = "SKU：${sku.sku_code ?: "-"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                item.bead_code?.let {
+                    Text(
+                        text = "货号 $it",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+                // Price row: 3 items with labels above values
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CompactMetric(
+                        label = "克价",
+                        value = item.bead_purchase_cost?.let { "¥${"%.2f".format(it)}/g" } ?: "-",
+                        modifier = Modifier.weight(1f)
+                    )
+                    CompactMetric(
+                        label = "单价",
+                        value = "¥${"%.2f".format(item.bead_cost_price)}",
+                        modifier = Modifier.weight(1f)
+                    )
+                    CompactMetric(
+                        label = "小计",
+                        value = "¥${"%.2f".format(item.bead_cost_price * item.quantity)}",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                item.sku?.let { sku ->
+                    Text(
+                        text = "SKU：${sku.sku_code ?: "-"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
+private fun CompactMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
 private fun FinishedAccessoryItemRow(item: FinishedAccessoryItemDto) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(10.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "x${item.quantity}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = item.accessory_name ?: "未命名",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
+                    fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = "x${item.quantity}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            item.accessory_code?.let {
-                Text(
-                    text = "货号：$it",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "成本：¥${"%.2f".format(item.accessory_cost_price)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                item.sku?.let { sku ->
+                item.accessory_code?.let {
                     Text(
-                        text = "SKU：${sku.sku_code ?: "-"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "货号 $it",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CompactMetric(
+                        label = "成本",
+                        value = "¥${"%.2f".format(item.accessory_cost_price)}",
+                        modifier = Modifier.weight(1f)
+                    )
+                    item.sku?.let { sku ->
+                        CompactMetric(
+                            label = "SKU",
+                            value = sku.sku_code ?: "-",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
