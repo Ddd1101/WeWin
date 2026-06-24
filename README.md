@@ -1,46 +1,102 @@
-# WeWin
+cd Server
+.\venv\Scripts\Activate.ps1
+python manage.py runserver
 
-## 前端服务
+# 部署
 
-### 环境部署
+# 进入Server目录
 
-1. 安装系统 nginx：
-   ```bash
-   sudo apt install nginx
-   ```
+cd Server
 
-2. 项目配置文件 `nginx_system.conf` 已包含 SPA 路由回退、静态资源缓存、gzip 等配置，无需额外修改系统 nginx 配置。
+# 创建虚拟环境（推荐）
 
-### 启动 / 停止 / 重启
+python3 -m venv venv
 
-| 操作 | 命令 |
-|------|------|
-| 启动 | `./start_frontend.sh` |
-| 停止 | `./stop_frontend.sh` |
-| 重启 | `./stop_frontend.sh && ./start_frontend.sh` |
-| 重载配置（不中断服务） | `/usr/sbin/nginx -s reload` |
+# 激活虚拟环境
 
-### 前端代码更新
+source venv/bin/activate
 
-1. 进入前端目录构建：
-   ```bash
-   cd Page && npm run build
-   ```
-2. 重载 nginx（不中断服务）：
-   ```bash
-   /usr/sbin/nginx -s reload
-   ```
+# 安装依赖
 
-### 访问地址
+pip install -r requirements.txt
 
-`http://<服务器IP>:8080`
+# 1. 数据库迁移（Django 默认 SQLite，无需额外配置）
 
-### 日志位置
+python3 manage.py makemigrations # 生成迁移文件（有模型时执行）
+python3 manage.py migrate # 执行迁移，创建数据库
 
-`/tmp/nginx_access.log` 和 `/tmp/nginx_error.log`
+# 2. 创建超级用户（可选，访问后台管理）
 
-### 配置说明
+python3 manage.py createsuperuser
 
-- 启动脚本通过 `/usr/sbin/nginx -c nginx_system.conf` 使用自定义配置，绕过沙箱环境 `/var/log` 和 `/run` 只读限制
-- PID 文件：`/tmp/nginx.pid`
-- 临时文件：`/tmp/nginx_*`
+# 按提示输入用户名、邮箱、密码（如：admin / admin@test.com / 123456）
+
+# 使用 gunicorn
+
+pip install gunicorn
+gunicorn wewin.wsgi:application -b 127.0.0.1:8003
+
+gunicorn wewin.wsgi:application -b 0.0.0.0:8003
+
+# 进入Server目录
+
+cd Server
+
+# 激活虚拟环境
+
+source venv/bin/activate
+
+# 使用 nohup 在后台运行
+
+nohup gunicorn wewin.wsgi:application -b 127.0.0.1:8003 > gunicorn.log 2>&1 &
+
+# 查看进程
+
+ps aux | grep gunicorn
+
+# 查看日志
+
+tail -f gunicorn.log
+
+# 停止服务
+
+pkill -f gunicorn
+
+# 前端部署
+
+cd ~/workplace_shop/WeWin/Page
+
+# 安装依赖
+
+npm install
+
+# 构建生产版本
+
+npm run build
+
+# 使用 serve 运行（简单方式）
+
+npm install -g serve
+serve -s dist -l 5173
+
+# 后台运行
+
+# 进入前端目录
+
+cd ~/workplace_shop/WeWin/Page
+
+# 使用 nohup 在后台运行
+
+nohup serve -s dist -l 5173 > serve.log 2>&1 &
+
+# 查看进程
+
+ps aux | grep serve
+
+# 查看日志
+
+tail -f serve.log
+
+# 停止服务
+
+pkill -f "serve -s dist"
