@@ -33,6 +33,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -358,7 +359,7 @@ private fun ProductCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ProductThumbnail(imageUrl = product.image_url)
@@ -379,29 +380,7 @@ private fun ProductCard(
                         productType = product.product_type,
                         display = product.product_type_display
                     )
-                }
-
-                Spacer(Modifier.height(4.dp))
-
-                Text(
-                    text = product.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(Modifier.height(4.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "¥${product.selling_price}",
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleSmall
-                    )
+                    Spacer(Modifier.weight(1f))
                     if (!product.is_active) {
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -419,8 +398,121 @@ private fun ProductCard(
                         }
                     }
                 }
+
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    text = product.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (product.product_type == "finished") {
+                    val profit = product.selling_price - product.cost_price
+                    val rate = if (product.selling_price > 0) {
+                        (profit / product.selling_price) * 100
+                    } else null
+
+                    // Thin horizontal divider above metrics (replaces the spacer)
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(0.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        MetricColumn(
+                            label = "成本",
+                            value = "¥${"%.2f".format(product.cost_price)}",
+                            valueColor = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(28.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        )
+                        MetricColumn(
+                            label = "售价",
+                            value = "¥${"%.2f".format(product.selling_price)}",
+                            valueColor = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 6.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(28.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        )
+                        MetricColumn(
+                            label = "利润",
+                            value = "¥${"%.2f".format(profit)}",
+                            valueColor = if (profit >= 0) Color(0xFF10B981) else MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 6.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(28.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        )
+                        MetricColumn(
+                            label = "利润率",
+                            value = if (rate != null) "${"%.1f".format(rate)}%" else "-",
+                            valueColor = when {
+                                rate == null -> MaterialTheme.colorScheme.onSurface
+                                rate >= 30 -> Color(0xFF10B981)
+                                rate >= 15 -> Color(0xFFF59E0B)
+                                else -> MaterialTheme.colorScheme.error
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                } else {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "¥${product.selling_price}",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun MetricColumn(
+    label: String,
+    value: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.Start
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            color = valueColor
+        )
     }
 }
 

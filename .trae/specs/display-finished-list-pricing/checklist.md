@@ -1,0 +1,13 @@
+- [x] ProductCard 对成品显示成本（¥xx.xx）
+- [x] ProductCard 对成品显示利润（¥xx.xx），计算公式 selling_price - cost_price
+- [x] ProductCard 对成品显示利润率（xx.x%），计算公式 (selling_price-cost_price)/selling_price*100
+- [x] 售价为0时利润率显示"-"，避免除零
+- [x] 利润率颜色：≥30% 绿色、≥15% 橙色、<15% 红色
+- [x] 利润颜色：≥0 绿色、<0 红色
+- [x] 串珠/配件卡片不显示成本/利润/利润率，仅显示售价
+- [x] 四项价格布局整齐，不溢出
+- [x] 未修改后端 API、DTO、Vue 前端
+- [x] 工程可编译通过（./gradlew assembleDebug 无错误）
+- [x] 手机验证：成品卡片显示四项价格
+- [x] 手机验证：串珠/配件卡片仅显示售价
+- [x] 手机验证：利润率颜色正确
