@@ -1089,8 +1089,8 @@ private fun SimulateBeadRow(
             ) {
                 Text(
                     text = buildString {
-                        append(bead.bead_name ?: "未命名")
-                        bead.bead_size?.takeIf { it > 0 }?.let { append(" ${it}mm") }
+                        append(bead.sku?.name ?: bead.bead_name ?: "未命名")
+                        bead.sku?.size?.takeIf { it > 0 }?.let { append(" ${it}mm") }
                     },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
@@ -1261,7 +1261,7 @@ private fun SimulateAccessoryRow(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = accessory.accessory_name ?: "未命名",
+                    text = accessory.sku?.name ?: accessory.accessory_name ?: "未命名",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
