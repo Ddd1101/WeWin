@@ -1,0 +1,3 @@
+# Copy this file to app/local.properties (or root local.properties) and adjust.
+# Backend API base URL used by the Android app (emulator reaches host machine via 10.0.2.2).
+API_BASE_URL=http://10.0.2.2:8003
