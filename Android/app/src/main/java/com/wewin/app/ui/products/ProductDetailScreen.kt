@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -208,7 +209,7 @@ private fun ProductImage(imageUrl: String?) {
             contentDescription = "商品图片",
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
+                .aspectRatio(1f)
                 .clip(shape),
             contentScale = ContentScale.Crop
         )
@@ -216,7 +217,7 @@ private fun ProductImage(imageUrl: String?) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
+                .aspectRatio(1f)
                 .clip(shape)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
