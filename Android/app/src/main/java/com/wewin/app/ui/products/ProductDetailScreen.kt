@@ -15,12 +15,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,19 +32,28 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -147,6 +160,8 @@ private fun ProductDetailContent(
     product: ProductDto,
     error: String?
 ) {
+    var showSimulate by remember { mutableStateOf(false) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -159,6 +174,21 @@ private fun ProductDetailContent(
 
         if (product.product_type == "finished") {
             item { PriceHeroCard(product = product) }
+            item {
+                Button(
+                    onClick = { showSimulate = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF59E0B),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(
+                        text = "克价模拟",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
 
         item { BasicInfoCard(product = product) }
@@ -197,6 +227,13 @@ private fun ProductDetailContent(
         }
 
         item { Spacer(Modifier.height(16.dp)) }
+    }
+
+    if (showSimulate && product.finished != null) {
+        SimulateBottomSheet(
+            product = product,
+            onDismiss = { showSimulate = false }
+        )
     }
 }
 
@@ -552,7 +589,8 @@ private fun FinishedBeadItemRow(item: FinishedBeadItemDto) {
 private fun CompactMetric(
     label: String,
     value: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
     Column(modifier = modifier) {
         Text(
@@ -564,7 +602,7 @@ private fun CompactMetric(
             text = value,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = valueColor
         )
     }
 }
@@ -819,5 +857,403 @@ private fun TypeChip(productType: String, display: String?) {
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SimulateBottomSheet(
+    product: ProductDto,
+    onDismiss: () -> Unit
+) {
+    val finished = product.finished ?: return
+    val beads = finished.beads
+    val accessories = finished.accessories
+    val sheetState = rememberModalBottomSheetState()
+
+    val beadNewPrices = remember {
+        mutableStateMapOf<Int, String>().apply {
+            beads.forEach { b ->
+                put(b.bead_id, "%.2f".format(b.bead_purchase_cost ?: 0.0))
+            }
+        }
+    }
+    val accessoryNewPrices = remember {
+        mutableStateMapOf<Int, String>().apply {
+            accessories.forEach { a ->
+                put(a.accessory_id, "%.2f".format(a.accessory_cost_price))
+            }
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "克价模拟",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "货号：${product.code}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "商品名称：${product.name}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "售价：¥${"%.2f".format(product.selling_price)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            val originalCost = beads.sumOf { it.bead_cost_price * it.quantity } +
+                accessories.sumOf { it.accessory_cost_price * it.quantity } +
+                finished.labor_cost + finished.elastic_cost
+
+            var newCost = 0.0
+            beads.forEach { b ->
+                val newPrice = beadNewPrices[b.bead_id]?.toDoubleOrNull() ?: 0.0
+                newCost += newPrice * b.bead_weight * b.quantity
+            }
+            accessories.forEach { a ->
+                val newPrice = accessoryNewPrices[a.accessory_id]?.toDoubleOrNull() ?: 0.0
+                newCost += newPrice * a.quantity
+            }
+            newCost += finished.labor_cost + finished.elastic_cost
+
+            if (beads.isNotEmpty()) {
+                Text(
+                    text = "串珠（${beads.size}种，共${beads.sumOf { it.quantity }}颗）",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                beads.forEach { bead ->
+                    SimulateBeadRow(
+                        bead = bead,
+                        newPriceText = beadNewPrices[bead.bead_id] ?: "",
+                        onNewPriceChange = { beadNewPrices[bead.bead_id] = it }
+                    )
+                }
+            }
+
+            if (accessories.isNotEmpty()) {
+                Text(
+                    text = "配件（${accessories.size}种，共${accessories.sumOf { it.quantity }}个）",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                accessories.forEach { acc ->
+                    SimulateAccessoryRow(
+                        accessory = acc,
+                        newPriceText = accessoryNewPrices[acc.accessory_id] ?: "",
+                        onNewPriceChange = { accessoryNewPrices[acc.accessory_id] = it }
+                    )
+                }
+            }
+
+            if (beads.isEmpty() && accessories.isEmpty()) {
+                Text(
+                    text = "无明细",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+
+            SimulateSummary(
+                originalCost = originalCost,
+                newCost = newCost,
+                sellingPrice = product.selling_price
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                TextButton(
+                    onClick = {
+                        beads.forEach { b ->
+                            beadNewPrices[b.bead_id] = "%.2f".format(b.bead_purchase_cost ?: 0.0)
+                        }
+                        accessories.forEach { a ->
+                            accessoryNewPrices[a.accessory_id] = "%.2f".format(a.accessory_cost_price)
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("重置")
+                }
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("关闭")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimulateBeadRow(
+    bead: FinishedBeadItemDto,
+    newPriceText: String,
+    onNewPriceChange: (String) -> Unit
+) {
+    val newPrice = newPriceText.toDoubleOrNull() ?: 0.0
+    val originalSubtotal = bead.bead_cost_price * bead.quantity
+    val newSubtotal = newPrice * bead.bead_weight * bead.quantity
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = bead.bead_name ?: "未命名",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CompactMetric(
+                    label = "数量",
+                    value = "x${bead.quantity}",
+                    modifier = Modifier.weight(1f)
+                )
+                CompactMetric(
+                    label = "克重",
+                    value = "${"%.2f".format(bead.bead_weight)}g",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CompactMetric(
+                    label = "原克价",
+                    value = "¥${"%.2f".format(bead.bead_purchase_cost ?: 0.0)}/g",
+                    modifier = Modifier.weight(1f)
+                )
+                CompactMetric(
+                    label = "原单价",
+                    value = "¥${"%.2f".format(bead.bead_cost_price)}",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CompactMetric(
+                    label = "原小计",
+                    value = "¥${"%.2f".format(originalSubtotal)}",
+                    modifier = Modifier.weight(1f)
+                )
+                CompactMetric(
+                    label = "新小计",
+                    value = "¥${"%.2f".format(newSubtotal)}",
+                    modifier = Modifier.weight(1f),
+                    valueColor = if (newSubtotal > originalSubtotal) Color(0xFFEF4444) else Color(0xFF10B981)
+                )
+            }
+            OutlinedTextField(
+                value = newPriceText,
+                onValueChange = onNewPriceChange,
+                label = { Text("新克价 (元/克)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun SimulateAccessoryRow(
+    accessory: FinishedAccessoryItemDto,
+    newPriceText: String,
+    onNewPriceChange: (String) -> Unit
+) {
+    val newPrice = newPriceText.toDoubleOrNull() ?: 0.0
+    val originalSubtotal = accessory.accessory_cost_price * accessory.quantity
+    val newSubtotal = newPrice * accessory.quantity
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = accessory.accessory_name ?: "未命名",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CompactMetric(
+                    label = "数量",
+                    value = "x${accessory.quantity}",
+                    modifier = Modifier.weight(1f)
+                )
+                CompactMetric(
+                    label = "原单价",
+                    value = "¥${"%.2f".format(accessory.accessory_cost_price)}",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CompactMetric(
+                    label = "原小计",
+                    value = "¥${"%.2f".format(originalSubtotal)}",
+                    modifier = Modifier.weight(1f)
+                )
+                CompactMetric(
+                    label = "新小计",
+                    value = "¥${"%.2f".format(newSubtotal)}",
+                    modifier = Modifier.weight(1f),
+                    valueColor = if (newSubtotal > originalSubtotal) Color(0xFFEF4444) else Color(0xFF10B981)
+                )
+            }
+            OutlinedTextField(
+                value = newPriceText,
+                onValueChange = onNewPriceChange,
+                label = { Text("新单价 (元)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun SimulateSummary(
+    originalCost: Double,
+    newCost: Double,
+    sellingPrice: Double
+) {
+    val costChange = newCost - originalCost
+    val originalProfit = sellingPrice - originalCost
+    val newProfit = sellingPrice - newCost
+    val originalProfitRate = if (sellingPrice > 0) (originalProfit / sellingPrice) * 100 else 0.0
+    val newProfitRate = if (sellingPrice > 0) (newProfit / sellingPrice) * 100 else 0.0
+
+    val costColor = if (newCost > originalCost) Color(0xFFEF4444) else Color(0xFF10B981)
+    val newProfitColor = if (newProfit >= 0) Color(0xFF10B981) else Color(0xFFEF4444)
+    val newProfitRateColor = when {
+        newProfitRate >= 30 -> Color(0xFF10B981)
+        newProfitRate >= 15 -> Color(0xFFF59E0B)
+        else -> Color(0xFFEF4444)
+    }
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CompactMetric(
+                    label = "原成本",
+                    value = "¥${"%.2f".format(originalCost)}",
+                    modifier = Modifier.weight(1f)
+                )
+                CompactMetric(
+                    label = "新成本",
+                    value = "¥${"%.2f".format(newCost)}",
+                    modifier = Modifier.weight(1f),
+                    valueColor = costColor
+                )
+                CompactMetric(
+                    label = "成本变动",
+                    value = "${if (costChange > 0) "+" else ""}¥${"%.2f".format(costChange)}",
+                    modifier = Modifier.weight(1f),
+                    valueColor = costColor
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CompactMetric(
+                    label = "原利润",
+                    value = "¥${"%.2f".format(originalProfit)}",
+                    modifier = Modifier.weight(1f)
+                )
+                CompactMetric(
+                    label = "新利润",
+                    value = "¥${"%.2f".format(newProfit)}",
+                    modifier = Modifier.weight(1f),
+                    valueColor = newProfitColor
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CompactMetric(
+                    label = "原利润率",
+                    value = "${"%.1f".format(originalProfitRate)}%",
+                    modifier = Modifier.weight(1f)
+                )
+                CompactMetric(
+                    label = "新利润率",
+                    value = "${"%.1f".format(newProfitRate)}%",
+                    modifier = Modifier.weight(1f),
+                    valueColor = newProfitRateColor
+                )
+            }
+        }
     }
 }
