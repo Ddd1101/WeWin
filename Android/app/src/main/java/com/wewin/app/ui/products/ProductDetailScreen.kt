@@ -878,17 +878,18 @@ private fun SimulateBottomSheet(
     val accessories = finished.accessories
     val sheetState = rememberModalBottomSheetState()
 
+    // 用列表索引作为 key，因为 bead_id 是大类货号 id，同一货号下不同 SKU 会冲突
     val beadNewPrices = remember {
         mutableStateMapOf<Int, String>().apply {
-            beads.forEach { b ->
-                put(b.bead_id, "%.2f".format(b.bead_purchase_cost ?: 0.0))
+            beads.forEachIndexed { index, b ->
+                put(index, "%.2f".format(b.bead_purchase_cost ?: 0.0))
             }
         }
     }
     val accessoryNewPrices = remember {
         mutableStateMapOf<Int, String>().apply {
-            accessories.forEach { a ->
-                put(a.accessory_id, "%.2f".format(a.accessory_cost_price))
+            accessories.forEachIndexed { index, a ->
+                put(index, "%.2f".format(a.accessory_cost_price))
             }
         }
     }
@@ -930,17 +931,17 @@ private fun SimulateBottomSheet(
                 }
             }
 
-            val originalCost = beads.sumOf { it.bead_cost_price * it.quantity } +
+            val originalCost = beads.sumOf { (it.bead_purchase_cost ?: 0.0) * it.bead_weight * it.quantity } +
                 accessories.sumOf { it.accessory_cost_price * it.quantity } +
                 finished.labor_cost + finished.elastic_cost
 
             var newCost = 0.0
-            beads.forEach { b ->
-                val newPrice = beadNewPrices[b.bead_id]?.toDoubleOrNull() ?: 0.0
+            beads.forEachIndexed { index, b ->
+                val newPrice = beadNewPrices[index]?.toDoubleOrNull() ?: 0.0
                 newCost += newPrice * b.bead_weight * b.quantity
             }
-            accessories.forEach { a ->
-                val newPrice = accessoryNewPrices[a.accessory_id]?.toDoubleOrNull() ?: 0.0
+            accessories.forEachIndexed { index, a ->
+                val newPrice = accessoryNewPrices[index]?.toDoubleOrNull() ?: 0.0
                 newCost += newPrice * a.quantity
             }
             newCost += finished.labor_cost + finished.elastic_cost
@@ -953,11 +954,11 @@ private fun SimulateBottomSheet(
                     totalQuantity = beads.sumOf { it.quantity },
                     unit = "颗"
                 )
-                beads.forEach { bead ->
+                beads.forEachIndexed { index, bead ->
                     SimulateBeadRow(
                         bead = bead,
-                        newPriceText = beadNewPrices[bead.bead_id] ?: "",
-                        onNewPriceChange = { beadNewPrices[bead.bead_id] = it }
+                        newPriceText = beadNewPrices[index] ?: "",
+                        onNewPriceChange = { beadNewPrices[index] = it }
                     )
                 }
             }
@@ -969,11 +970,11 @@ private fun SimulateBottomSheet(
                     totalQuantity = accessories.sumOf { it.quantity },
                     unit = "个"
                 )
-                accessories.forEach { acc ->
+                accessories.forEachIndexed { index, acc ->
                     SimulateAccessoryRow(
                         accessory = acc,
-                        newPriceText = accessoryNewPrices[acc.accessory_id] ?: "",
-                        onNewPriceChange = { accessoryNewPrices[acc.accessory_id] = it }
+                        newPriceText = accessoryNewPrices[index] ?: "",
+                        onNewPriceChange = { accessoryNewPrices[index] = it }
                     )
                 }
             }
@@ -1007,11 +1008,11 @@ private fun SimulateBottomSheet(
             ) {
                 TextButton(
                     onClick = {
-                        beads.forEach { b ->
-                            beadNewPrices[b.bead_id] = "%.2f".format(b.bead_purchase_cost ?: 0.0)
+                        beads.forEachIndexed { index, b ->
+                            beadNewPrices[index] = "%.2f".format(b.bead_purchase_cost ?: 0.0)
                         }
-                        accessories.forEach { a ->
-                            accessoryNewPrices[a.accessory_id] = "%.2f".format(a.accessory_cost_price)
+                        accessories.forEachIndexed { index, a ->
+                            accessoryNewPrices[index] = "%.2f".format(a.accessory_cost_price)
                         }
                     },
                     modifier = Modifier.weight(1f)
@@ -1062,7 +1063,7 @@ private fun SimulateBeadRow(
     onNewPriceChange: (String) -> Unit
 ) {
     val newPrice = newPriceText.toDoubleOrNull() ?: 0.0
-    val originalSubtotal = bead.bead_cost_price * bead.quantity
+    val originalSubtotal = (bead.bead_purchase_cost ?: 0.0) * bead.bead_weight * bead.quantity
     val newSubtotal = newPrice * bead.bead_weight * bead.quantity
     val delta = newSubtotal - originalSubtotal
     val deltaColor = if (delta > 0) Color(0xFFEF4444) else Color(0xFF10B981)
@@ -1087,7 +1088,10 @@ private fun SimulateBeadRow(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = bead.bead_name ?: "未命名",
+                    text = buildString {
+                        append(bead.bead_name ?: "未命名")
+                        bead.bead_size?.takeIf { it > 0 }?.let { append(" ${it}mm") }
+                    },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
@@ -1113,10 +1117,10 @@ private fun SimulateBeadRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "原 ¥${"%.2f".format(bead.bead_purchase_cost ?: 0.0)}/g",
+                    text = "原 ¥${"%.2f".format(bead.bead_purchase_cost ?: 0.0)}/g · ${"%.2f".format(bead.bead_weight)}g",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.width(90.dp)
+                    modifier = Modifier.width(130.dp)
                 )
                 OutlinedTextField(
                     value = newPriceText,
@@ -1163,7 +1167,7 @@ private fun SimulateBeadRow(
                 }
             }
 
-            // 底部: 新小计 hero
+            // 底部: 原小计 → 新小计 对比 hero
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(8.dp),
@@ -1174,27 +1178,49 @@ private fun SimulateBeadRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    // 原小计
+                    Column(horizontalAlignment = Alignment.Start) {
+                        Text(
+                            text = "原小计",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "¥${"%.2f".format(originalSubtotal)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    // 箭头
                     Text(
-                        text = "新小计",
-                        style = MaterialTheme.typography.labelMedium,
+                        text = "→",
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    // 新小计 + 变动
+                    Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "¥${"%.2f".format(newSubtotal)}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = deltaColor
+                            text = "新小计",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (delta != 0.0) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             Text(
-                                text = "${if (delta > 0) "+" else ""}¥${"%.2f".format(delta)}",
-                                style = MaterialTheme.typography.labelSmall,
+                                text = "¥${"%.2f".format(newSubtotal)}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
                                 color = deltaColor
                             )
+                            if (delta != 0.0) {
+                                Text(
+                                    text = "${if (delta > 0) "+" else ""}¥${"%.2f".format(delta)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = deltaColor
+                                )
+                            }
                         }
                     }
                 }
@@ -1310,7 +1336,7 @@ private fun SimulateAccessoryRow(
                 }
             }
 
-            // 底部: 新小计 hero
+            // 底部: 原小计 → 新小计 对比 hero
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(8.dp),
@@ -1321,27 +1347,49 @@ private fun SimulateAccessoryRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    // 原小计
+                    Column(horizontalAlignment = Alignment.Start) {
+                        Text(
+                            text = "原小计",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "¥${"%.2f".format(originalSubtotal)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    // 箭头
                     Text(
-                        text = "新小计",
-                        style = MaterialTheme.typography.labelMedium,
+                        text = "→",
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    // 新小计 + 变动
+                    Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "¥${"%.2f".format(newSubtotal)}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = deltaColor
+                            text = "新小计",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (delta != 0.0) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             Text(
-                                text = "${if (delta > 0) "+" else ""}¥${"%.2f".format(delta)}",
-                                style = MaterialTheme.typography.labelSmall,
+                                text = "¥${"%.2f".format(newSubtotal)}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
                                 color = deltaColor
                             )
+                            if (delta != 0.0) {
+                                Text(
+                                    text = "${if (delta > 0) "+" else ""}¥${"%.2f".format(delta)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = deltaColor
+                                )
+                            }
                         }
                     }
                 }
