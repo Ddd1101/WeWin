@@ -16,9 +16,7 @@ import java.io.IOException
 data class ProductDetailUiState(
     val product: ProductDto? = null,
     val isLoading: Boolean = false,
-    val error: String? = null,
-    val isDeleting: Boolean = false,
-    val deleteSuccess: Boolean = false
+    val error: String? = null
 )
 
 class ProductDetailViewModel(
@@ -71,36 +69,6 @@ class ProductDetailViewModel(
                     it.copy(
                         isLoading = false,
                         error = "加载失败：${e.message ?: "未知错误"}"
-                    )
-                }
-            }
-        }
-    }
-
-    fun deleteProduct() {
-        val current = _uiState.value
-        if (current.isDeleting) return
-        _uiState.update { it.copy(isDeleting = true, error = null) }
-        viewModelScope.launch {
-            try {
-                val response = apiService.deleteProduct(productId)
-                if (response.isSuccessful) {
-                    _uiState.update {
-                        it.copy(isDeleting = false, deleteSuccess = true)
-                    }
-                } else {
-                    val errorMsg = parseError(response.code(), response.errorBody()?.string())
-                    _uiState.update { it.copy(isDeleting = false, error = errorMsg) }
-                }
-            } catch (e: IOException) {
-                _uiState.update {
-                    it.copy(isDeleting = false, error = "网络连接失败，请检查网络")
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isDeleting = false,
-                        error = "删除失败：${e.message ?: "未知错误"}"
                     )
                 }
             }
