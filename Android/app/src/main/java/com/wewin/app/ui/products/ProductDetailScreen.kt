@@ -1,6 +1,7 @@
 package com.wewin.app.ui.products
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,21 +17,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -54,6 +60,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -898,36 +905,27 @@ private fun SimulateBottomSheet(
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "克价模拟",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
+            // Header: 标题 + 商品信息紧凑展示
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                Text(
+                    text = "克价模拟",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Surface(
+                    color = Color(0xFFEF4444).copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(50)
                 ) {
                     Text(
-                        text = "货号：${product.code}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "商品名称：${product.name}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "售价：¥${"%.2f".format(product.selling_price)}",
-                        style = MaterialTheme.typography.bodySmall,
+                        text = "售价 ¥${"%.2f".format(product.selling_price)}",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.error
+                        color = Color(0xFFEF4444),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                     )
                 }
             }
@@ -947,12 +945,13 @@ private fun SimulateBottomSheet(
             }
             newCost += finished.labor_cost + finished.elastic_cost
 
+            // 明细区
             if (beads.isNotEmpty()) {
-                Text(
-                    text = "串珠（${beads.size}种，共${beads.sumOf { it.quantity }}颗）",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                SectionHeader(
+                    title = "串珠",
+                    count = beads.size,
+                    totalQuantity = beads.sumOf { it.quantity },
+                    unit = "颗"
                 )
                 beads.forEach { bead ->
                     SimulateBeadRow(
@@ -964,11 +963,11 @@ private fun SimulateBottomSheet(
             }
 
             if (accessories.isNotEmpty()) {
-                Text(
-                    text = "配件（${accessories.size}种，共${accessories.sumOf { it.quantity }}个）",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                SectionHeader(
+                    title = "配件",
+                    count = accessories.size,
+                    totalQuantity = accessories.sumOf { it.quantity },
+                    unit = "个"
                 )
                 accessories.forEach { acc ->
                     SimulateAccessoryRow(
@@ -980,20 +979,28 @@ private fun SimulateBottomSheet(
             }
 
             if (beads.isEmpty() && accessories.isEmpty()) {
-                Text(
-                    text = "无明细",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "无明细",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
+            // 汇总区: 深色 hero 卡片
             SimulateSummary(
                 originalCost = originalCost,
                 newCost = newCost,
                 sellingPrice = product.selling_price
             )
 
+            // 底部按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1023,6 +1030,32 @@ private fun SimulateBottomSheet(
 }
 
 @Composable
+private fun SectionHeader(
+    title: String,
+    count: Int,
+    totalQuantity: Int,
+    unit: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "$count 种 · 共 $totalQuantity $unit",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 private fun SimulateBeadRow(
     bead: FinishedBeadItemDto,
     newPriceText: String,
@@ -1031,75 +1064,141 @@ private fun SimulateBeadRow(
     val newPrice = newPriceText.toDoubleOrNull() ?: 0.0
     val originalSubtotal = bead.bead_cost_price * bead.quantity
     val newSubtotal = newPrice * bead.bead_weight * bead.quantity
+    val delta = newSubtotal - originalSubtotal
+    val deltaColor = if (delta > 0) Color(0xFFEF4444) else Color(0xFF10B981)
 
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = bead.bead_name ?: "未命名",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
-            )
+            // 顶部: 名称 + 数量徽章
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                CompactMetric(
-                    label = "数量",
-                    value = "x${bead.quantity}",
+                Text(
+                    text = bead.bead_name ?: "未命名",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                CompactMetric(
-                    label = "克重",
-                    value = "${"%.2f".format(bead.bead_weight)}g",
-                    modifier = Modifier.weight(1f)
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text(
+                        text = "x${bead.quantity}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
             }
+
+            // 中部: 原克价 → 新克价输入
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                CompactMetric(
-                    label = "原克价",
-                    value = "¥${"%.2f".format(bead.bead_purchase_cost ?: 0.0)}/g",
+                Text(
+                    text = "原 ¥${"%.2f".format(bead.bead_purchase_cost ?: 0.0)}/g",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(90.dp)
+                )
+                OutlinedTextField(
+                    value = newPriceText,
+                    onValueChange = onNewPriceChange,
+                    label = { Text("新克价/g") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
                     modifier = Modifier.weight(1f)
                 )
-                CompactMetric(
-                    label = "原单价",
-                    value = "¥${"%.2f".format(bead.bead_cost_price)}",
-                    modifier = Modifier.weight(1f)
-                )
+                // 快捷调整按钮
+                FilledIconButton(
+                    onClick = {
+                        val current = newPriceText.toDoubleOrNull() ?: 0.0
+                        onNewPriceChange("%.2f".format((current - 0.1).coerceAtLeast(0.0)))
+                    },
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Remove,
+                        contentDescription = "减少 0.1",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                FilledIconButton(
+                    onClick = {
+                        val current = newPriceText.toDoubleOrNull() ?: 0.0
+                        onNewPriceChange("%.2f".format(current + 0.1))
+                    },
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "增加 0.1",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                CompactMetric(
-                    label = "原小计",
-                    value = "¥${"%.2f".format(originalSubtotal)}",
-                    modifier = Modifier.weight(1f)
-                )
-                CompactMetric(
-                    label = "新小计",
-                    value = "¥${"%.2f".format(newSubtotal)}",
-                    modifier = Modifier.weight(1f),
-                    valueColor = if (newSubtotal > originalSubtotal) Color(0xFFEF4444) else Color(0xFF10B981)
-                )
-            }
-            OutlinedTextField(
-                value = newPriceText,
-                onValueChange = onNewPriceChange,
-                label = { Text("新克价 (元/克)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
+
+            // 底部: 新小计 hero
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
-            )
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "新小计",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "¥${"%.2f".format(newSubtotal)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = deltaColor
+                        )
+                        if (delta != 0.0) {
+                            Text(
+                                text = "${if (delta > 0) "+" else ""}¥${"%.2f".format(delta)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = deltaColor
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1113,60 +1212,140 @@ private fun SimulateAccessoryRow(
     val newPrice = newPriceText.toDoubleOrNull() ?: 0.0
     val originalSubtotal = accessory.accessory_cost_price * accessory.quantity
     val newSubtotal = newPrice * accessory.quantity
+    val delta = newSubtotal - originalSubtotal
+    val deltaColor = if (delta > 0) Color(0xFFEF4444) else Color(0xFF10B981)
 
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = accessory.accessory_name ?: "未命名",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
-            )
+            // 顶部: 名称 + 数量徽章
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                CompactMetric(
-                    label = "数量",
-                    value = "x${accessory.quantity}",
+                Text(
+                    text = accessory.accessory_name ?: "未命名",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                CompactMetric(
-                    label = "原单价",
-                    value = "¥${"%.2f".format(accessory.accessory_cost_price)}",
-                    modifier = Modifier.weight(1f)
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text(
+                        text = "x${accessory.quantity}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
             }
+
+            // 中部: 原单价 → 新单价输入
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                CompactMetric(
-                    label = "原小计",
-                    value = "¥${"%.2f".format(originalSubtotal)}",
+                Text(
+                    text = "原 ¥${"%.2f".format(accessory.accessory_cost_price)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(90.dp)
+                )
+                OutlinedTextField(
+                    value = newPriceText,
+                    onValueChange = onNewPriceChange,
+                    label = { Text("新单价") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
                     modifier = Modifier.weight(1f)
                 )
-                CompactMetric(
-                    label = "新小计",
-                    value = "¥${"%.2f".format(newSubtotal)}",
-                    modifier = Modifier.weight(1f),
-                    valueColor = if (newSubtotal > originalSubtotal) Color(0xFFEF4444) else Color(0xFF10B981)
-                )
+                FilledIconButton(
+                    onClick = {
+                        val current = newPriceText.toDoubleOrNull() ?: 0.0
+                        onNewPriceChange("%.2f".format((current - 0.1).coerceAtLeast(0.0)))
+                    },
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Remove,
+                        contentDescription = "减少 0.1",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                FilledIconButton(
+                    onClick = {
+                        val current = newPriceText.toDoubleOrNull() ?: 0.0
+                        onNewPriceChange("%.2f".format(current + 0.1))
+                    },
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "增加 0.1",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
-            OutlinedTextField(
-                value = newPriceText,
-                onValueChange = onNewPriceChange,
-                label = { Text("新单价 (元)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
+
+            // 底部: 新小计 hero
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
-            )
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "新小计",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "¥${"%.2f".format(newSubtotal)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = deltaColor
+                        )
+                        if (delta != 0.0) {
+                            Text(
+                                text = "${if (delta > 0) "+" else ""}¥${"%.2f".format(delta)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = deltaColor
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1183,77 +1362,128 @@ private fun SimulateSummary(
     val originalProfitRate = if (sellingPrice > 0) (originalProfit / sellingPrice) * 100 else 0.0
     val newProfitRate = if (sellingPrice > 0) (newProfit / sellingPrice) * 100 else 0.0
 
-    val costColor = if (newCost > originalCost) Color(0xFFEF4444) else Color(0xFF10B981)
-    val newProfitColor = if (newProfit >= 0) Color(0xFF10B981) else Color(0xFFEF4444)
+    val costColor = if (newCost > originalCost) Color(0xFFFCA5A5) else Color(0xFF86EFAC)
+    val newProfitColor = if (newProfit >= 0) Color(0xFF86EFAC) else Color(0xFFFCA5A5)
     val newProfitRateColor = when {
-        newProfitRate >= 30 -> Color(0xFF10B981)
-        newProfitRate >= 15 -> Color(0xFFF59E0B)
-        else -> Color(0xFFEF4444)
+        newProfitRate >= 30 -> Color(0xFF86EFAC)
+        newProfitRate >= 15 -> Color(0xFFFCD34D)
+        else -> Color(0xFFFCA5A5)
     }
 
+    // 深色 hero 卡片
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(8.dp),
+        color = Color(0xFF1E293B),
+        shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // 核心: 新利润率超大字
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "新利润率",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF94A3B8)
+                    )
+                    Text(
+                        text = "原 ${"%.1f".format(originalProfitRate)}%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF64748B)
+                    )
+                }
+                Text(
+                    text = "${"%.1f".format(newProfitRate)}%",
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = newProfitRateColor
+                )
+            }
+
+            // 分隔线
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Color(0xFF334155))
+            )
+
+            // 次要指标网格
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                CompactMetric(
-                    label = "原成本",
-                    value = "¥${"%.2f".format(originalCost)}",
-                    modifier = Modifier.weight(1f)
-                )
-                CompactMetric(
+                SummaryMetricDark(
                     label = "新成本",
                     value = "¥${"%.2f".format(newCost)}",
-                    modifier = Modifier.weight(1f),
-                    valueColor = costColor
+                    subValue = "原 ¥${"%.2f".format(originalCost)}",
+                    valueColor = costColor,
+                    modifier = Modifier.weight(1f)
                 )
-                CompactMetric(
+                SummaryMetricDark(
                     label = "成本变动",
                     value = "${if (costChange > 0) "+" else ""}¥${"%.2f".format(costChange)}",
-                    modifier = Modifier.weight(1f),
-                    valueColor = costColor
+                    subValue = if (costChange == 0.0) "持平" else if (costChange > 0) "上升" else "下降",
+                    valueColor = costColor,
+                    modifier = Modifier.weight(1f)
                 )
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                CompactMetric(
-                    label = "原利润",
-                    value = "¥${"%.2f".format(originalProfit)}",
-                    modifier = Modifier.weight(1f)
-                )
-                CompactMetric(
+                SummaryMetricDark(
                     label = "新利润",
                     value = "¥${"%.2f".format(newProfit)}",
-                    modifier = Modifier.weight(1f),
-                    valueColor = newProfitColor
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                CompactMetric(
-                    label = "原利润率",
-                    value = "${"%.1f".format(originalProfitRate)}%",
+                    subValue = "原 ¥${"%.2f".format(originalProfit)}",
+                    valueColor = newProfitColor,
                     modifier = Modifier.weight(1f)
                 )
-                CompactMetric(
-                    label = "新利润率",
-                    value = "${"%.1f".format(newProfitRate)}%",
-                    modifier = Modifier.weight(1f),
-                    valueColor = newProfitRateColor
+                SummaryMetricDark(
+                    label = "售价",
+                    value = "¥${"%.2f".format(sellingPrice)}",
+                    subValue = "固定",
+                    valueColor = Color(0xFFFCA5A5),
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SummaryMetricDark(
+    label: String,
+    value: String,
+    subValue: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFF94A3B8)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = valueColor
+        )
+        Text(
+            text = subValue,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFF64748B)
+        )
     }
 }
