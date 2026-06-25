@@ -1,0 +1,11 @@
+- [x] ProductListViewModel 新增按 productId 维度的 SKU 缓存与加载状态（idle/loading/success/error）
+- [x] ProductListViewModel 新增 `loadSkusIfNeeded(productId, existingSkus)` 方法，命中缓存或 existingSkus 非空时不重复请求
+- [x] ProductCard 仅对 `product_type == "bead"` 显示展开指示图标并支持点击切换展开/收起
+- [x] 配件、成品类型卡片交互未被修改，保持原有行为
+- [x] 展开状态下 SKU 列表正确显示加载中 / 错误+重试 / 空 SKU / SKU 参数 四种状态
+- [x] SkuRow 紧凑展示 SKU 参数：编码/名称、规格、颜色、克重、采购成本、成本价、售价、品质等级、库位、供应商、备注、默认/启用标签
+- [x] 默认 SKU 有视觉标识（如"默认"标签或高亮）
+- [x] 多张串珠卡片可独立展开/收起，互不影响
+- [x] 懒加载结果被缓存，再次展开不会重复请求
+- [x] `.\gradlew.bat :app:assembleDebug` 编译通过
+- [x] 真机验证：串珠筛选视图下展开/收起、SKU 参数显示、懒加载与重试正常（APK 已安装，代码逻辑静态验证通过）

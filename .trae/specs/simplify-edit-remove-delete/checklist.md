@@ -1,0 +1,16 @@
+- [x] ProductEditScreen 仅显示 ImagePickerSection 和保存按钮，无任何字段输入卡片
+- [x] ProductEditScreen 已移除 CommonFieldsCard、BeadFieldsCard、AccessoryFieldsCard、FinishedFieldsCard 及子组件
+- [x] ProductEditScreen 已清理不再使用的 import
+- [x] ProductEditViewModel 保留 setImageUri、submit、初始化加载逻辑
+- [x] ProductEditViewModel submit 仍能正确构建 multipart 请求（图片 + 全量字段用初始值）
+- [x] ProductDetailScreen TopAppBar 无删除按钮，仅返回和编辑
+- [x] ProductDetailScreen 无删除确认 AlertDialog
+- [x] ProductDetailScreen 无 showDeleteDialog 状态和 deleteSuccess 导航
+- [x] ProductDetailViewModel 无 deleteProduct 方法
+- [x] ProductDetailUiState 无 isDeleting 和 deleteSuccess 字段
+- [x] ApiService.deleteProduct 端点保留未删除
+- [x] 未修改后端 API、Vue 前端、路由定义
+- [x] 工程可编译通过（./gradlew assembleDebug 无错误）
+- [x] 手机验证：详情页无删除按钮
+- [x] 手机验证：编辑页仅显示图片上传和保存按钮
+- [x] 手机验证：编辑模式选图保存成功

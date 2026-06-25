@@ -1468,33 +1468,46 @@ def update_product(request, product_id):
             return JsonResponse({'error': '无权限更新商品'}, status=403)
 
         # 支持 multipart/form-data 和 application/json 两种格式
+        # 注意：Django 只对 POST 请求自动解析 multipart 数据，PUT 请求需手动解析
         data_dict = {}
         image = None
         remove_image = False
         remove_image_val = False
-        
+
         if request.content_type and 'multipart/form-data' in request.content_type:
+            # PUT 请求时手动解析 multipart 数据
+            # Django 只对 POST 请求自动解析 multipart，PUT 需用 MultiPartParser 手动解析
+            if request.method == 'PUT':
+                from django.http.multipartparser import MultiPartParser
+                parser = MultiPartParser(
+                    request.META, request, request.upload_handlers, request.encoding
+                )
+                post_dict, files_dict = parser.parse()
+            else:
+                post_dict = request.POST
+                files_dict = request.FILES
+
             # 从 POST 中获取普通字段数据
-            for key in request.POST:
-                data_dict[key] = request.POST[key]
+            for key in post_dict:
+                data_dict[key] = post_dict[key]
             # 处理 JSON 字段，特别是 beads 和 accessories
-            if 'beads' in request.POST:
+            if 'beads' in post_dict:
                 try:
-                    data_dict['beads'] = json.loads(request.POST['beads'])
+                    data_dict['beads'] = json.loads(post_dict['beads'])
                 except (json.JSONDecodeError, TypeError):
                     data_dict['beads'] = []
-            if 'accessories' in request.POST:
+            if 'accessories' in post_dict:
                 try:
-                    data_dict['accessories'] = json.loads(request.POST['accessories'])
+                    data_dict['accessories'] = json.loads(post_dict['accessories'])
                 except (json.JSONDecodeError, TypeError):
                     data_dict['accessories'] = []
-            if 'skus' in request.POST:
+            if 'skus' in post_dict:
                 try:
-                    data_dict['skus'] = json.loads(request.POST['skus'])
+                    data_dict['skus'] = json.loads(post_dict['skus'])
                 except (json.JSONDecodeError, TypeError):
                     data_dict['skus'] = []
-            image = request.FILES.get('image')
-            remove_image_val = request.POST.get('remove_image', 'false').lower() == 'true'
+            image = files_dict.get('image')
+            remove_image_val = post_dict.get('remove_image', 'false').lower() == 'true'
         else:
             data_dict = json.loads(request.body)
             image = None
