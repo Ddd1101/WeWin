@@ -6,6 +6,7 @@ import com.wewin.app.data.remote.RetrofitClient
 import com.wewin.app.data.remote.dto.ErrorResponse
 import com.wewin.app.data.remote.dto.ProductDto
 import com.wewin.app.data.remote.dto.ProductStatsDto.ProductStats
+import com.wewin.app.data.remote.dto.SkuDto
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +16,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.io.IOException
+
+sealed interface SkuLoadState {
+    object Idle : SkuLoadState
+    object Loading : SkuLoadState
+    data class Success(val skus: List<SkuDto>) : SkuLoadState
+    data class Error(val message: String) : SkuLoadState
+}
 
 data class ProductListUiState(
     val products: List<ProductDto> = emptyList(),
@@ -27,7 +35,8 @@ data class ProductListUiState(
     val page: Int = 1,
     val totalCount: Int = 0,
     val hasMore: Boolean = true,
-    val isRefreshing: Boolean = false
+    val isRefreshing: Boolean = false,
+    val skuMap: Map<Int, SkuLoadState> = emptyMap()
 )
 
 class ProductListViewModel : ViewModel() {
@@ -206,6 +215,50 @@ class ProductListViewModel : ViewModel() {
 
     fun search() {
         loadInitial()
+    }
+
+    fun loadSkusIfNeeded(productId: Int, existingSkus: List<SkuDto>) {
+        if (existingSkus.isNotEmpty()) {
+            val current = _uiState.value.skuMap[productId]
+            if (current !is SkuLoadState.Success) {
+                _uiState.update {
+                    it.copy(skuMap = it.skuMap + (productId to SkuLoadState.Success(existingSkus)))
+                }
+            }
+            return
+        }
+        val state = _uiState.value.skuMap[productId]
+        if (state is SkuLoadState.Loading || state is SkuLoadState.Success) return
+        _uiState.update {
+            it.copy(skuMap = it.skuMap + (productId to SkuLoadState.Loading))
+        }
+        viewModelScope.launch {
+            try {
+                val response = apiService.getProductSkus(productId)
+                if (response.isSuccessful) {
+                    val skus = response.body()?.skus ?: emptyList()
+                    _uiState.update {
+                        it.copy(skuMap = it.skuMap + (productId to SkuLoadState.Success(skus)))
+                    }
+                } else {
+                    val errorMsg = parseError(
+                        response.code(),
+                        response.errorBody()?.string()
+                    )
+                    _uiState.update {
+                        it.copy(skuMap = it.skuMap + (productId to SkuLoadState.Error(errorMsg)))
+                    }
+                }
+            } catch (e: IOException) {
+                _uiState.update {
+                    it.copy(skuMap = it.skuMap + (productId to SkuLoadState.Error("网络连接失败，请检查网络")))
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(skuMap = it.skuMap + (productId to SkuLoadState.Error("加载失败：${e.message ?: "未知错误"}")))
+                }
+            }
+        }
     }
 
     private fun parseError(code: Int, errorBody: String?): String {
