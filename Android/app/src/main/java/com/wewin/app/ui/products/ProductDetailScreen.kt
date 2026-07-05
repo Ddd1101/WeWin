@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Remove
@@ -40,6 +41,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -84,6 +86,8 @@ import com.wewin.app.data.remote.dto.FinishedBeadItemDto
 import com.wewin.app.data.remote.dto.FinishedDto
 import com.wewin.app.data.remote.dto.ProductDto
 import com.wewin.app.data.remote.dto.SkuDto
+import com.wewin.app.ui.purchase.AddToPurchaseSheet
+import com.wewin.app.ui.purchase.PurchasePrefillData
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -226,11 +230,11 @@ private fun ProductDetailContent(
         item { BasicInfoCard(product = product) }
 
         product.bead?.let { bead ->
-            item { BeadInfoCard(bead = bead) }
+            item { BeadInfoCard(bead = bead, product = product) }
         }
 
         product.accessory?.let { accessory ->
-            item { AccessoryInfoCard(accessory = accessory) }
+            item { AccessoryInfoCard(accessory = accessory, product = product) }
         }
 
         product.finished?.let { finished ->
@@ -481,7 +485,8 @@ private fun ActiveStatusChip(isActive: Boolean) {
 }
 
 @Composable
-private fun BeadInfoCard(bead: BeadDto) {
+private fun BeadInfoCard(bead: BeadDto, product: ProductDto) {
+    var showAddToPurchase by remember { mutableStateOf(false) }
     DetailCard(title = "串珠参数") {
         InfoRow(label = "材质", value = bead.material)
         InfoRow(label = "规格", value = bead.size?.toString())
@@ -492,15 +497,50 @@ private fun BeadInfoCard(bead: BeadDto) {
         )
         InfoRow(label = "品质等级", value = bead.quality_level.toString())
         InfoRow(label = "备注", value = bead.remark)
+        OutlinedButton(
+            onClick = { showAddToPurchase = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.Filled.AddShoppingCart,
+                contentDescription = null
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("加入采购清单")
+        }
+    }
+    if (showAddToPurchase) {
+        AddToPurchaseSheet(
+            prefill = buildPrefillFromProduct(product),
+            onDismiss = { showAddToPurchase = false }
+        )
     }
 }
 
 @Composable
-private fun AccessoryInfoCard(accessory: AccessoryDto) {
+private fun AccessoryInfoCard(accessory: AccessoryDto, product: ProductDto) {
+    var showAddToPurchase by remember { mutableStateOf(false) }
     DetailCard(title = "配件参数") {
         InfoRow(label = "材质", value = accessory.material)
         InfoRow(label = "规格", value = accessory.size?.toString())
         InfoRow(label = "颜色", value = accessory.color)
+        OutlinedButton(
+            onClick = { showAddToPurchase = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.Filled.AddShoppingCart,
+                contentDescription = null
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("加入采购清单")
+        }
+    }
+    if (showAddToPurchase) {
+        AddToPurchaseSheet(
+            prefill = buildPrefillFromProduct(product),
+            onDismiss = { showAddToPurchase = false }
+        )
     }
 }
 
@@ -548,6 +588,7 @@ private fun FinishedInfoCard(finished: FinishedDto) {
 
 @Composable
 private fun FinishedBeadItemRow(item: FinishedBeadItemDto) {
+    var showAddToPurchase by remember { mutableStateOf(false) }
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         shape = RoundedCornerShape(10.dp),
@@ -555,6 +596,7 @@ private fun FinishedBeadItemRow(item: FinishedBeadItemDto) {
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Left accent: quantity badge
@@ -613,7 +655,38 @@ private fun FinishedBeadItemRow(item: FinishedBeadItemDto) {
                     )
                 }
             }
+
+            IconButton(
+                onClick = { showAddToPurchase = true },
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.AddShoppingCart,
+                    contentDescription = "加入采购清单",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
+    }
+    if (showAddToPurchase) {
+        AddToPurchaseSheet(
+            prefill = PurchasePrefillData(
+                productId = item.bead_id,
+                skuId = item.sku_id,
+                productType = "bead",
+                productName = item.bead_name ?: "",
+                skuCode = item.sku?.sku_code ?: "",
+                defaultUnit = "克",
+                defaultUnitPrice = item.bead_purchase_cost ?: 0.0,
+                supplier = item.sku?.supplier ?: "",
+                location = item.sku?.location ?: "",
+                qualityLevel = item.bead_quality_level,
+                material = item.sku?.material ?: "",
+                size = item.bead_size,
+                color = item.sku?.color ?: ""
+            ),
+            onDismiss = { showAddToPurchase = false }
+        )
     }
 }
 
@@ -641,6 +714,7 @@ private fun CompactMetric(
 
 @Composable
 private fun FinishedAccessoryItemRow(item: FinishedAccessoryItemDto) {
+    var showAddToPurchase by remember { mutableStateOf(false) }
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         shape = RoundedCornerShape(10.dp),
@@ -648,6 +722,7 @@ private fun FinishedAccessoryItemRow(item: FinishedAccessoryItemDto) {
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -692,7 +767,37 @@ private fun FinishedAccessoryItemRow(item: FinishedAccessoryItemDto) {
                     }
                 }
             }
+
+            IconButton(
+                onClick = { showAddToPurchase = true },
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.AddShoppingCart,
+                    contentDescription = "加入采购清单",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
+    }
+    if (showAddToPurchase) {
+        AddToPurchaseSheet(
+            prefill = PurchasePrefillData(
+                productId = item.accessory_id,
+                skuId = item.sku_id,
+                productType = "accessory",
+                productName = item.accessory_name ?: "",
+                skuCode = item.sku?.sku_code ?: "",
+                defaultUnit = "件",
+                defaultUnitPrice = item.accessory_cost_price,
+                supplier = item.sku?.supplier ?: "",
+                location = item.sku?.location ?: "",
+                material = item.sku?.material ?: "",
+                size = item.sku?.size,
+                color = item.sku?.color ?: ""
+            ),
+            onDismiss = { showAddToPurchase = false }
+        )
     }
 }
 
@@ -1598,4 +1703,27 @@ private fun SummaryMetricDark(
             color = Color(0xFF64748B)
         )
     }
+}
+
+private fun buildPrefillFromProduct(product: ProductDto): PurchasePrefillData {
+    val defaultSku = product.skus.firstOrNull { it.is_default } ?: product.skus.firstOrNull()
+    return PurchasePrefillData(
+        productId = product.id,
+        skuId = defaultSku?.id,
+        productType = product.product_type,
+        productName = product.name,
+        skuCode = defaultSku?.sku_code ?: product.code,
+        defaultUnit = if (product.product_type == "bead") "克" else "件",
+        defaultUnitPrice = if (product.product_type == "bead") {
+            defaultSku?.purchase_cost ?: product.purchase_cost
+        } else {
+            defaultSku?.cost_price ?: product.cost_price
+        },
+        supplier = defaultSku?.supplier ?: product.supplier ?: "",
+        location = defaultSku?.location ?: product.location ?: "",
+        qualityLevel = defaultSku?.quality_level,
+        material = defaultSku?.material ?: "",
+        size = defaultSku?.size,
+        color = defaultSku?.color ?: ""
+    )
 }

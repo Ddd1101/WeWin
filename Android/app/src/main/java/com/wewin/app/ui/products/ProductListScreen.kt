@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -68,6 +69,8 @@ import coil.compose.AsyncImage
 import com.wewin.app.data.remote.dto.ProductDto
 import com.wewin.app.data.remote.dto.ProductStatsDto.ProductStats
 import com.wewin.app.data.remote.dto.SkuDto
+import com.wewin.app.ui.purchase.AddToPurchaseSheet
+import com.wewin.app.ui.purchase.PurchasePrefillData
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -384,6 +387,8 @@ private fun ProductCard(
     skuLoadState: SkuLoadState? = null,
     onRetryLoadSkus: () -> Unit = {}
 ) {
+    var showAddToPurchase by remember { mutableStateOf(false) }
+
     if (product.product_type == "bead") {
         Card(modifier = Modifier.fillMaxWidth()) {
             Column {
@@ -436,6 +441,16 @@ private fun ProductCard(
                                 Icon(
                                     imageVector = Icons.Filled.Info,
                                     contentDescription = "详情",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = { showAddToPurchase = true },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.AddShoppingCart,
+                                    contentDescription = "加入采购清单",
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -581,6 +596,18 @@ private fun ProductCard(
                                 )
                             }
                         }
+                        if (product.product_type == "accessory") {
+                            IconButton(
+                                onClick = { showAddToPurchase = true },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.AddShoppingCart,
+                                    contentDescription = "加入采购清单",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
 
                     Spacer(Modifier.height(4.dp))
@@ -684,6 +711,13 @@ private fun ProductCard(
                 }
             }
         }
+    }
+
+    if (showAddToPurchase) {
+        AddToPurchaseSheet(
+            prefill = buildPrefillFromProduct(product),
+            onDismiss = { showAddToPurchase = false }
+        )
     }
 }
 
@@ -910,4 +944,27 @@ private fun TypeChip(productType: String, display: String?) {
             style = MaterialTheme.typography.labelSmall
         )
     }
+}
+
+private fun buildPrefillFromProduct(product: ProductDto): PurchasePrefillData {
+    val defaultSku = product.skus.firstOrNull { it.is_default } ?: product.skus.firstOrNull()
+    return PurchasePrefillData(
+        productId = product.id,
+        skuId = defaultSku?.id,
+        productType = product.product_type,
+        productName = product.name,
+        skuCode = defaultSku?.sku_code ?: product.code,
+        defaultUnit = if (product.product_type == "bead") "克" else "件",
+        defaultUnitPrice = if (product.product_type == "bead") {
+            defaultSku?.purchase_cost ?: product.purchase_cost
+        } else {
+            defaultSku?.cost_price ?: product.cost_price
+        },
+        supplier = defaultSku?.supplier ?: product.supplier ?: "",
+        location = defaultSku?.location ?: product.location ?: "",
+        qualityLevel = defaultSku?.quality_level,
+        material = defaultSku?.material ?: "",
+        size = defaultSku?.size,
+        color = defaultSku?.color ?: ""
+    )
 }

@@ -22,6 +22,8 @@ import com.wewin.app.data.local.TokenStore
 import com.wewin.app.ui.login.LoginScreen
 import com.wewin.app.ui.products.ProductDetailScreen
 import com.wewin.app.ui.products.ProductEditScreen
+import com.wewin.app.ui.purchase.PurchaseCreateScreen
+import com.wewin.app.ui.purchase.PurchaseDetailScreen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -116,6 +118,15 @@ fun AppNavGraph(tokenStore: TokenStore) {
                 productId = productId,
                 onBack = { navController.popBackStack() }
             )
+        }
+        composable(Screen.PurchaseDetail.route) {
+            PurchaseDetailScreen(
+                navController = navController,
+                listId = it.arguments?.getString("listId")?.toIntOrNull() ?: 0
+            )
+        }
+        composable(Screen.PurchaseCreate.route) {
+            PurchaseCreateScreen(navController = navController)
         }
     }
 }

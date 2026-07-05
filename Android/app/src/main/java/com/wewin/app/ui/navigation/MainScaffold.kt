@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -22,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import com.wewin.app.data.local.TokenStore
 import com.wewin.app.ui.products.ProductListScreen
 import com.wewin.app.ui.profile.ProfileScreen
+import com.wewin.app.ui.purchase.PurchaseListScreen
 
 @Composable
 fun MainScaffold(
@@ -58,6 +60,25 @@ fun MainScaffold(
                     label = { Text("商品") }
                 )
                 NavigationBarItem(
+                    selected = currentRoute == Screen.PurchaseList.route,
+                    onClick = {
+                        navController.navigate(Screen.PurchaseList.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Filled.ShoppingCart,
+                            contentDescription = "采购"
+                        )
+                    },
+                    label = { Text("采购") }
+                )
+                NavigationBarItem(
                     selected = currentRoute == Screen.Profile.route,
                     onClick = {
                         navController.navigate(Screen.Profile.route) {
@@ -89,6 +110,9 @@ fun MainScaffold(
                     onNavigateToProductDetail = onNavigateToProductDetail,
                     onNavigateToProductEdit = onNavigateToProductEdit
                 )
+            }
+            composable(Screen.PurchaseList.route) {
+                PurchaseListScreen(navController = navController)
             }
             composable(Screen.Profile.route) {
                 ProfileScreen(
