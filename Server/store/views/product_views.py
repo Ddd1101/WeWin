@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from account.models import User, UserType
 from company.models import Company
-from store.models import Product, ProductType, ProductSku, Bead, Accessory, FinishedProduct, FinishedProductBead, FinishedProductAccessory
+from store.models import Product, ProductType, ProductSku, Bead, Accessory, FinishedProduct, FinishedProductBead, FinishedProductAccessory, ChildrenClothing
 from .helpers import calculate_finished_product_cost, sku_to_dict, get_default_sku, ensure_default_sku, sync_skus, sku_schema_ready, product_skus_payload
 from utils.decorators import jwt_required
 
@@ -43,6 +43,7 @@ def get_product_stats(request):
             'bead_count': products.filter(product_type=ProductType.BEAD).count(),
             'accessory_count': products.filter(product_type=ProductType.ACCESSORY).count(),
             'finished_count': products.filter(product_type=ProductType.FINISHED).count(),
+            'children_clothing_count': products.filter(product_type=ProductType.CHILDREN_CLOTHING).count(),
             'sku_count': ProductSku.objects.filter(product__in=products).count() if sku_schema_ready() else 0,
         }
         return JsonResponse({'product_stats': stats})
@@ -195,6 +196,20 @@ def get_products(request):
                     product_data['cost_price'] = float(total_cost)
                 except FinishedProduct.DoesNotExist:
                     pass
+            elif product.product_type == ProductType.CHILDREN_CLOTHING:
+                try:
+                    cc = ChildrenClothing.objects.get(product=product)
+                    product_data['children_clothing'] = {
+                        'fabric': cc.fabric,
+                        'size': cc.size,
+                        'color': cc.color,
+                        'season': cc.season,
+                        'gender': cc.gender,
+                        'age_range': cc.age_range,
+                    }
+                except ChildrenClothing.DoesNotExist:
+                    pass
+                product_data['skus'] = product_skus_payload(product)
 
             product_list.append(product_data)
 
@@ -422,6 +437,16 @@ def create_product(request):
                 # 重新计算并保存成品的成本价格
                 product.cost_price = calculate_finished_product_cost(finished)
                 product.save()
+            elif product_type == ProductType.CHILDREN_CLOTHING:
+                ChildrenClothing.objects.create(
+                    product=product,
+                    fabric=data_dict.get('fabric', ''),
+                    size=data_dict.get('size', ''),
+                    color=data_dict.get('color', ''),
+                    season=data_dict.get('season', ''),
+                    gender=data_dict.get('gender', ''),
+                    age_range=data_dict.get('age_range', ''),
+                )
 
         # 构建响应数据
         product_data = {
@@ -708,6 +733,24 @@ def update_product(request, product_id):
                 product.save()
             except FinishedProduct.DoesNotExist:
                 pass
+        elif product.product_type == ProductType.CHILDREN_CLOTHING:
+            try:
+                cc = ChildrenClothing.objects.get(product=product)
+                if 'fabric' in data_dict:
+                    cc.fabric = data_dict['fabric']
+                if 'size' in data_dict:
+                    cc.size = data_dict['size']
+                if 'color' in data_dict:
+                    cc.color = data_dict['color']
+                if 'season' in data_dict:
+                    cc.season = data_dict['season']
+                if 'gender' in data_dict:
+                    cc.gender = data_dict['gender']
+                if 'age_range' in data_dict:
+                    cc.age_range = data_dict['age_range']
+                cc.save()
+            except ChildrenClothing.DoesNotExist:
+                pass
 
         # 构建响应数据
         product_data = {
@@ -891,6 +934,20 @@ def get_product_detail(request, product_id):
                 product_data['cost_price'] = float(total_cost)
             except FinishedProduct.DoesNotExist:
                 pass
+        elif product.product_type == ProductType.CHILDREN_CLOTHING:
+            try:
+                cc = ChildrenClothing.objects.get(product=product)
+                product_data['children_clothing'] = {
+                    'fabric': cc.fabric,
+                    'size': cc.size,
+                    'color': cc.color,
+                    'season': cc.season,
+                    'gender': cc.gender,
+                    'age_range': cc.age_range,
+                }
+            except ChildrenClothing.DoesNotExist:
+                pass
+            product_data['skus'] = product_skus_payload(product)
 
         return JsonResponse(product_data)
     except User.DoesNotExist:
@@ -990,3 +1047,132 @@ def get_product_skus(request, product_id):
         return JsonResponse({'error': '商品不存在'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+@jwt_required
+def get_children_clothing_costs(request):
+    """返回童装成本矩阵：所有货号的供应商 + 尺码成本"""
+    try:
+        products = Product.objects.filter(
+            product_type=ProductType.CHILDREN_CLOTHING
+        )
+        if request.user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            products = products.filter(company=request.user.company)
+        products = products.prefetch_related('skus')
+
+        all_sizes = set()
+        rows = []
+        for product in products:
+            costs = {}
+            for sku in product.skus.all():
+                size_key = str(sku.size) if sku.size is not None else (sku.name or '')
+                if not size_key:
+                    continue
+                costs[size_key] = float(sku.cost_price)
+                all_sizes.add(size_key)
+            rows.append({
+                'id': product.id,
+                'code': product.code,
+                'name': product.name,
+                'supplier': product.supplier or '',
+                'costs': costs,
+            })
+
+        def size_sort_key(s):
+            try:
+                return (0, int(s), s)
+            except (ValueError, TypeError):
+                return (1, 0, s)
+
+        columns = sorted(all_sizes, key=size_sort_key)
+
+        return JsonResponse({'columns': columns, 'rows': rows})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+@jwt_required
+def save_children_clothing_costs(request):
+    """批量保存童装供应商 + 尺码成本"""
+    try:
+        data = json.loads(request.body)
+        rows = data.get('rows', [])
+
+        updated = 0
+        with transaction.atomic():
+            for row in rows:
+                product_qs = Product.objects.filter(
+                    id=row.get('id'),
+                    product_type=ProductType.CHILDREN_CLOTHING,
+                )
+                if request.user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+                    product_qs = product_qs.filter(company=request.user.company)
+                product = product_qs.first()
+                if not product:
+                    continue
+
+                if 'supplier' in row:
+                    product.supplier = row.get('supplier') or ''
+                    product.save(update_fields=['supplier'])
+
+                costs = row.get('costs')
+                if costs:
+                    sync_children_clothing_skus(product, costs)
+
+                updated += 1
+
+        return JsonResponse({'message': '保存成功', 'updated': updated})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def sync_children_clothing_skus(product, costs):
+    """同步童装 SKU 尺码成本：costs = {尺码字符串: 成本}"""
+    kept_ids = set()
+    for size_key, cost in costs.items():
+        size_key = str(size_key)
+        try:
+            cost_val = float(cost) if cost not in (None, '') else 0
+        except (ValueError, TypeError):
+            cost_val = 0
+
+        if size_key.isdigit():
+            sku = product.skus.filter(size=int(size_key)).first()
+        else:
+            sku = product.skus.filter(name=size_key, size__isnull=True).first()
+
+        if sku is None:
+            sku = ProductSku(product=product)
+
+        if size_key.isdigit():
+            sku.size = int(size_key)
+            sku.name = size_key
+        else:
+            sku.size = None
+            sku.name = size_key
+
+        sku.sku_code = f'{product.code}-{size_key}'
+        sku.cost_price = cost_val
+        sku.selling_price = 0
+        sku.is_active = True
+        sku.save()
+        kept_ids.add(sku.id)
+
+    # 删除已不存在的尺码
+    product.skus.exclude(id__in=kept_ids).delete()
+
+    # 确保有默认 SKU
+    if not product.skus.filter(is_default=True).exists():
+        first = product.skus.filter(is_active=True).order_by('id').first()
+        if first:
+            first.is_default = True
+            first.save(update_fields=['is_default'])
+
+    # 商品级成本 = 最小尺码成本
+    valid_costs = [float(c) for c in costs.values() if c not in (None, '')]
+    if valid_costs:
+        product.cost_price = min(valid_costs)
+        product.save(update_fields=['cost_price'])

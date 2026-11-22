@@ -7,6 +7,7 @@ class ProductType(models.TextChoices):
     BEAD = 'bead', '串珠'
     ACCESSORY = 'accessory', '手串配件'
     FINISHED = 'finished', '手串成品'
+    CHILDREN_CLOTHING = 'children_clothing', '童装'
 
 
 class Product(models.Model):
@@ -164,6 +165,41 @@ class FinishedProduct(models.Model):
 
     def __str__(self):
         return f'成品: {self.product.name}'
+
+
+class ChildrenClothing(models.Model):
+    product = models.OneToOneField(
+        Product,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        verbose_name='关联商品'
+    )
+    fabric = models.CharField(max_length=100, blank=True, null=True, verbose_name='面料')
+    size = models.CharField(max_length=50, blank=True, null=True, verbose_name='尺码')
+    color = models.CharField(max_length=100, blank=True, null=True, verbose_name='颜色')
+    season = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        choices=[('spring', '春'), ('summer', '夏'), ('autumn', '秋'), ('winter', '冬')],
+        verbose_name='季节'
+    )
+    gender = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        choices=[('boy', '男童'), ('girl', '女童'), ('unisex', '中性')],
+        verbose_name='性别'
+    )
+    age_range = models.CharField(max_length=50, blank=True, null=True, verbose_name='年龄段')
+
+    class Meta:
+        db_table = 'children_clothing'
+        verbose_name = '童装'
+        verbose_name_plural = '童装'
+
+    def __str__(self):
+        return f'童装: {self.product.name}'
 
 
 class FinishedProductBead(models.Model):
