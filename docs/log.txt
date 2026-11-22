@@ -1,0 +1,50 @@
+============================================================
+WeWin 项目提交日志
+============================================================
+
+说明：本文件记录每次 git 提交的核心信息，按提交时间顺序追加。
+
+
+------------------------------------------------------------
+[2026-11-22] refactor: 拆分后端与前端巨型组件并统一 JWT 认证
+  Commit: 5c219c7
+  分支:   update/storage_2026_11_22
+  变更:   31 files changed, +9694 / -9360
+  说明:
+    - store/models.py、views.py 拆分为子包（product/store/order/data_pull/helpers 等）
+    - account/company/store 统一 @jwt_required 装饰器，消除约 37 处内联 JWT 校验
+    - 前端 Products/ProductTable/StoreTest 拆分为职责单一的组件
+    - 修复 Companies/BindCompany 引用错误、router requiresAdmin 守卫缺失
+    - 新增数据库备份脚本 backup_db.py / backup_db.bat
+    - requirements.txt 补充 Pillow 依赖
+
+------------------------------------------------------------
+[2026-11-22] feat: 整合服装利润汇算逻辑到 AliData
+  Commit: 192cd92
+  分支:   update/storage_2026_11_22
+  变更:   6 files changed, +1287 / -651
+  说明:
+    - cloth_worksheet.py 由 xlrd 改为 openpyxl，修复 .xlsx 成本表无法读取
+    - cloth_trade_manager.py 补充 get_single_order_profit / get_product_cost 与每单利润、总账 Excel 导出
+    - wxwork.py 补充利润 markdown 与 start_profit 利润汇算入口
+    - 新增 profit_counting.py 命令行入口（支持打印/推送/导出）
+    - 同步更全的成本表 price.xlsx（1285 个货号）
+
+------------------------------------------------------------
+[2026-11-22] chore: 忽略独立的 ShopManager 工程
+  Commit: 62ccb13
+  分支:   update/storage_2026_11_22
+  变更:   1 file changed, +4 / -1
+  说明:
+    - .gitignore 新增 ShopManager/ 规则，独立第三方工程不纳入本仓库版本管理
+
+------------------------------------------------------------
+[2026-11-22] feat: 新增店铺定时自动拉单并修复收货人保存
+  Commit: 15182e6
+  分支:   update/storage_2026_11_22
+  变更:   4 files changed, +551 / -464
+  说明:
+    - 新增 store/tasks.py 的 auto_pull_orders 定时拉单任务，按 StoreDataConfig 间隔拉单
+    - store/apps.py 用 apscheduler 每分钟调度自动拉单
+    - 修复 ali1688.py 收货人字段映射（receiverInfo + nativeLogistics），列表无收货人时调详情接口补全
+    - requirements.txt 增加 APScheduler 依赖
