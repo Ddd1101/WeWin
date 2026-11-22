@@ -48,3 +48,52 @@ WeWin 项目提交日志
     - store/apps.py 用 apscheduler 每分钟调度自动拉单
     - 修复 ali1688.py 收货人字段映射（receiverInfo + nativeLogistics），列表无收货人时调详情接口补全
     - requirements.txt 增加 APScheduler 依赖
+
+------------------------------------------------------------
+[2026-11-22] docs: 合并 AGENT.md 到 AGENTS.md 并新增提交日志
+  Commit: 22330fe
+  分支:   update/storage_2026_11_22
+  变更:   2 files changed, +148 / -87
+  说明:
+    - 新增 AGENTS.md 统一导航指南（反映当前工程状态，合并旧 AGENT.md 内容）
+    - 删除旧 AGENT.md
+    - 新增 docs/log.txt 提交日志
+
+------------------------------------------------------------
+[2026-11-22] docs: 将 CODE_WIKI.md 移入 docs 目录
+  Commit: dba9e54
+  分支:   update/storage_2026_11_22
+  变更:   1 file changed, +1156
+  说明:
+    - CODE_WIKI.md 从根目录移到 docs/
+
+------------------------------------------------------------
+[2026-11-22] feat: 新增童装商品类型及数据导入
+  Commit: dececa6
+  分支:   update/storage_2026_11_22
+  变更:   9 files changed, +674 / -31
+  说明:
+    - ProductType 增加 children_clothing，新增 ChildrenClothing 详情表（面料/尺码/颜色/季节/性别/年龄段）
+    - 商品视图支持童装 CRUD 及 SKU 返回
+    - 新增 import_children_clothing 管理命令，从 price.xlsx 导入童装商品
+    - requirements 增加 openpyxl
+
+------------------------------------------------------------
+[2026-11-22] feat: 商品管理前端支持童装类型及 SKU 展开
+  Commit: cbee4d6
+  分支:   update/storage_2026_11_22
+  变更:   3 files changed, +77 / -4
+  说明:
+    - 商品管理页新增童装 Tab
+    - 商品表单新增童装字段（面料/尺码/颜色/季节/性别/年龄段）
+    - 商品列表展开详情支持童装 SKU 列表
+
+------------------------------------------------------------
+[2026-11-22] feat: 新增童装成本表（Handsontable 类 Excel 组件）
+  Commit: b896736
+  分支:   update/storage_2026_11_22
+  变更:   5 files changed, +3358 / -3159
+  说明:
+    - 引入 Handsontable，新建童装成本表页面（行=货号，列=尺码）
+    - 后端新增成本矩阵获取与批量保存 API
+    - 支持筛选/搜索/排序/冻结列/右键菜单/拖拽等能力
