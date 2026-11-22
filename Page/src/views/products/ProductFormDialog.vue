@@ -129,6 +129,41 @@
           </el-form-item>
         </el-col>
       </el-row>
+
+      <!-- 童装特有字段 -->
+      <el-row v-if="form.product_type === 'children_clothing'" :gutter="20">
+        <el-col :xs="24" :sm="12">
+          <el-form-item label="面料">
+            <el-input v-model="form.fabric" placeholder="请输入面料" clearable />
+          </el-form-item>
+          <el-form-item label="尺码">
+            <el-input v-model="form.size" placeholder="如 90/100/110 或 S/M/L" clearable />
+          </el-form-item>
+          <el-form-item label="颜色">
+            <el-input v-model="form.color" placeholder="请输入颜色" clearable />
+          </el-form-item>
+        </el-col>
+        <el-col :xs="24" :sm="12">
+          <el-form-item label="季节">
+            <el-select v-model="form.season" placeholder="选择季节" clearable style="width: 100%">
+              <el-option label="春" value="spring" />
+              <el-option label="夏" value="summer" />
+              <el-option label="秋" value="autumn" />
+              <el-option label="冬" value="winter" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="性别">
+            <el-select v-model="form.gender" placeholder="选择性别" clearable style="width: 100%">
+              <el-option label="男童" value="boy" />
+              <el-option label="女童" value="girl" />
+              <el-option label="中性" value="unisex" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="年龄段">
+            <el-input v-model="form.age_range" placeholder="如 中童(4-6岁)" clearable />
+          </el-form-item>
+        </el-col>
+      </el-row>
       
       <el-form-item label="商品图片">
         <div class="image-upload-container">
@@ -415,6 +450,10 @@ const form = reactive({
   accessories: [],
   labor_cost: 0,
   elastic_cost: 0,
+  fabric: '',
+  age_range: '',
+  season: '',
+  gender: '',
   image: null,
   imagePreview: '',
   image_url: '',
@@ -489,6 +528,10 @@ const resetFormFields = () => {
     accessories: [],
     labor_cost: 0,
     elastic_cost: 0,
+    fabric: '',
+    age_range: '',
+    season: '',
+    gender: '',
     image: null,
     imagePreview: '',
     image_url: '',
@@ -512,8 +555,8 @@ const initForm = () => {
       location: product.location,
       supplier: product.supplier,
       material: product.bead?.material || product.accessory?.material || '',
-      size: product.bead?.size || product.accessory?.size || '',
-      color: product.bead?.color || product.accessory?.color || '',
+      size: product.bead?.size || product.accessory?.size || product.children_clothing?.size || '',
+      color: product.bead?.color || product.accessory?.color || product.children_clothing?.color || '',
       weight: product.bead?.weight || 0,
       quality_level: product.bead?.quality_level || 5,
       remark: product.bead?.remark || '',
@@ -546,6 +589,10 @@ const initForm = () => {
       })),
       labor_cost: product.finished?.labor_cost || 0,
       elastic_cost: product.finished?.elastic_cost || 0,
+      fabric: product.children_clothing?.fabric || '',
+      season: product.children_clothing?.season || '',
+      gender: product.children_clothing?.gender || '',
+      age_range: product.children_clothing?.age_range || '',
       image: null,
       imagePreview: '',
       image_url: product.image_url || '',
@@ -725,6 +772,13 @@ const handleSubmit = async () => {
           data.accessories = form.accessories
           data.labor_cost = form.labor_cost
           data.elastic_cost = form.elastic_cost
+        } else if (form.product_type === 'children_clothing') {
+          data.fabric = form.fabric
+          data.size = form.size
+          data.color = form.color
+          data.season = form.season
+          data.gender = form.gender
+          data.age_range = form.age_range
         }
 
         if (form.image) {

@@ -83,6 +83,25 @@
             @sort-change="handleSortChange"
           />
         </el-tab-pane>
+
+        <el-tab-pane label="童装" name="children_clothing">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><ShoppingBag /></el-icon>
+              童装
+            </span>
+          </template>
+          <ProductTable
+            :products="products"
+            :loading="loading"
+            :selected-ids="selectedIds"
+            @select="handleSelect"
+            @select-all="handleSelectAll"
+            @edit="handleEditProduct"
+            @delete="handleDeleteProduct"
+            @sort-change="handleSortChange"
+          />
+        </el-tab-pane>
       </el-tabs>
       
       <div class="pagination-container">
@@ -112,7 +131,7 @@
 <script setup>
 import { ref, reactive, onMounted, defineAsyncComponent, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Grid, CircleCheck, Box, Download } from '@element-plus/icons-vue'
+import { Plus, Grid, CircleCheck, Box, ShoppingBag, Download } from '@element-plus/icons-vue'
 import { getProducts, deleteProduct, getProductDetail } from '@/api'
 import { exportFinishedProducts } from '@/utils/exportProducts'
 import ProductFormDialog from './ProductFormDialog.vue'

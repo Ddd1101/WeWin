@@ -103,7 +103,7 @@
               <span>弹性成本: ¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
             </div>
           </div>
-          <div v-else-if="['bead', 'accessory'].includes(scope.row.product_type)" class="sku-details">
+          <div v-else-if="['bead', 'accessory', 'children_clothing'].includes(scope.row.product_type)" class="sku-details">
             <h4>SKU列表</h4>
             <el-table v-if="scope.row.skus && scope.row.skus.length > 0" :data="scope.row.skus" size="small" style="width: 100%">
               <el-table-column prop="sku_code" label="SKU编码" min-width="120" />
