@@ -134,4 +134,13 @@ export const getProductSkus = (id) => {
   return storeApi.get(`/products/${id}/skus/`);
 };
 
+// 童装成本矩阵
+export const getChildrenClothingCosts = () => {
+  return storeApi.get("/products/children-clothing/costs/");
+};
+
+export const saveChildrenClothingCosts = (rows) => {
+  return storeApi.post("/products/children-clothing/costs/save/", { rows });
+};
+
 export default storeApi;

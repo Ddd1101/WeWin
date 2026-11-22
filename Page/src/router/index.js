@@ -75,6 +75,12 @@ const routes = [
         meta: { title: "商品管理", icon: "Goods" },
       },
       {
+        path: "children-clothing-costs",
+        name: "ChildrenClothingCosts",
+        component: () => import("../views/ChildrenClothingCosts.vue"),
+        meta: { title: "童装成本表", icon: "ShoppingBag" },
+      },
+      {
         path: "inventory",
         name: "Inventory",
         component: () => import("../views/Inventory.vue"),
