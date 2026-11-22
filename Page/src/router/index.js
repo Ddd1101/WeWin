@@ -63,7 +63,7 @@ const routes = [
           {
             path: "test",
             name: "StoreTest",
-            component: () => import("../views/StoreTest.vue"),
+            component: () => import("../views/stores/StoreTest.vue"),
             meta: { title: "订单总览", icon: "Document" },
           },
         ],
@@ -71,7 +71,7 @@ const routes = [
       {
         path: "products",
         name: "Products",
-        component: () => import("../views/Products.vue"),
+        component: () => import("../views/products/Products.vue"),
         meta: { title: "商品管理", icon: "Goods" },
       },
       {
@@ -129,6 +129,23 @@ router.beforeEach((to, from, next) => {
   } else if ((to.path === "/login" || to.path === "/register") && token) {
     next("/");
   } else {
+    // 校验 requiresAdmin 路由权限
+    const requiresAdmin = to.matched.some(
+      (record) => record.meta && record.meta.requiresAdmin
+    );
+    if (requiresAdmin) {
+      try {
+        const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
+        const userType = userInfo.user_type;
+        if (userType !== "super_admin" && userType !== "site_admin") {
+          next("/dashboard");
+          return;
+        }
+      } catch (e) {
+        next("/dashboard");
+        return;
+      }
+    }
     next();
   }
 });
