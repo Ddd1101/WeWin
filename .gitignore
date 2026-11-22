@@ -94,3 +94,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 独立的第三方工程（自带 git 仓库，不纳入本仓库版本管理）
+ShopManager/
