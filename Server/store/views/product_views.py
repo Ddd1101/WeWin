@@ -1172,7 +1172,14 @@ def sync_children_clothing_skus(product, costs):
             first.save(update_fields=['is_default'])
 
     # 商品级成本 = 最小尺码成本
-    valid_costs = [float(c) for c in costs.values() if c not in (None, '')]
+    valid_costs = []
+    for c in costs.values():
+        if c in (None, ''):
+            continue
+        try:
+            valid_costs.append(float(c))
+        except (ValueError, TypeError):
+            continue
     if valid_costs:
         product.cost_price = min(valid_costs)
         product.save(update_fields=['cost_price'])
