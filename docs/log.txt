@@ -2,21 +2,141 @@
 WeWin 项目提交日志
 ============================================================
 
-说明：本文件记录每次 git 提交的核心信息，按提交时间顺序追加。
+说明：本文件记录每次 git 提交的核心信息，按提交时间倒序排列（最新在最上面）。
 
 
 ------------------------------------------------------------
-[2026-11-22] refactor: 拆分后端与前端巨型组件并统一 JWT 认证
-  Commit: 5c219c7
+[2026-11-24] docs: 手串成品成本监控方案复盘与规划及提交日志
+  Commit: 818d58d
   分支:   update/storage_2026_11_22
-  变更:   31 files changed, +9694 / -9360
+  变更:   2 files changed, +165
   说明:
-    - store/models.py、views.py 拆分为子包（product/store/order/data_pull/helpers 等）
-    - account/company/store 统一 @jwt_required 装饰器，消除约 37 处内联 JWT 校验
-    - 前端 Products/ProductTable/StoreTest 拆分为职责单一的组件
-    - 修复 Companies/BindCompany 引用错误、router requiresAdmin 守卫缺失
-    - 新增数据库备份脚本 backup_db.py / backup_db.bat
-    - requirements.txt 补充 Pillow 依赖
+    - 新增手串成品成本监控方案复盘与规划文档
+    - 更新 docs/log.txt 提交日志
+
+------------------------------------------------------------
+[2026-11-24] feat: 前端新增成品成本监控展示与成本历史弹窗
+  Commit: 989fd5c
+  分支:   update/storage_2026_11_22
+  变更:   3 files changed, +292
+  说明:
+    - ProductTable 成品展开区显示历史最高/当前/历史最低成本及「成本历史」入口
+    - 新增 FinishedCostHistoryDialog 成本历史弹窗组件
+    - store.js 新增 getFinishedCostHistory 接口方法
+
+------------------------------------------------------------
+[2026-11-24] feat: 实现成品成本监控（重算触发、快照记录、历史查询接口）
+  Commit: 9037680
+  分支:   update/storage_2026_11_22
+  变更:   4 files changed, +190 / -25
+  说明:
+    - helpers 新增成本重算/快照记录/成本汇总函数（只记变化）
+    - update_product 串珠/配件/成品成本变动触发重算，并增加事务包裹
+    - 新增 get_finished_cost_history 历史查询接口与路由
+    - delete_product 删除被成品引用的物料时阻止并提示
+    - 新增 init_finished_cost_history 初始化管理命令
+
+------------------------------------------------------------
+[2026-11-24] feat: 新增成品成本历史模型及触发人/BOM快照字段
+  Commit: d6cb102
+  分支:   update/storage_2026_11_22
+  变更:   3 files changed, +154
+  说明:
+    - 新增 FinishedProductCostHistory 成本快照模型
+    - 含触发人 created_by 与 BOM 明细快照 bom_snapshot 字段
+    - 迁移 0016 / 0017
+
+------------------------------------------------------------
+[2026-11-24] fix: 修复童装成本保存时非法成本值导致整批回滚
+  Commit: 7799827
+  分支:   update/storage_2026_11_22
+  变更:   1 file changed, +10 / -3
+  说明:
+    - sync_children_clothing_skus 末尾成本值解析增加 try/except 容错，跳过非法成本值
+
+------------------------------------------------------------
+[2026-11-23] chore: 推送本地数据库快照 db.sqlite3
+  Commit: 87c3ee3
+  分支:   update/storage_2026_11_22
+  变更:   1 file changed
+  说明:
+    - 按项目需要将本地 db.sqlite3 数据库快照推送到远端
+
+------------------------------------------------------------
+[2026-11-23] docs: 更新提交日志
+  Commit: 34a60b1
+  分支:   update/storage_2026_11_22
+  变更:   1 file changed, +49
+  说明:
+    - docs/log.txt 补充童装相关提交记录
+
+------------------------------------------------------------
+[2026-11-22] feat: 新增童装成本表（Handsontable 类 Excel 组件）
+  Commit: b896736
+  分支:   update/storage_2026_11_22
+  变更:   5 files changed, +3358 / -3159
+  说明:
+    - 引入 Handsontable，新建童装成本表页面（行=货号，列=尺码）
+    - 后端新增成本矩阵获取与批量保存 API
+    - 支持筛选/搜索/排序/冻结列/右键菜单/拖拽等能力
+
+------------------------------------------------------------
+[2026-11-22] feat: 商品管理前端支持童装类型及 SKU 展开
+  Commit: cbee4d6
+  分支:   update/storage_2026_11_22
+  变更:   3 files changed, +77 / -4
+  说明:
+    - 商品管理页新增童装 Tab
+    - 商品表单新增童装字段（面料/尺码/颜色/季节/性别/年龄段）
+    - 商品列表展开详情支持童装 SKU 列表
+
+------------------------------------------------------------
+[2026-11-22] feat: 新增童装商品类型及数据导入
+  Commit: dececa6
+  分支:   update/storage_2026_11_22
+  变更:   9 files changed, +674 / -31
+  说明:
+    - ProductType 增加 children_clothing，新增 ChildrenClothing 详情表（面料/尺码/颜色/季节/性别/年龄段）
+    - 商品视图支持童装 CRUD 及 SKU 返回
+    - 新增 import_children_clothing 管理命令，从 price.xlsx 导入童装商品
+    - requirements 增加 openpyxl
+
+------------------------------------------------------------
+[2026-11-22] docs: 将 CODE_WIKI.md 移入 docs 目录
+  Commit: dba9e54
+  分支:   update/storage_2026_11_22
+  变更:   1 file changed, +1156
+  说明:
+    - CODE_WIKI.md 从根目录移到 docs/
+
+------------------------------------------------------------
+[2026-11-22] docs: 合并 AGENT.md 到 AGENTS.md 并新增提交日志
+  Commit: 22330fe
+  分支:   update/storage_2026_11_22
+  变更:   2 files changed, +148 / -87
+  说明:
+    - 新增 AGENTS.md 统一导航指南（反映当前工程状态，合并旧 AGENT.md 内容）
+    - 删除旧 AGENT.md
+    - 新增 docs/log.txt 提交日志
+
+------------------------------------------------------------
+[2026-11-22] feat: 新增店铺定时自动拉单并修复收货人保存
+  Commit: 15182e6
+  分支:   update/storage_2026_11_22
+  变更:   4 files changed, +551 / -464
+  说明:
+    - 新增 store/tasks.py 的 auto_pull_orders 定时拉单任务，按 StoreDataConfig 间隔拉单
+    - store/apps.py 用 apscheduler 每分钟调度自动拉单
+    - 修复 ali1688.py 收货人字段映射（receiverInfo + nativeLogistics），列表无收货人时调详情接口补全
+    - requirements.txt 增加 APScheduler 依赖
+
+------------------------------------------------------------
+[2026-11-22] chore: 忽略独立的 ShopManager 工程
+  Commit: 62ccb13
+  分支:   update/storage_2026_11_22
+  变更:   1 file changed, +4 / -1
+  说明:
+    - .gitignore 新增 ShopManager/ 规则，独立第三方工程不纳入本仓库版本管理
 
 ------------------------------------------------------------
 [2026-11-22] feat: 整合服装利润汇算逻辑到 AliData
@@ -31,80 +151,14 @@ WeWin 项目提交日志
     - 同步更全的成本表 price.xlsx（1285 个货号）
 
 ------------------------------------------------------------
-[2026-11-22] chore: 忽略独立的 ShopManager 工程
-  Commit: 62ccb13
+[2026-11-22] refactor: 拆分后端与前端巨型组件并统一 JWT 认证
+  Commit: 5c219c7
   分支:   update/storage_2026_11_22
-  变更:   1 file changed, +4 / -1
+  变更:   31 files changed, +9694 / -9360
   说明:
-    - .gitignore 新增 ShopManager/ 规则，独立第三方工程不纳入本仓库版本管理
-
-------------------------------------------------------------
-[2026-11-22] feat: 新增店铺定时自动拉单并修复收货人保存
-  Commit: 15182e6
-  分支:   update/storage_2026_11_22
-  变更:   4 files changed, +551 / -464
-  说明:
-    - 新增 store/tasks.py 的 auto_pull_orders 定时拉单任务，按 StoreDataConfig 间隔拉单
-    - store/apps.py 用 apscheduler 每分钟调度自动拉单
-    - 修复 ali1688.py 收货人字段映射（receiverInfo + nativeLogistics），列表无收货人时调详情接口补全
-    - requirements.txt 增加 APScheduler 依赖
-
-------------------------------------------------------------
-[2026-11-22] docs: 合并 AGENT.md 到 AGENTS.md 并新增提交日志
-  Commit: 22330fe
-  分支:   update/storage_2026_11_22
-  变更:   2 files changed, +148 / -87
-  说明:
-    - 新增 AGENTS.md 统一导航指南（反映当前工程状态，合并旧 AGENT.md 内容）
-    - 删除旧 AGENT.md
-    - 新增 docs/log.txt 提交日志
-
-------------------------------------------------------------
-[2026-11-22] docs: 将 CODE_WIKI.md 移入 docs 目录
-  Commit: dba9e54
-  分支:   update/storage_2026_11_22
-  变更:   1 file changed, +1156
-  说明:
-    - CODE_WIKI.md 从根目录移到 docs/
-
-------------------------------------------------------------
-[2026-11-22] feat: 新增童装商品类型及数据导入
-  Commit: dececa6
-  分支:   update/storage_2026_11_22
-  变更:   9 files changed, +674 / -31
-  说明:
-    - ProductType 增加 children_clothing，新增 ChildrenClothing 详情表（面料/尺码/颜色/季节/性别/年龄段）
-    - 商品视图支持童装 CRUD 及 SKU 返回
-    - 新增 import_children_clothing 管理命令，从 price.xlsx 导入童装商品
-    - requirements 增加 openpyxl
-
-------------------------------------------------------------
-[2026-11-22] feat: 商品管理前端支持童装类型及 SKU 展开
-  Commit: cbee4d6
-  分支:   update/storage_2026_11_22
-  变更:   3 files changed, +77 / -4
-  说明:
-    - 商品管理页新增童装 Tab
-    - 商品表单新增童装字段（面料/尺码/颜色/季节/性别/年龄段）
-    - 商品列表展开详情支持童装 SKU 列表
-
-------------------------------------------------------------
-[2026-11-22] feat: 新增童装成本表（Handsontable 类 Excel 组件）
-  Commit: b896736
-  分支:   update/storage_2026_11_22
-  变更:   5 files changed, +3358 / -3159
-  说明:
-    - 引入 Handsontable，新建童装成本表页面（行=货号，列=尺码）
-    - 后端新增成本矩阵获取与批量保存 API
-    - 支持筛选/搜索/排序/冻结列/右键菜单/拖拽等能力
-
-------------------------------------------------------------
-[2026-11-24] feat: 实现手串成品成本监控（成本重算、快照记录、历史查询）
-  Commit: d6cb102 / 9037680 / 989fd5c
-  分支:   update/storage_2026_11_22
-  变更:   10 files changed
-  说明:
-    - 新增 FinishedProductCostHistory 成本快照模型（含触发人、BOM 明细快照）
-    - 串珠/配件成本变动时自动重算关联成品成本并记录快照（只记变化）
-    - 成品展示历史最高/当前/历史最低成本，新增成本历史查询接口与前端弹窗
-    - update_product 增加事务包裹；删除被成品引用的物料时阻止并提示
+    - store/models.py、views.py 拆分为子包（product/store/order/data_pull/helpers 等）
+    - account/company/store 统一 @jwt_required 装饰器，消除约 37 处内联 JWT 校验
+    - 前端 Products/ProductTable/StoreTest 拆分为职责单一的组件
+    - 修复 Companies/BindCompany 引用错误、router requiresAdmin 守卫缺失
+    - 新增数据库备份脚本 backup_db.py / backup_db.bat
+    - requirements.txt 补充 Pillow 依赖

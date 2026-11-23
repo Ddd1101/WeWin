@@ -183,7 +183,7 @@ Company（企业）
 7. **时区**：`TIME_ZONE = "Asia/Shanghai"`，`USE_TZ = True`，时间字段统一 UTC 存储、前端按需转换。
 8. **文件上传**：商品图片上传至 `products/%Y/%m/%d/`，`MEDIA_ROOT = Server/media`，单文件上限 100MB。
 9. **规划文档**：`.trae/specs/` 下为各模块 PRD，`.trae/documents/` 下为分析与计划文档，开发新功能前应先查阅对应 spec。
-10. **提交日志**：每次提交后在 `docs/log.txt` 末尾追加一条核心信息记录（日期/类型/hash/说明）。
+10. **提交日志**：每次 `git commit` 后必须在 `docs/log.txt` 追加一条记录，按提交时间**倒序**排列（最新在最上面），格式与步骤见「常见任务指引 → 提交代码与更新日志」。
 
 ---
 
@@ -269,3 +269,31 @@ python profit_counting.py [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--shops 店�
 - 参考实现：`AliData/manager/cloth_trade_manager.py`
 - 签名算法：HMAC-SHA1，详见 `_calculate_signature` / `CalculateSignature` 方法
 - 凭证配置：通过店铺的 `PlatformApiConfig` 管理，前端在店铺详情页配置
+
+### 提交代码与更新日志
+每次 `git commit` 后，必须同步在 `docs/log.txt` 追加一条记录，规则如下：
+
+1. **倒序排列**：最新提交写在文件最上面（紧跟标题说明之后的第一条），不要追加到末尾。
+2. **每个 commit 一条**：不合并多条提交；分批提交时每批 commit 各写一条记录。
+3. **格式**（每条记录之间用 `---` 分隔）：
+
+   ```
+   ------------------------------------------------------------
+   [YYYY-MM-DD] type: 提交说明
+     Commit: <hash 前 7 位>
+     分支:   <分支名>
+     变更:   <N files changed, +X / -Y>
+     说明:
+       - <要点1>
+       - <要点2>
+   ```
+
+4. **操作步骤**：
+   - `git commit` 后用 `git log --oneline -1` 取 hash
+   - 用 `git show --stat <hash>` 取变更统计（files changed、插入/删除行数）
+   - 将记录写入 `docs/log.txt` 最上面
+   - 将 `docs/log.txt` 一并提交（通常 `git commit -m "docs: 更新提交日志"`）
+
+5. `type` 遵循 conventional commit：`feat` / `fix` / `refactor` / `docs` / `chore` 等。
+
+6. **不要提交**：`db.sqlite3`、`Page/dist/` 等敏感数据或构建产物。
