@@ -268,3 +268,37 @@ class FinishedProductAccessory(models.Model):
 
     def __str__(self):
         return f'{self.finished_product.product.name} - {self.accessory.product.name} x {self.quantity}'
+
+
+class FinishedProductCostHistory(models.Model):
+    finished_product = models.ForeignKey(
+        FinishedProduct,
+        on_delete=models.CASCADE,
+        related_name='cost_history',
+        verbose_name='关联成品'
+    )
+    cost_price = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='总成本')
+    bead_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='串珠成本小计')
+    accessory_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='配件成本小计')
+    labor_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='工费')
+    elastic_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='弹性成本')
+    trigger_reason = models.CharField(max_length=200, blank=True, null=True, verbose_name='触发原因')
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='finished_cost_histories',
+        verbose_name='触发人'
+    )
+    bom_snapshot = models.JSONField(default=dict, blank=True, verbose_name='BOM快照')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='记录时间')
+
+    class Meta:
+        db_table = 'finished_product_cost_history'
+        verbose_name = '成品成本历史'
+        verbose_name_plural = '成品成本历史'
+        ordering = ['finished_product_id', 'created_at']
+
+    def __str__(self):
+        return f'{self.finished_product.product.name} - {self.cost_price}'
