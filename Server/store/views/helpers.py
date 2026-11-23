@@ -2,32 +2,102 @@ from decimal import Decimal
 from store.models import ProductSku, ProductType
 
 
-def calculate_finished_product_cost(finished):
-    """
-    计算成品的总成本
-    公式：串珠成本 + 配件成本 + 工费 + 弹性成本
-    """
-    total_cost = Decimal('0')
-    
-    # 计算串珠成本（优先使用SKU成本）
+def _finished_cost_breakdown(finished):
+    """返回 (串珠成本小计, 配件成本小计)，优先使用 SKU 成本"""
+    bead_cost = Decimal('0')
+    accessory_cost = Decimal('0')
     for fpb in finished.beads.all():
         if fpb.sku_id and fpb.sku:
-            total_cost += fpb.sku.cost_price * fpb.quantity
+            bead_cost += fpb.sku.cost_price * fpb.quantity
         else:
-            total_cost += fpb.bead.product.cost_price * fpb.quantity
-    
-    # 计算配件成本（优先使用SKU成本）
+            bead_cost += fpb.bead.product.cost_price * fpb.quantity
     for fpa in finished.accessories.all():
         if fpa.sku_id and fpa.sku:
-            total_cost += fpa.sku.cost_price * fpa.quantity
+            accessory_cost += fpa.sku.cost_price * fpa.quantity
         else:
-            total_cost += fpa.accessory.product.cost_price * fpa.quantity
-    
-    # 加上工费和弹性成本
-    total_cost += finished.labor_cost
-    total_cost += finished.elastic_cost
-    
-    return total_cost
+            accessory_cost += fpa.accessory.product.cost_price * fpa.quantity
+    return bead_cost, accessory_cost
+
+
+def _finished_bom_snapshot(finished):
+    """构建成品 BOM 快照（串珠/配件明细），用于成本历史可追溯"""
+    beads = []
+    for fpb in finished.beads.select_related('bead__product', 'sku'):
+        unit_cost = fpb.sku.cost_price if (fpb.sku_id and fpb.sku) else fpb.bead.product.cost_price
+        beads.append({
+            'code': fpb.bead.product.code,
+            'sku_code': fpb.sku.sku_code if fpb.sku else None,
+            'quantity': fpb.quantity,
+            'unit_cost': float(unit_cost),
+            'subtotal': float(unit_cost * fpb.quantity),
+        })
+    accessories = []
+    for fpa in finished.accessories.select_related('accessory__product', 'sku'):
+        unit_cost = fpa.sku.cost_price if (fpa.sku_id and fpa.sku) else fpa.accessory.product.cost_price
+        accessories.append({
+            'code': fpa.accessory.product.code,
+            'sku_code': fpa.sku.sku_code if fpa.sku else None,
+            'quantity': fpa.quantity,
+            'unit_cost': float(unit_cost),
+            'subtotal': float(unit_cost * fpa.quantity),
+        })
+    return {'beads': beads, 'accessories': accessories}
+
+
+def record_finished_cost_history(finished, trigger_reason='', created_by=None):
+    """记录成品成本快照（仅当成本或组成发生变化时），返回总成本"""
+    from store.models import FinishedProductCostHistory
+    bead_cost, accessory_cost = _finished_cost_breakdown(finished)
+    total = bead_cost + accessory_cost + finished.labor_cost + finished.elastic_cost
+    last = finished.cost_history.order_by('-created_at').first()
+    if last and last.cost_price == total and last.bead_cost == bead_cost and last.accessory_cost == accessory_cost and last.labor_cost == finished.labor_cost and last.elastic_cost == finished.elastic_cost:
+        return total
+    FinishedProductCostHistory.objects.create(
+        finished_product=finished,
+        cost_price=total,
+        bead_cost=bead_cost,
+        accessory_cost=accessory_cost,
+        labor_cost=finished.labor_cost,
+        elastic_cost=finished.elastic_cost,
+        trigger_reason=trigger_reason,
+        created_by=created_by,
+        bom_snapshot=_finished_bom_snapshot(finished),
+    )
+    return total
+
+
+def recalculate_related_finished_products(material_product, trigger_reason='', created_by=None):
+    """物料（串珠/配件）成本变动后，重算所有使用该物料的手串成品成本并记录快照"""
+    from store.models import Bead, Accessory, FinishedProduct
+    finished_ids = set()
+    if material_product.product_type == ProductType.BEAD:
+        bead = Bead.objects.filter(product=material_product).first()
+        if bead:
+            finished_ids = set(bead.finished_products.values_list('finished_product_id', flat=True))
+    elif material_product.product_type == ProductType.ACCESSORY:
+        accessory = Accessory.objects.filter(product=material_product).first()
+        if accessory:
+            finished_ids = set(accessory.finished_products.values_list('finished_product_id', flat=True))
+
+    for fid in finished_ids:
+        finished = FinishedProduct.objects.filter(product_id=fid).first()
+        if not finished:
+            continue
+        total = record_finished_cost_history(finished, trigger_reason, created_by)
+        finished.product.cost_price = total
+        finished.product.save(update_fields=['cost_price'])
+
+
+def finished_cost_summary(finished):
+    """返回成品的历史最高/当前/最低成本"""
+    costs = list(finished.cost_history.order_by('created_at').values_list('cost_price', flat=True))
+    if not costs:
+        return {'highest_cost': None, 'current_cost': None, 'lowest_cost': None}
+    return {
+        'highest_cost': float(max(costs)),
+        'current_cost': float(costs[-1]),
+        'lowest_cost': float(min(costs)),
+    }
 
 
 def sku_to_dict(sku):

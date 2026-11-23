@@ -10,7 +10,7 @@ from decimal import Decimal
 from account.models import User, UserType
 from company.models import Company
 from store.models import Product, ProductType, ProductSku, Bead, Accessory, FinishedProduct, FinishedProductBead, FinishedProductAccessory, ChildrenClothing
-from .helpers import calculate_finished_product_cost, sku_to_dict, get_default_sku, ensure_default_sku, sync_skus, sku_schema_ready, product_skus_payload
+from .helpers import sku_to_dict, get_default_sku, ensure_default_sku, sync_skus, sku_schema_ready, product_skus_payload, record_finished_cost_history, recalculate_related_finished_products, finished_cost_summary
 from utils.decorators import jwt_required
 
 
@@ -194,6 +194,8 @@ def get_products(request):
                     total_cost += finished.labor_cost
                     total_cost += finished.elastic_cost
                     product_data['cost_price'] = float(total_cost)
+                    # 成品成本监控：历史最高/当前/最低成本
+                    product_data['finished']['cost_summary'] = finished_cost_summary(finished)
                 except FinishedProduct.DoesNotExist:
                     pass
             elif product.product_type == ProductType.CHILDREN_CLOTHING:
@@ -434,8 +436,8 @@ def create_product(request):
                     except (Product.DoesNotExist, Accessory.DoesNotExist):
                         pass
                 
-                # 重新计算并保存成品的成本价格
-                product.cost_price = calculate_finished_product_cost(finished)
+                # 重新计算并保存成品的成本价格（同时记录初始成本快照）
+                product.cost_price = record_finished_cost_history(finished, '成品创建', request.user)
                 product.save()
             elif product_type == ProductType.CHILDREN_CLOTHING:
                 ChildrenClothing.objects.create(
@@ -482,6 +484,7 @@ def create_product(request):
 @csrf_exempt
 @require_http_methods(['PUT', 'POST'])
 @jwt_required
+@transaction.atomic
 def update_product(request, product_id):
     try:
         product = Product.objects.get(id=product_id)
@@ -635,6 +638,9 @@ def update_product(request, product_id):
                 weight = bead.weight
                 product.cost_price = product.purchase_cost * weight
                 product.save()
+
+                # 串珠成本变动后，重算所有使用该串珠的手串成品成本并记录快照
+                recalculate_related_finished_products(product, f'串珠「{product.code}」成本变更', request.user)
             except Bead.DoesNotExist:
                 pass
         elif product.product_type == ProductType.ACCESSORY:
@@ -654,6 +660,9 @@ def update_product(request, product_id):
                         'size': accessory.size, 'color': accessory.color, 'purchase_cost': product.purchase_cost,
                         'cost_price': product.cost_price, 'is_default': True
                     }], to_decimal, to_integer, accessory)
+
+                # 配件成本变动后，重算所有使用该配件的手串成品成本并记录快照
+                recalculate_related_finished_products(product, f'配件「{product.code}」成本变更', request.user)
             except Accessory.DoesNotExist:
                 pass
         elif product.product_type == ProductType.FINISHED:
@@ -728,8 +737,8 @@ def update_product(request, product_id):
                         except (Product.DoesNotExist, Accessory.DoesNotExist):
                             pass
                 
-                # 重新计算并保存成品的成本价格
-                product.cost_price = calculate_finished_product_cost(finished)
+                # 重新计算并保存成品的成本价格（同时记录成本快照）
+                product.cost_price = record_finished_cost_history(finished, '成品成本核算', request.user)
                 product.save()
             except FinishedProduct.DoesNotExist:
                 pass
@@ -802,6 +811,18 @@ def delete_product(request, product_id):
 
         if not has_permission:
             return JsonResponse({'error': '无权限删除商品'}, status=403)
+
+        # 删除前校验：串珠/配件若被手串成品引用，阻止删除，避免成品 BOM 与成本不一致
+        if product.product_type in [ProductType.BEAD, ProductType.ACCESSORY]:
+            ref_count = 0
+            if product.product_type == ProductType.BEAD:
+                bead = Bead.objects.filter(product=product).first()
+                ref_count = bead.finished_products.count() if bead else 0
+            else:
+                accessory = Accessory.objects.filter(product=product).first()
+                ref_count = accessory.finished_products.count() if accessory else 0
+            if ref_count > 0:
+                return JsonResponse({'error': f'该物料正被 {ref_count} 个手串成品使用，请先在对应成品中移除该物料后再删除'}, status=400)
 
         product.delete()
         return JsonResponse({'message': '商品删除成功'})
@@ -932,6 +953,8 @@ def get_product_detail(request, product_id):
                 total_cost += finished.labor_cost
                 total_cost += finished.elastic_cost
                 product_data['cost_price'] = float(total_cost)
+                # 成品成本监控：历史最高/当前/最低成本
+                product_data['finished']['cost_summary'] = finished_cost_summary(finished)
             except FinishedProduct.DoesNotExist:
                 pass
         elif product.product_type == ProductType.CHILDREN_CLOTHING:
@@ -952,6 +975,50 @@ def get_product_detail(request, product_id):
         return JsonResponse(product_data)
     except User.DoesNotExist:
         return JsonResponse({'error': '用户不存在'}, status=404)
+    except Product.DoesNotExist:
+        return JsonResponse({'error': '商品不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['GET'])
+@jwt_required
+def get_finished_cost_history(request, product_id):
+    try:
+        product = Product.objects.get(id=product_id)
+
+        has_permission = False
+        if request.user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+            has_permission = True
+        elif request.user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]:
+            if request.user.company and request.user.company == product.company:
+                has_permission = True
+
+        if not has_permission:
+            return JsonResponse({'error': '无权限查看成本历史'}, status=403)
+
+        if product.product_type != ProductType.FINISHED:
+            return JsonResponse({'error': '该商品不是手串成品'}, status=400)
+
+        finished = FinishedProduct.objects.filter(product=product).first()
+        if not finished:
+            return JsonResponse({'error': '成品不存在'}, status=404)
+
+        history = []
+        for h in finished.cost_history.order_by('created_at', 'id'):
+            history.append({
+                'id': h.id,
+                'cost_price': float(h.cost_price),
+                'bead_cost': float(h.bead_cost),
+                'accessory_cost': float(h.accessory_cost),
+                'labor_cost': float(h.labor_cost),
+                'elastic_cost': float(h.elastic_cost),
+                'trigger_reason': h.trigger_reason,
+                'created_by_name': h.created_by.username if h.created_by else None,
+                'created_at': h.created_at.isoformat(),
+                'bom_snapshot': h.bom_snapshot or {},
+            })
+        return JsonResponse({'cost_history': history})
     except Product.DoesNotExist:
         return JsonResponse({'error': '商品不存在'}, status=404)
     except Exception as e:
