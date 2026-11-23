@@ -102,6 +102,12 @@
               <span>工费: ¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
               <span>弹性成本: ¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
             </div>
+            <div v-if="scope.row.finished.cost_summary" class="cost-monitor">
+              <span class="cost-monitor-item highest">历史最高: {{ formatCostMonitor(scope.row.finished.cost_summary.highest_cost) }}</span>
+              <span class="cost-monitor-item current">当前成本: {{ formatCostMonitor(scope.row.finished.cost_summary.current_cost) }}</span>
+              <span class="cost-monitor-item lowest">历史最低: {{ formatCostMonitor(scope.row.finished.cost_summary.lowest_cost) }}</span>
+              <el-button link type="primary" size="small" @click="openCostHistory(scope.row)">成本历史</el-button>
+            </div>
           </div>
           <div v-else-if="['bead', 'accessory', 'children_clothing'].includes(scope.row.product_type)" class="sku-details">
             <h4>SKU列表</h4>
@@ -320,6 +326,12 @@
               <span>工费: ¥{{ row.finished.labor_cost.toFixed(2) }}</span>
               <span>弹性成本: ¥{{ row.finished.elastic_cost.toFixed(2) }}</span>
             </div>
+            <div v-if="row.finished.cost_summary" class="cost-monitor">
+              <span class="cost-monitor-item highest">历史最高: {{ formatCostMonitor(row.finished.cost_summary.highest_cost) }}</span>
+              <span class="cost-monitor-item current">当前成本: {{ formatCostMonitor(row.finished.cost_summary.current_cost) }}</span>
+              <span class="cost-monitor-item lowest">历史最低: {{ formatCostMonitor(row.finished.cost_summary.lowest_cost) }}</span>
+              <el-button link type="primary" size="small" @click="openCostHistory(row)">成本历史</el-button>
+            </div>
           </div>
           <!-- 串珠/配件展开 -->
           <div v-else-if="['bead', 'accessory'].includes(row.product_type)" class="sku-details mobile-sku-details">
@@ -354,6 +366,9 @@
 
     <!-- 模拟克价对话框 -->
     <PriceSimulateDialog v-model="simulateVisible" :row="simulateRow" :is-mobile="isMobile" />
+
+    <!-- 成本历史对话框 -->
+    <FinishedCostHistoryDialog v-model="costHistoryVisible" :row="costHistoryRow" :is-mobile="isMobile" />
   </div>
 </template>
 
@@ -362,6 +377,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import ProductImageCell from './ProductImageCell.vue'
 import PriceSimulateDialog from './PriceSimulateDialog.vue'
+import FinishedCostHistoryDialog from './FinishedCostHistoryDialog.vue'
 
 const tableRef = ref(null)
 const imagePreviewRef = ref(null)
@@ -498,6 +514,11 @@ const formatPrice = (value, digits = 2) => {
   return num.toFixed(digits)
 }
 
+const formatCostMonitor = (value) => {
+  if (value === null || value === undefined) return '—'
+  return '¥' + Number(value).toFixed(2)
+}
+
 const calculateBeadsTotal = (beads) => {
   return beads.reduce((sum, bead) => sum + bead.bead_cost_price * bead.quantity, 0)
 }
@@ -556,6 +577,15 @@ const simulateRow = ref(null)
 const openSimulate = (row) => {
   simulateRow.value = row
   simulateVisible.value = true
+}
+
+// 成本历史相关（弹窗由 FinishedCostHistoryDialog 负责）
+const costHistoryVisible = ref(false)
+const costHistoryRow = ref(null)
+
+const openCostHistory = (row) => {
+  costHistoryRow.value = row
+  costHistoryVisible.value = true
 }
 </script>
 
@@ -641,6 +671,32 @@ const openSimulate = (row) => {
   font-weight: 700;
   color: #303133;
   border-top: 2px solid #ebeef5;
+}
+
+.cost-monitor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 8px 10px;
+  background: #f0f9ff;
+  border-top: 1px dashed #d0e6f5;
+}
+
+.cost-monitor-item {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cost-monitor-item.highest {
+  color: #ef4444;
+}
+
+.cost-monitor-item.current {
+  color: #303133;
+}
+
+.cost-monitor-item.lowest {
+  color: #10b981;
 }
 
 .detail-total {

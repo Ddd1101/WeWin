@@ -122,6 +122,10 @@ export const getProductDetail = (id) => {
   return storeApi.get(`/products/${id}/detail/`);
 };
 
+export const getFinishedCostHistory = (id) => {
+  return storeApi.get(`/products/${id}/cost-history/`);
+};
+
 export const getAccessories = () => {
   return storeApi.get("/products/accessories/");
 };
