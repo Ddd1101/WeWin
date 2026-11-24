@@ -221,18 +221,26 @@ def sync_skus(product, sku_items, to_decimal, to_integer, fallback_detail=None):
     product.skus.exclude(id=(default_sku or first_active).id if (default_sku or first_active) else None).update(is_default=False)
 
 
+_sku_schema_ready_cache = None
+
+
 def sku_schema_ready():
+    global _sku_schema_ready_cache
+    if _sku_schema_ready_cache is not None:
+        return _sku_schema_ready_cache
     from django.db import connection
     try:
         tables = connection.introspection.table_names()
         if 'product_sku' not in tables:
+            _sku_schema_ready_cache = False
             return False
         with connection.cursor() as cursor:
             bead_cols = {c.name for c in connection.introspection.get_table_description(cursor, 'finished_product_bead')}
             acc_cols = {c.name for c in connection.introspection.get_table_description(cursor, 'finished_product_accessory')}
-        return 'sku_id' in bead_cols and 'sku_id' in acc_cols
+        _sku_schema_ready_cache = 'sku_id' in bead_cols and 'sku_id' in acc_cols
     except Exception:
-        return False
+        _sku_schema_ready_cache = False
+    return _sku_schema_ready_cache
 
 
 def product_skus_payload(product):

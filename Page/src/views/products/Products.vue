@@ -33,17 +33,6 @@
               手串成品
             </span>
           </template>
-          <ProductTable
-            :products="products"
-            :loading="loading"
-            :selected-ids="selectedIds"
-            :hide-product-type="activeTab === 'finished'"
-            @select="handleSelect"
-            @select-all="handleSelectAll"
-            @edit="handleEditProduct"
-            @delete="handleDeleteProduct"
-            @sort-change="handleSortChange"
-          />
         </el-tab-pane>
 
         <el-tab-pane label="串珠" name="bead">
@@ -53,16 +42,6 @@
               串珠
             </span>
           </template>
-          <ProductTable
-            :products="products"
-            :loading="loading"
-            :selected-ids="selectedIds"
-            @select="handleSelect"
-            @select-all="handleSelectAll"
-            @edit="handleEditProduct"
-            @delete="handleDeleteProduct"
-            @sort-change="handleSortChange"
-          />
         </el-tab-pane>
 
         <el-tab-pane label="手串配件" name="accessory">
@@ -72,16 +51,6 @@
               手串配件
             </span>
           </template>
-          <ProductTable
-            :products="products"
-            :loading="loading"
-            :selected-ids="selectedIds"
-            @select="handleSelect"
-            @select-all="handleSelectAll"
-            @edit="handleEditProduct"
-            @delete="handleDeleteProduct"
-            @sort-change="handleSortChange"
-          />
         </el-tab-pane>
 
         <el-tab-pane label="童装" name="children_clothing">
@@ -91,19 +60,22 @@
               童装
             </span>
           </template>
-          <ProductTable
-            :products="products"
-            :loading="loading"
-            :selected-ids="selectedIds"
-            @select="handleSelect"
-            @select-all="handleSelectAll"
-            @edit="handleEditProduct"
-            @delete="handleDeleteProduct"
-            @sort-change="handleSortChange"
-          />
         </el-tab-pane>
       </el-tabs>
-      
+
+      <ProductTable
+        :key="activeTab"
+        :products="products"
+        :loading="loading"
+        :selected-ids="selectedIds"
+        :hide-product-type="activeTab === 'finished'"
+        @select="handleSelect"
+        @select-all="handleSelectAll"
+        @edit="handleEditProduct"
+        @delete="handleDeleteProduct"
+        @sort-change="handleSortChange"
+      />
+
       <div class="pagination-container">
         <el-pagination
           v-model:current-page="pagination.currentPage"

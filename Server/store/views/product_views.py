@@ -58,17 +58,22 @@ def get_product_stats(request):
 def get_products(request):
     try:
         
-        products = []
+        products = Product.objects.none()
         if request.user.user_type in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
             products = Product.objects.all()
         elif request.user.user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER]:
             if request.user.company:
                 products = Product.objects.filter(company=request.user.company)
 
+        # 列表页需要的关联数据，避免逐条查询
+        products = products.select_related('company', 'created_by').prefetch_related('skus')
+
         # 筛选条件
         product_type = request.GET.get('product_type')
         if product_type:
             products = products.filter(product_type=product_type)
+            if product_type == ProductType.CHILDREN_CLOTHING:
+                products = products.select_related('childrenclothing')
 
         is_active = request.GET.get('is_active')
         if is_active is not None:
@@ -200,7 +205,7 @@ def get_products(request):
                     pass
             elif product.product_type == ProductType.CHILDREN_CLOTHING:
                 try:
-                    cc = ChildrenClothing.objects.get(product=product)
+                    cc = product.childrenclothing
                     product_data['children_clothing'] = {
                         'fabric': cc.fabric,
                         'size': cc.size,
