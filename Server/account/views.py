@@ -772,3 +772,44 @@ def change_password(request):
         return JsonResponse({'error': '用户不存在'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+@jwt_required
+def reset_user_password(request, user_id):
+    """管理员重置他人密码：super_admin 可重置除自己外任意账号；site_admin 不可重置 super_admin"""
+    try:
+        target_user = User.objects.get(id=user_id)
+
+        if target_user.id == request.user.id:
+            return JsonResponse({'error': '不能重置自己的密码，请在个人信息中修改'}, status=400)
+
+        if request.user.user_type == UserType.SUPER_ADMIN:
+            pass
+        elif request.user.user_type == UserType.SITE_ADMIN:
+            if target_user.user_type == UserType.SUPER_ADMIN:
+                return JsonResponse({'error': '无权限重置超级管理员密码'}, status=403)
+        else:
+            return JsonResponse({'error': '无权限重置该用户密码'}, status=403)
+
+        data = json.loads(request.body)
+        new_password = data.get('new_password')
+
+        if not new_password:
+            return JsonResponse({'error': '新密码不能为空'}, status=400)
+
+        target_user.set_password(new_password)
+        target_user.save()
+
+        return JsonResponse({
+            'message': '密码重置成功',
+            'id': target_user.id,
+            'username': target_user.username,
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

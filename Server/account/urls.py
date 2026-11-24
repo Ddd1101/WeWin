@@ -17,5 +17,6 @@ urlpatterns = [
     path('users/<int:user_id>/status/', views.update_user_status, name='update-user-status'),
     path('users/<int:user_id>/delete/', views.delete_user, name='delete-user'),
     path('users/<int:user_id>/update-type/', views.update_user_type, name='update-user-type'),
+    path('users/<int:user_id>/reset-password/', views.reset_user_password, name='reset-user-password'),
     path('page-config/', views.get_page_config, name='get-page-config'),
 ]

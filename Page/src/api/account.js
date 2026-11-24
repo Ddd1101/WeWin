@@ -74,6 +74,10 @@ export const updateUserType = (userId, data) => {
   return accountApi.put(`/users/${userId}/type/`, data);
 };
 
+export const resetUserPassword = (userId, data) => {
+  return accountApi.post(`/users/${userId}/reset-password/`, data);
+};
+
 export const createUser = (data) => {
   return accountApi.post("/users/create/", data);
 };
