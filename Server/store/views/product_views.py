@@ -10,7 +10,7 @@ from decimal import Decimal
 from account.models import User, UserType
 from company.models import Company
 from store.models import Product, ProductType, ProductSku, Bead, Accessory, FinishedProduct, FinishedProductBead, FinishedProductAccessory, ChildrenClothing
-from .helpers import sku_to_dict, get_default_sku, ensure_default_sku, sync_skus, sku_schema_ready, product_skus_payload, record_finished_cost_history, recalculate_related_finished_products, finished_cost_summary
+from .helpers import sku_to_dict, get_default_sku, ensure_default_sku, sync_skus, sku_schema_ready, product_skus_payload, record_finished_cost_history, recalculate_related_finished_products, finished_cost_summary, material_cost_change_reason
 from utils.decorators import jwt_required
 
 
@@ -571,6 +571,12 @@ def update_product(request, product_id):
                 return default
             return str(value).lower() in ['true', '1', 'yes', 'on']
 
+        # 记录物料成本变动前的快照，用于生成触发文案
+        old_cost = product.cost_price
+        old_sku_costs = {}
+        if product.product_type in (ProductType.BEAD, ProductType.ACCESSORY) and sku_schema_ready():
+            old_sku_costs = {s.id: (s.sku_code, s.cost_price) for s in product.skus.all()}
+
         # 更新商品基本信息
         if 'name' in data_dict:
             product.name = data_dict['name']
@@ -640,7 +646,7 @@ def update_product(request, product_id):
                 product.save()
 
                 # 串珠成本变动后，重算所有使用该串珠的手串成品成本并记录快照
-                recalculate_related_finished_products(product, f'串珠「{product.code}」成本变更', request.user)
+                recalculate_related_finished_products(product, material_cost_change_reason('串珠', product, old_cost, old_sku_costs), request.user)
             except Bead.DoesNotExist:
                 pass
         elif product.product_type == ProductType.ACCESSORY:
@@ -662,7 +668,7 @@ def update_product(request, product_id):
                     }], to_decimal, to_integer, accessory)
 
                 # 配件成本变动后，重算所有使用该配件的手串成品成本并记录快照
-                recalculate_related_finished_products(product, f'配件「{product.code}」成本变更', request.user)
+                recalculate_related_finished_products(product, material_cost_change_reason('配件', product, old_cost, old_sku_costs), request.user)
             except Accessory.DoesNotExist:
                 pass
         elif product.product_type == ProductType.FINISHED:

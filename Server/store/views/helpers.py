@@ -52,6 +52,7 @@ def record_finished_cost_history(finished, trigger_reason='', created_by=None):
     last = finished.cost_history.order_by('-created_at').first()
     if last and last.cost_price == total and last.bead_cost == bead_cost and last.accessory_cost == accessory_cost and last.labor_cost == finished.labor_cost and last.elastic_cost == finished.elastic_cost:
         return total
+
     FinishedProductCostHistory.objects.create(
         finished_product=finished,
         cost_price=total,
@@ -59,11 +60,37 @@ def record_finished_cost_history(finished, trigger_reason='', created_by=None):
         accessory_cost=accessory_cost,
         labor_cost=finished.labor_cost,
         elastic_cost=finished.elastic_cost,
-        trigger_reason=trigger_reason,
+        trigger_reason=(trigger_reason.strip() or '成本变动')[:200],
         created_by=created_by,
         bom_snapshot=_finished_bom_snapshot(finished),
     )
     return total
+
+
+def material_cost_change_reason(kind, material_product, old_cost, old_sku_costs=None):
+    """生成物料成本变动触发文案：品名 + 货号 + 涨跌金额，优先展示 SKU 明细"""
+    label = f'{kind}「{material_product.name or "-"}」(货号 {material_product.code or "-"})'
+    skus = list(material_product.skus.all()) if sku_schema_ready() else []
+    changes = []
+    for sku in skus:
+        old = (old_sku_costs or {}).get(sku.id)
+        if old is not None and old[1] != sku.cost_price:
+            changes.append((sku.sku_code, old[1], sku.cost_price))
+
+    if changes:
+        sku_code, old_value, new_value = changes[0]
+        delta = new_value - old_value
+        trend = '上涨' if delta > 0 else '下降' if delta < 0 else '持平'
+        suffix = f'，另有 {len(changes) - 1} 个规格变动' if len(changes) > 1 else ''
+        return f'{label} 成本{trend} ¥{abs(delta):.2f}（{sku_code}：{old_value:.2f} → {new_value:.2f}{suffix}）'
+
+    new_cost = material_product.cost_price
+    delta = new_cost - old_cost
+    if delta > 0:
+        return f'{label} 成本上涨 ¥{delta:.2f}（{old_cost:.2f} → {new_cost:.2f}）'
+    if delta < 0:
+        return f'{label} 成本下降 ¥{abs(delta):.2f}（{old_cost:.2f} → {new_cost:.2f}）'
+    return f'{label} 成本变更'
 
 
 def recalculate_related_finished_products(material_product, trigger_reason='', created_by=None):
