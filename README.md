@@ -165,7 +165,7 @@ python manage.py init_page_config
 python manage.py runserver 0.0.0.0:8003
 ```
 
-后端地址：`http://127.0.0.1:8003`，API 前缀：`/api/`。
+后端本地地址：`http://127.0.0.1:8003`，公网地址：`http://47.250.165.79:8003`，API 前缀：`/api/`。
 
 ### 2. 启动 Web 前端
 
@@ -173,8 +173,8 @@ python manage.py runserver 0.0.0.0:8003
 cd Page
 npm install
 
-# 配置后端地址（默认 http://127.0.0.1:8003）
-echo "VITE_API_BASE_URL=http://127.0.0.1:8003" > .env.local
+# 配置后端地址（代码默认 http://47.250.165.79:8003；本地开发可覆盖为 127.0.0.1）
+echo "VITE_API_BASE_URL=http://47.250.165.79:8003" > .env.local
 
 npm run dev                       # 开发环境，默认 http://localhost:5173
 ```
@@ -235,7 +235,7 @@ APK 输出：`app/build/outputs/apk/debug/app-debug.apk`。
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `VITE_API_BASE_URL` | `http://127.0.0.1:8003` | 后端 API 基址 |
+| `VITE_API_BASE_URL` | `http://47.250.165.79:8003` | 后端 API 基址（本地开发可覆盖为 `http://127.0.0.1:8003`） |
 
 ### Android（`Android/app/local.properties`）
 

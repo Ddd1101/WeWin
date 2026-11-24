@@ -156,7 +156,7 @@ Company（企业）
 - 统一通过 `src/api/` 下的模块化客户端调用，**不要**直接使用 axios
 - 工厂函数：`Page/src/api/client.js` 的 `createApiClient(basePath)`
 - 拦截器自动注入 `Authorization: Bearer <token>`，401 时自动跳转登录
-- API 基址由 `VITE_API_BASE_URL` 环境变量配置，默认 `http://127.0.0.1:8003`
+- API 基址由 `VITE_API_BASE_URL` 环境变量配置，代码默认 `http://47.250.165.79:8003`（本地开发可覆盖为 `http://127.0.0.1:8003`）
 
 ### 路由与权限
 - 路由配置：`Page/src/router/index.js`
