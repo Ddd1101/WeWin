@@ -99,6 +99,9 @@ const menuRoutes = computed(() => {
   const result = []
   
   for (const child of layoutRoute.children) {
+    if (child.meta?.hidden) {
+      continue
+    }
     if (child.meta?.requiresAdmin) {
       if (!(userStore.userInfo.user_type === 'super_admin' || userStore.userInfo.user_type === 'site_admin')) {
         continue

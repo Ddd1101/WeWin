@@ -17,7 +17,7 @@
               <el-icon><Download /></el-icon>
               导出明细
             </el-button>
-            <el-button type="primary" @click="handleAddProduct">
+            <el-button v-if="activeTab !== 'children_clothing_costs'" type="primary" @click="handleAddProduct">
               <el-icon><Plus /></el-icon>
               添加商品
             </el-button>
@@ -61,33 +61,46 @@
             </span>
           </template>
         </el-tab-pane>
+
+        <el-tab-pane label="童装成本表" name="children_clothing_costs">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><Coin /></el-icon>
+              童装成本表
+            </span>
+          </template>
+        </el-tab-pane>
       </el-tabs>
 
-      <ProductTable
-        :key="activeTab"
-        :products="products"
-        :loading="loading"
-        :selected-ids="selectedIds"
-        :hide-product-type="activeTab === 'finished'"
-        @select="handleSelect"
-        @select-all="handleSelectAll"
-        @edit="handleEditProduct"
-        @delete="handleDeleteProduct"
-        @sort-change="handleSortChange"
-      />
+      <ChildrenClothingCosts v-if="activeTab === 'children_clothing_costs'" />
 
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="pagination.currentPage"
-          v-model:page-size="pagination.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :layout="isMobile ? 'total, prev, pager, next' : 'total, sizes, prev, pager, next, jumper'"
-          :total="pagination.total"
-          :small="isMobile"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+      <template v-else>
+        <ProductTable
+          :key="activeTab"
+          :products="products"
+          :loading="loading"
+          :selected-ids="selectedIds"
+          :hide-product-type="activeTab === 'finished'"
+          @select="handleSelect"
+          @select-all="handleSelectAll"
+          @edit="handleEditProduct"
+          @delete="handleDeleteProduct"
+          @sort-change="handleSortChange"
         />
-      </div>
+
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="pagination.currentPage"
+            v-model:page-size="pagination.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :layout="isMobile ? 'total, prev, pager, next' : 'total, sizes, prev, pager, next, jumper'"
+            :total="pagination.total"
+            :small="isMobile"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
+      </template>
     </el-card>
     
     <ProductFormDialog
@@ -103,13 +116,15 @@
 <script setup>
 import { ref, reactive, onMounted, defineAsyncComponent, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Grid, CircleCheck, Box, ShoppingBag, Download } from '@element-plus/icons-vue'
+import { Plus, Grid, CircleCheck, Box, ShoppingBag, Coin, Download } from '@element-plus/icons-vue'
 import { getProducts, deleteProduct, getProductDetail } from '@/api'
 import { exportFinishedProducts } from '@/utils/exportProducts'
 import ProductFormDialog from './ProductFormDialog.vue'
 
 // 产品表格组件
 const ProductTable = defineAsyncComponent(() => import('../components/ProductTable.vue'))
+// 童装成本表组件
+const ChildrenClothingCosts = defineAsyncComponent(() => import('../ChildrenClothingCosts.vue'))
 
 // 手机端检测
 const isMobile = ref(false)
@@ -223,6 +238,8 @@ const handleTabChange = () => {
   filterForm.is_active = ''
   sortState.prop = ''
   sortState.order = ''
+  // 童装成本表不使用商品列表数据
+  if (activeTab.value === 'children_clothing_costs') return
   fetchProducts()
 }
 

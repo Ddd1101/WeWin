@@ -1234,7 +1234,6 @@ def sync_children_clothing_skus(product, costs):
 
         sku.sku_code = f'{product.code}-{size_key}'
         sku.cost_price = cost_val
-        sku.selling_price = 0
         sku.is_active = True
         sku.save()
         kept_ids.add(sku.id)

@@ -184,7 +184,7 @@
       <!-- 显示成本价格 -->
       <el-table-column label="成本价格" width="100">
         <template #default="scope">
-          ¥{{ formatPrice(scope.row.product_type === 'finished' ? scope.row.cost_price : getDefaultSku(scope.row)?.cost_price) }}
+          ¥{{ formatPrice(scope.row.product_type === 'finished' ? scope.row.cost_price : getListCost(scope.row)) }}
         </template>
       </el-table-column>
       <!-- 显示售卖价格 -->
@@ -251,7 +251,7 @@
             <div class="mobile-card-name">{{ row.name }}</div>
             <div class="mobile-card-code">{{ row.code }}</div>
             <div class="mobile-card-prices">
-              <span class="mobile-price">成本: ¥{{ formatPrice(row.product_type === 'finished' ? row.cost_price : getDefaultSku(row)?.cost_price) }}</span>
+              <span class="mobile-price">成本: ¥{{ formatPrice(row.product_type === 'finished' ? row.cost_price : getListCost(row)) }}</span>
               <span class="mobile-price">售价: ¥{{ formatPrice(row.product_type === 'finished' ? row.selling_price : getDefaultSku(row)?.selling_price) }}</span>
             </div>
           </div>
@@ -456,6 +456,15 @@ const getDefaultSku = (product) => {
     defaultSku = product.skus[0]
   }
   return defaultSku
+}
+
+// 童装列表成本取最低尺码成本，与成本表口径一致
+const getListCost = (product) => {
+  if (product.product_type === 'children_clothing') {
+    const costs = (product.skus || []).map((sku) => Number(sku.cost_price))
+    return costs.length ? Math.min(...costs) : 0
+  }
+  return getDefaultSku(product)?.cost_price
 }
 
 // 过滤后的产品列表
