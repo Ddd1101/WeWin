@@ -122,8 +122,8 @@ export const getProductDetail = (id) => {
   return storeApi.get(`/products/${id}/detail/`);
 };
 
-export const getFinishedCostHistory = (id) => {
-  return storeApi.get(`/products/${id}/cost-history/`);
+export const getFinishedCostHistory = (id, params) => {
+  return storeApi.get(`/products/${id}/cost-history/`, { params });
 };
 
 export const getAccessories = () => {

@@ -307,7 +307,7 @@ const loadHistory = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const res = await getFinishedCostHistory(props.row.id)
+    const res = await getFinishedCostHistory(props.row.id, { limit: 500 })
     const list = res.data?.cost_history || []
     history.value = [...list].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
   } catch (e) {
@@ -424,7 +424,7 @@ const filteredHistory = computed(() => {
       if (!Number.isNaN(time) && now - time > days * 24 * 60 * 60 * 1000) return false
     }
     if (typeFilter.value !== 'all' && item._type !== typeFilter.value) return false
-    if (onlyChanged.value && !item._delta) return false
+    if (onlyChanged.value && (item._delta == null || item._delta === 0)) return false
     return true
   })
 })

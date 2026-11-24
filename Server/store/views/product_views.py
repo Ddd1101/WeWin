@@ -1019,8 +1019,22 @@ def get_finished_cost_history(request, product_id):
         if not finished:
             return JsonResponse({'error': '成品不存在'}, status=404)
 
+        history_qs = finished.cost_history.order_by('created_at', 'id')
+        limit_param = request.GET.get('limit')
+        if limit_param:
+            try:
+                limit = int(limit_param)
+                if limit > 0:
+                    recent_ids = list(
+                        finished.cost_history.order_by('-created_at', '-id')
+                        .values_list('id', flat=True)[:limit]
+                    )
+                    history_qs = finished.cost_history.filter(id__in=recent_ids).order_by('created_at', 'id')
+            except (ValueError, TypeError):
+                pass
+
         history = []
-        for h in finished.cost_history.order_by('created_at', 'id'):
+        for h in history_qs:
             history.append({
                 'id': h.id,
                 'cost_price': float(h.cost_price),

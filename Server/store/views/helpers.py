@@ -49,8 +49,9 @@ def record_finished_cost_history(finished, trigger_reason='', created_by=None):
     from store.models import FinishedProductCostHistory
     bead_cost, accessory_cost = _finished_cost_breakdown(finished)
     total = bead_cost + accessory_cost + finished.labor_cost + finished.elastic_cost
+    bom_snapshot = _finished_bom_snapshot(finished)
     last = finished.cost_history.order_by('-created_at').first()
-    if last and last.cost_price == total and last.bead_cost == bead_cost and last.accessory_cost == accessory_cost and last.labor_cost == finished.labor_cost and last.elastic_cost == finished.elastic_cost:
+    if last and last.cost_price == total and last.bead_cost == bead_cost and last.accessory_cost == accessory_cost and last.labor_cost == finished.labor_cost and last.elastic_cost == finished.elastic_cost and last.bom_snapshot == bom_snapshot:
         return total
 
     FinishedProductCostHistory.objects.create(
@@ -60,9 +61,9 @@ def record_finished_cost_history(finished, trigger_reason='', created_by=None):
         accessory_cost=accessory_cost,
         labor_cost=finished.labor_cost,
         elastic_cost=finished.elastic_cost,
-        trigger_reason=(trigger_reason.strip() or '成本变动')[:200],
+        trigger_reason=(trigger_reason.strip() or '成本变动')[:500],
         created_by=created_by,
-        bom_snapshot=_finished_bom_snapshot(finished),
+        bom_snapshot=bom_snapshot,
     )
     return total
 
@@ -78,11 +79,12 @@ def material_cost_change_reason(kind, material_product, old_cost, old_sku_costs=
             changes.append((sku.sku_code, old[1], sku.cost_price))
 
     if changes:
-        sku_code, old_value, new_value = changes[0]
-        delta = new_value - old_value
-        trend = '上涨' if delta > 0 else '下降' if delta < 0 else '持平'
-        suffix = f'，另有 {len(changes) - 1} 个规格变动' if len(changes) > 1 else ''
-        return f'{label} 成本{trend} ¥{abs(delta):.2f}（{sku_code}：{old_value:.2f} → {new_value:.2f}{suffix}）'
+        parts = []
+        for sku_code, old_value, new_value in changes:
+            delta = new_value - old_value
+            arrow = '↑' if delta > 0 else '↓' if delta < 0 else '→'
+            parts.append(f'{sku_code}{old_value:.2f}→{new_value:.2f}{arrow}')
+        return f'{label} 成本变动（{"；".join(parts)}）'
 
     new_cost = material_product.cost_price
     delta = new_cost - old_cost
@@ -106,10 +108,10 @@ def recalculate_related_finished_products(material_product, trigger_reason='', c
         if accessory:
             finished_ids = set(accessory.finished_products.values_list('finished_product_id', flat=True))
 
-    for fid in finished_ids:
-        finished = FinishedProduct.objects.filter(product_id=fid).first()
-        if not finished:
-            continue
+    if not finished_ids:
+        return
+
+    for finished in FinishedProduct.objects.filter(product_id__in=finished_ids).select_related('product'):
         total = record_finished_cost_history(finished, trigger_reason, created_by)
         finished.product.cost_price = total
         finished.product.save(update_fields=['cost_price'])

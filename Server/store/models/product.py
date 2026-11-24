@@ -211,7 +211,7 @@ class FinishedProductBead(models.Model):
     )
     bead = models.ForeignKey(
         Bead,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='finished_products',
         verbose_name='串珠'
     )
@@ -245,7 +245,7 @@ class FinishedProductAccessory(models.Model):
     )
     accessory = models.ForeignKey(
         Accessory,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='finished_products',
         verbose_name='配件'
     )
@@ -282,7 +282,7 @@ class FinishedProductCostHistory(models.Model):
     accessory_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='配件成本小计')
     labor_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='工费')
     elastic_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='弹性成本')
-    trigger_reason = models.CharField(max_length=200, blank=True, null=True, verbose_name='触发原因')
+    trigger_reason = models.CharField(max_length=500, blank=True, null=True, verbose_name='触发原因')
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
