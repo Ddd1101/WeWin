@@ -454,6 +454,8 @@ def create_product(request):
                     gender=data_dict.get('gender', ''),
                     age_range=data_dict.get('age_range', ''),
                 )
+                if sku_schema_ready() and 'skus' in data_dict:
+                    sync_children_clothing_sku_items(product, data_dict.get('skus'), to_decimal)
 
         # 构建响应数据
         product_data = {
@@ -769,6 +771,8 @@ def update_product(request, product_id):
                 if 'age_range' in data_dict:
                     cc.age_range = data_dict['age_range']
                 cc.save()
+                if sku_schema_ready() and 'skus' in data_dict:
+                    sync_children_clothing_sku_items(product, data_dict.get('skus'), to_decimal)
             except ChildrenClothing.DoesNotExist:
                 pass
 
@@ -1257,6 +1261,64 @@ def sync_children_clothing_skus(product, costs):
             valid_costs.append(float(c))
         except (ValueError, TypeError):
             continue
+    if valid_costs:
+        product.cost_price = min(valid_costs)
+        product.save(update_fields=['cost_price'])
+
+
+def sync_children_clothing_sku_items(product, sku_items, to_decimal):
+    """童装表单 SKU 同步：sku_items = [{size(尺码), cost_price, selling_price}]。
+
+    与成本表 sync_children_clothing_skus 的区别：额外写入售价，且按表单尺码
+    增减 SKU。尺码为纯数字时写入 size 字段，否则写入 name 字段（与成本表一致）。
+    """
+    if sku_items is None:
+        return
+
+    kept_ids = set()
+    costs = []
+    for idx, item in enumerate(sku_items):
+        size_key = str(item.get('size') or item.get('name') or '').strip()
+        if not size_key:
+            continue
+        cost_val = to_decimal(item.get('cost_price', 0))
+        selling_val = to_decimal(item.get('selling_price', 0))
+
+        if size_key.isdigit():
+            sku = product.skus.filter(size=int(size_key)).first()
+        else:
+            sku = product.skus.filter(name=size_key, size__isnull=True).first()
+
+        if sku is None:
+            sku = ProductSku(product=product)
+
+        if size_key.isdigit():
+            sku.size = int(size_key)
+            sku.name = size_key
+        else:
+            sku.size = None
+            sku.name = size_key
+
+        sku.sku_code = f'{product.code}-{size_key}'
+        sku.cost_price = cost_val
+        sku.selling_price = selling_val
+        sku.is_active = True
+        sku.save()
+        kept_ids.add(sku.id)
+        costs.append(cost_val)
+
+    # 删除表单中已移除的尺码
+    product.skus.exclude(id__in=kept_ids).delete()
+
+    # 确保有默认 SKU
+    if not product.skus.filter(is_default=True).exists():
+        first = product.skus.filter(is_active=True).order_by('id').first()
+        if first:
+            first.is_default = True
+            first.save(update_fields=['is_default'])
+
+    # 商品级成本 = 最小尺码成本
+    valid_costs = [float(c) for c in costs if c not in (None, '')]
     if valid_costs:
         product.cost_price = min(valid_costs)
         product.save(update_fields=['cost_price'])

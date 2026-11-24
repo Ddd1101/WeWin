@@ -164,6 +164,41 @@
           </el-form-item>
         </el-col>
       </el-row>
+
+      <!-- 童装尺码与价格 -->
+      <template v-if="form.product_type === 'children_clothing'">
+        <el-divider content-position="left">尺码与价格</el-divider>
+        <div class="child-sku-bar">
+          <el-button type="primary" size="small" @click="handleAddChildSku">
+            <el-icon><Plus /></el-icon> 添加尺码
+          </el-button>
+          <span class="child-sku-hint">尺码与成本保存后同步到「童装成本表」</span>
+        </div>
+        <div class="child-sku-table">
+          <div class="child-sku-head">
+            <span>尺码</span>
+            <span>成本价格</span>
+            <span>售卖价格</span>
+            <span class="op"></span>
+          </div>
+          <div v-for="(sku, index) in form.skus" :key="index" class="child-sku-row">
+            <el-select
+              v-model="sku.size"
+              filterable
+              allow-create
+              default-first-option
+              placeholder="选择/输入尺码"
+              style="width: 100%"
+            >
+              <el-option v-for="s in childSizeOptions" :key="s" :label="s" :value="s" />
+            </el-select>
+            <el-input-number v-model="sku.cost_price" :min="0" :precision="2" controls-position="right" style="width: 100%" />
+            <el-input-number v-model="sku.selling_price" :min="0" :precision="2" controls-position="right" style="width: 100%" />
+            <el-button class="child-sku-del" type="danger" text :icon="Delete" @click="removeSku(index)" />
+          </div>
+          <div v-if="!form.skus.length" class="child-sku-empty">暂无尺码，点击「添加尺码」录入</div>
+        </div>
+      </template>
       
       <el-form-item label="商品图片">
         <div class="image-upload-container">
@@ -391,7 +426,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Delete } from '@element-plus/icons-vue'
-import { getProductTypes, createProduct, updateProduct } from '@/api'
+import { getProductTypes, createProduct, updateProduct, getChildrenClothingCosts } from '@/api'
 import FinishedComposition from './FinishedComposition.vue'
 
 const props = defineProps({
@@ -424,6 +459,7 @@ const dialogTitle = computed(() => (props.editData ? '编辑商品' : '添加商
 
 // 商品类型
 const productTypes = ref([])
+const childSizeOptions = ref([])
 const submitLoading = ref(false)
 const formRef = ref(null)
 const imageInputRef = ref(null)
@@ -597,7 +633,13 @@ const initForm = () => {
       imagePreview: '',
       image_url: product.image_url || '',
       remove_image: false,
-      skus: (product.skus || []).map(sku => ({ ...sku, sku_name: sku.sku_name || sku.name }))
+      skus: (product.skus || []).map(sku => ({
+        ...sku,
+        sku_name: sku.sku_name || sku.name,
+        size: product.product_type === 'children_clothing'
+          ? (sku.size !== null && sku.size !== undefined ? String(sku.size) : (sku.name || ''))
+          : sku.size
+      }))
     })
   } else {
     resetFormFields()
@@ -647,6 +689,16 @@ const fetchProductTypes = async () => {
     productTypes.value = response.data.product_types
   } catch (error) {
     ElMessage.error('获取商品类型失败')
+    console.error(error?.response?.data || error)
+  }
+}
+
+// 获取童装成本表的已有尺码，作为尺码下拉选项
+const fetchChildSizeOptions = async () => {
+  try {
+    const response = await getChildrenClothingCosts()
+    childSizeOptions.value = response.data.columns || []
+  } catch (error) {
     console.error(error?.response?.data || error)
   }
 }
@@ -726,6 +778,16 @@ const handleAddSku = () => {
   })
 }
 
+const handleAddChildSku = () => {
+  form.skus.push({
+    size: '',
+    cost_price: 0,
+    selling_price: 0,
+    is_default: form.skus.length === 0,
+    is_active: true
+  })
+}
+
 const removeSku = (index) => {
   form.skus.splice(index, 1)
   if (form.skus.length && !form.skus.some(s => s.is_default)) form.skus[0].is_default = true
@@ -779,6 +841,7 @@ const handleSubmit = async () => {
           data.season = form.season
           data.gender = form.gender
           data.age_range = form.age_range
+          data.skus = form.skus
         }
 
         if (form.image) {
@@ -809,6 +872,7 @@ const handleSubmit = async () => {
 
 onMounted(() => {
   fetchProductTypes()
+  fetchChildSizeOptions()
 })
 </script>
 
@@ -980,6 +1044,62 @@ onMounted(() => {
 
 .sku-field.span-full {
   grid-column: 1 / -1;
+}
+
+/* 童装尺码与价格：紧凑表格 */
+.child-sku-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.child-sku-hint {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.child-sku-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.child-sku-head,
+.child-sku-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 40px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+}
+
+.child-sku-head {
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.child-sku-row {
+  border-bottom: 1px solid #eef2f7;
+}
+
+.child-sku-row:last-child {
+  border-bottom: none;
+}
+
+.child-sku-del {
+  justify-self: center;
+}
+
+.child-sku-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: #cbd5e1;
 }
 
 /* 响应式适配 */
