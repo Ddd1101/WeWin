@@ -175,7 +175,7 @@ Company（企业）
 ## 重要约定与注意事项
 
 1. **企业数据隔离**：所有业务查询必须按 `request.user.company` 过滤，禁止跨企业访问。
-2. **敏感信息**：`Server/.env`、`Page/.env.local`、`AliData/global_params.py`、`Server/token.txt`、`db.sqlite3*` 均含敏感数据，已被 `.gitignore` 忽略，不得提交。
+2. **敏感信息**：`Server/.env`、`Page/.env.local`、`AliData/global_params.py`、`Server/token.txt` 均含敏感数据，已被 `.gitignore` 忽略，不得提交。
 3. **遗留代码**：`AliData/` 为独立脚本，与 Django 后端无直接依赖；`Server/` 下大量 `check_*.py` / `create_*.py` / `test_*.py` 为一次性运维脚本，非测试套件。
 4. **未使用 DRF**：项目未引入 Django REST Framework，API 为手写函数视图。
 5. **前端向后兼容**：`src/api/index.js` 同时支持命名导出与默认导出，修改 API 模块时保持两种导出方式均可用。
@@ -288,12 +288,14 @@ python profit_counting.py [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--shops 店�
        - <要点2>
    ```
 
-4. **操作步骤**：
-   - `git commit` 后用 `git log --oneline -1` 取 hash
+4. **操作步骤**（`docs/log.txt` 与代码合并到同一个 commit，不再单独提交日志）：
+   - `git add <代码文件>` 后 `git commit`，用 `git log --oneline -1` 取 hash
    - 用 `git show --stat <hash>` 取变更统计（files changed、插入/删除行数）
-   - 将记录写入 `docs/log.txt` 最上面
-   - 将 `docs/log.txt` 一并提交（通常 `git commit -m "docs: 更新提交日志"`）
+   - 将记录写入 `docs/log.txt` 最上面，然后 `git add docs/log.txt`
+   - `git commit --amend --no-edit` 将 log.txt 并入刚才的 commit
+   - 分批提交时每个功能一个 commit，各自 amend 合并对应的 log 记录
+   - 说明：amend 后最终 hash 会变化，log 中 `Commit:` 字段记录的是代码提交点（amend 前）的 hash，最终 hash 以 `git log` 为准
 
 5. `type` 遵循 conventional commit：`feat` / `fix` / `refactor` / `docs` / `chore` 等。
 
-6. **不要提交**：`db.sqlite3`、`Page/dist/` 等敏感数据或构建产物。
+6. **不要提交**：`Page/dist/` 等构建产物。
