@@ -185,6 +185,11 @@ def product_mutation(view):
         except ValidationError as exc:
             cleanup_confirmed = True
             return JsonResponse({'error': '; '.join(exc.messages)}, status=400)
+        except OSError:
+            if getattr(settings, 'MEDIA_ORIGIN_URL', ''):
+                cleanup_confirmed = True
+                return JsonResponse({'error': '图片暂存或存储不可用，请稍后重试'}, status=503)
+            raise
         finally:
             created_files.reset(token)
             if image_token is not None:

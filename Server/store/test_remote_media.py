@@ -72,3 +72,18 @@ class RemoteMediaTests(TransactionTestCase):
         self.assertEqual(response.status_code, 403)
         remote.assert_not_called()
 
+
+
+    def test_upload_temp_exhaustion_returns_503(self):
+        from utils.media import product_mutation
+        class Request:
+            content_type = 'multipart/form-data'
+            method = 'POST'
+            @property
+            def POST(self):
+                raise OSError('No space left on upload temporary volume')
+        @product_mutation
+        def never_called(request):
+            raise AssertionError('A write was attempted after temporary storage failed')
+        response = never_called(Request())
+        self.assertEqual(response.status_code, 503)
