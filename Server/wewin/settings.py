@@ -13,12 +13,13 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # 加载环境变量
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(os.getenv('WEWIN_ENV_FILE', BASE_DIR / '.env'))
 
 
 # Quick-start development settings - unsuitable for production
@@ -31,6 +32,16 @@ SECRET_KEY = os.getenv('SECRET_KEY', "django-insecure-f#6j10nb(*)2fu2tnbuz-qg63^
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+if not DEBUG and (SECRET_KEY.startswith('django-insecure-') or len(SECRET_KEY) < 50 or '*' in ALLOWED_HOSTS):
+    raise ImproperlyConfigured('生产环境必须配置强 SECRET_KEY 和明确的 ALLOWED_HOSTS')
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if os.getenv('TRUST_PROXY', 'false').lower() == 'true' else None
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+CSRF_TRUSTED_ORIGINS = list(filter(None, os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')))
 
 # CORS 配置
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if os.getenv('CORS_ALLOWED_ORIGINS') else []
@@ -58,6 +69,7 @@ AUTH_USER_MODEL = 'account.User'
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "wewin.middleware.AvailabilityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -91,10 +103,30 @@ WSGI_APPLICATION = "wewin.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
+        "NAME": os.getenv('DB_NAME', str(BASE_DIR / 'db.sqlite3')),
+        "OPTIONS": {"timeout": 5, "transaction_mode": "IMMEDIATE"},
     }
 }
+if DATABASES['default']['ENGINE'] == 'django.db.backends.mysql':
+    required = ('DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT')
+    if any(not os.getenv(key) for key in required):
+        raise ImproperlyConfigured('MariaDB 配置缺失：需要 DB_NAME/USER/PASSWORD/HOST/PORT')
+    DATABASES['default'].update({
+        'USER': os.environ['DB_USER'], 'PASSWORD': os.environ['DB_PASSWORD'],
+        'HOST': os.environ['DB_HOST'], 'PORT': os.environ['DB_PORT'],
+        'CONN_MAX_AGE': 60, 'CONN_HEALTH_CHECKS': True,
+        'OPTIONS': {'charset': 'utf8mb4', 'connect_timeout': 3, 'read_timeout': 5,
+                    'write_timeout': 5, 'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"},
+    })
+elif DATABASES['default']['ENGINE'] != 'django.db.backends.sqlite3':
+    raise ImproperlyConfigured('DB_ENGINE 必须选择 sqlite3 或 mysql')
+if not DEBUG and not os.getenv('DB_NAME'):
+    raise ImproperlyConfigured('生产 DB_NAME 必须显式指定仓库外的数据位置')
+if not DEBUG and DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
+    database_path = Path(DATABASES['default']['NAME'])
+    if not database_path.is_absolute() or database_path.resolve().is_relative_to(BASE_DIR.parent):
+        raise ImproperlyConfigured('生产 SQLite 必须位于源码仓库之外的绝对路径')
 
 
 # Password validation
@@ -132,15 +164,31 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = Path(os.getenv('STATIC_ROOT', str(BASE_DIR / 'staticfiles')))
 
 # Media files (user-uploaded content)
-MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
+MEDIA_ROOT = Path(os.getenv('MEDIA_ROOT', str(BASE_DIR / 'media')))
+MEDIA_REQUIRE_MOUNT = os.getenv('MEDIA_REQUIRE_MOUNT', 'false').lower() == 'true'
+MEDIA_PROBE_FILE = os.getenv('MEDIA_PROBE_FILE', '')
+MEDIA_WRITE_STATUS_FILE = os.getenv('MEDIA_WRITE_STATUS_FILE', '')
+WRITE_LOCK_FILE = os.getenv('WRITE_LOCK_FILE', '')
+SCHEDULER_LOCK_FILE = os.getenv('SCHEDULER_LOCK_FILE', '/tmp/wewin-scheduler.lock')
+BACKUP_STATUS_FILE = os.getenv('BACKUP_STATUS_FILE', '')
+BACKUP_MAX_AGE_SECONDS = int(os.getenv('BACKUP_MAX_AGE_SECONDS', '90000'))
+STORAGES = {
+    'default': {'BACKEND': 'utils.media.ProductImageStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+}
+if not DEBUG and (not os.getenv('MEDIA_ROOT') or not MEDIA_URL.startswith('https://')):
+    raise ImproperlyConfigured('生产 MEDIA_ROOT 和 HTTPS MEDIA_URL 必须显式配置')
+if not DEBUG and (not MEDIA_ROOT.is_absolute() or MEDIA_ROOT.resolve().is_relative_to(BASE_DIR.parent)):
+    raise ImproperlyConfigured('生产 MEDIA_ROOT 必须位于源码仓库之外')
 
 # File upload size limits (100MB)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024
-FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
+PRODUCT_IMAGE_MAX_BYTES = 100 * 1024 * 1024
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

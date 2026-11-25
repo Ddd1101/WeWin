@@ -18,8 +18,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from . import health
 
 urlpatterns = [
+    path('health/live/', health.live),
+    path('health/ready/', health.ready),
+    path('health/backup/', health.backup),
     path("admin/", admin.site.urls),
     path("api/account/", include("account.urls")),
     path("api/company/", include("company.urls")),

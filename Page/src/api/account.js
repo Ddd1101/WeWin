@@ -1,21 +1,11 @@
-import axios from "axios";
 import { createApiClient } from "./client";
-import { API_BASE_URL } from "./config";
 
 const accountApi = createApiClient("/api/account");
+const publicAccountApi = createApiClient("/api/account", { authenticated: false });
 
 // 登录是特殊的，不需要 token
 export const login = (username, password) => {
-  return axios
-    .post(`${API_BASE_URL}/api/account/login/`, { username, password })
-    .then((response) => {
-      console.log("Login API response:", response);
-      return response;
-    })
-    .catch((error) => {
-      console.log("Login API error:", error);
-      throw error;
-    });
+  return publicAccountApi.post("/login/", { username, password });
 };
 
 export const logout = () => {
@@ -51,7 +41,7 @@ export const changePassword = (data) => {
 };
 
 export const simpleRegister = (data) => {
-  return axios.post(`${API_BASE_URL}/api/account/register/`, data);
+  return publicAccountApi.post("/register/", data);
 };
 
 export const createAndBindCompany = (data) => {

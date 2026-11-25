@@ -2,6 +2,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
+from django.core.exceptions import ValidationError
+from utils.media import product_mutation, delete_image_after_commit, StorageUnavailable
 import json
 import traceback
 from datetime import datetime, timedelta
@@ -235,6 +237,7 @@ def get_products(request):
 @csrf_exempt
 @require_http_methods(['POST'])
 @jwt_required
+@product_mutation
 def create_product(request):
     try:
         
@@ -326,6 +329,9 @@ def create_product(request):
             company = request.user.company
         else:
             return JsonResponse({'error': '请选择所属企业'}, status=400)
+
+        if request.user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN] and company != request.user.company:
+            return JsonResponse({'error': '无权限访问该企业'}, status=403)
 
         # 检查货号是否已存在
         if Product.objects.filter(code=code, company=company).exists():
@@ -484,6 +490,8 @@ def create_product(request):
         return JsonResponse({'error': '无效的请求数据'}, status=400)
     except User.DoesNotExist:
         return JsonResponse({'error': '用户不存在'}, status=404)
+    except (StorageUnavailable, ValidationError):
+        raise
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -491,7 +499,7 @@ def create_product(request):
 @csrf_exempt
 @require_http_methods(['PUT', 'POST'])
 @jwt_required
-@transaction.atomic
+@product_mutation
 def update_product(request, product_id):
     try:
         product = Product.objects.get(id=product_id)
@@ -612,11 +620,11 @@ def update_product(request, product_id):
         use_remove_image = remove_image_val if request.content_type and 'multipart/form-data' in request.content_type else remove_image
         if use_remove_image:
             if product.image:
-                product.image.delete()
+                delete_image_after_commit(product.image.name)
                 product.image = None
         elif image:
             if product.image:
-                product.image.delete()
+                delete_image_after_commit(product.image.name)
             product.image = image
 
         product.save()
@@ -805,6 +813,8 @@ def update_product(request, product_id):
         return JsonResponse({'error': '用户不存在'}, status=404)
     except Product.DoesNotExist:
         return JsonResponse({'error': '商品不存在'}, status=404)
+    except (StorageUnavailable, ValidationError):
+        raise
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({'error': str(e), 'trace': traceback.format_exc()[-2000:]}, status=500)
@@ -813,6 +823,7 @@ def update_product(request, product_id):
 @csrf_exempt
 @require_http_methods(['DELETE'])
 @jwt_required
+@product_mutation
 def delete_product(request, product_id):
     try:
         product = Product.objects.get(id=product_id)
@@ -839,12 +850,16 @@ def delete_product(request, product_id):
             if ref_count > 0:
                 return JsonResponse({'error': f'该物料正被 {ref_count} 个手串成品使用，请先在对应成品中移除该物料后再删除'}, status=400)
 
+        if product.image:
+            delete_image_after_commit(product.image.name)
         product.delete()
         return JsonResponse({'message': '商品删除成功'})
     except User.DoesNotExist:
         return JsonResponse({'error': '用户不存在'}, status=404)
     except Product.DoesNotExist:
         return JsonResponse({'error': '商品不存在'}, status=404)
+    except (StorageUnavailable, ValidationError):
+        raise
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 

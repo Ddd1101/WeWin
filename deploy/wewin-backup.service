@@ -1,0 +1,8 @@
+[Unit]
+Description=WeWin consistent database and media backup
+
+[Service]
+Type=oneshot
+ExecStart=/opt/wewin-venv/bin/python /srv/wewin/app/deploy/backup.py --database /var/lib/wewin/db.sqlite3 --media /var/lib/wewin/media --output /var/backups/wewin --lock /var/lib/wewin/writes.lock --status /var/lib/wewin/backup-status.json
+TimeoutStartSec=600
+UMask=0077

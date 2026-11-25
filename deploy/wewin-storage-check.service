@@ -1,0 +1,15 @@
+[Unit]
+Description=WeWin media write probe
+
+[Service]
+Type=oneshot
+User=wewin
+Group=wewin
+WorkingDirectory=/srv/wewin/app/Server
+EnvironmentFile=/etc/wewin/app.env
+ExecStart=/opt/wewin-venv/bin/python manage.py check_storage
+TimeoutStartSec=30
+UMask=0027
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/wewin

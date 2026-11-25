@@ -1,4 +1,4 @@
 // API 配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://47.250.165.79:8003";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "http://127.0.0.1:8003" : "")).replace(/\/$/, "");
 
 export { API_BASE_URL };

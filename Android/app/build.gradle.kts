@@ -29,7 +29,10 @@ android {
                 file.inputStream().use { load(it) }
             }
         }
-        val apiBaseUrl = localProperties.getProperty("API_BASE_URL") ?: "http://10.0.2.2:8003"
+        val apiBaseUrl = providers.gradleProperty("API_BASE_URL").orNull
+            ?: System.getenv("WEWIN_API_BASE_URL")
+            ?: localProperties.getProperty("API_BASE_URL")
+            ?: "https://47.250.165.79"
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
