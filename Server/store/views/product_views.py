@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from utils.media import product_mutation, delete_image_after_commit, StorageUnavailable
+from utils.media import product_mutation, delete_image_after_commit, StorageUnavailable, image_value
 import json
 import traceback
 from datetime import datetime, timedelta
@@ -274,7 +274,7 @@ def create_product(request):
                     data_dict['skus'] = json.loads(request.POST['skus'])
                 except (json.JSONDecodeError, TypeError):
                     data_dict['skus'] = []
-            image = request.FILES.get('image')
+            image = image_value(request.FILES.get('image'))
         else:
             data_dict = json.loads(request.body)
             image = None
@@ -524,7 +524,9 @@ def update_product(request, product_id):
         if request.content_type and 'multipart/form-data' in request.content_type:
             # PUT 请求时手动解析 multipart 数据
             # Django 只对 POST 请求自动解析 multipart，PUT 需用 MultiPartParser 手动解析
-            if request.method == 'PUT':
+            if hasattr(request, '_wewin_multipart'):
+                post_dict, files_dict = request._wewin_multipart
+            elif request.method == 'PUT':
                 from django.http.multipartparser import MultiPartParser
                 parser = MultiPartParser(
                     request.META, request, request.upload_handlers, request.encoding
@@ -553,7 +555,7 @@ def update_product(request, product_id):
                     data_dict['skus'] = json.loads(post_dict['skus'])
                 except (json.JSONDecodeError, TypeError):
                     data_dict['skus'] = []
-            image = files_dict.get('image')
+            image = image_value(files_dict.get('image'))
             remove_image_val = post_dict.get('remove_image', 'false').lower() == 'true'
         else:
             data_dict = json.loads(request.body)
@@ -647,7 +649,7 @@ def update_product(request, product_id):
                 if 'remark' in data_dict:
                     bead.remark = data_dict['remark']
                 bead.save()
-                if sku_schema_ready():
+                if sku_schema_ready() and any(key in data_dict for key in ('skus', 'material', 'size', 'color', 'purchase_cost', 'cost_price', 'weight', 'quality_level', 'remark')):
                     sync_skus(product, data_dict.get('skus') or [{
                         'sku_code': f'{product.code}-默认', 'name': '默认SKU', 'material': bead.material,
                         'size': bead.size, 'color': bead.color, 'purchase_cost': product.purchase_cost,
@@ -675,7 +677,7 @@ def update_product(request, product_id):
                 if 'color' in data_dict:
                     accessory.color = data_dict['color']
                 accessory.save()
-                if sku_schema_ready():
+                if sku_schema_ready() and any(key in data_dict for key in ('skus', 'material', 'size', 'color', 'purchase_cost', 'cost_price', 'weight', 'quality_level', 'remark')):
                     sync_skus(product, data_dict.get('skus') or [{
                         'sku_code': f'{product.code}-默认', 'name': '默认SKU', 'material': accessory.material,
                         'size': accessory.size, 'color': accessory.color, 'purchase_cost': product.purchase_cost,
@@ -710,7 +712,7 @@ def update_product(request, product_id):
                                 company=product.company
                             )
                             bead = Bead.objects.get(product=bead_product)
-                            if sku_schema_ready():
+                            if sku_schema_ready() and any(key in data_dict for key in ('skus', 'material', 'size', 'color', 'purchase_cost', 'cost_price', 'weight', 'quality_level', 'remark')):
                                 sku = ProductSku.objects.filter(id=bead_data.get('sku_id'), product=bead_product).first() or ensure_default_sku(bead_product, bead)
                                 FinishedProductBead.objects.create(
                                     finished_product=finished,
@@ -741,7 +743,7 @@ def update_product(request, product_id):
                                 company=product.company
                             )
                             accessory = Accessory.objects.get(product=accessory_product)
-                            if sku_schema_ready():
+                            if sku_schema_ready() and any(key in data_dict for key in ('skus', 'material', 'size', 'color', 'purchase_cost', 'cost_price', 'weight', 'quality_level', 'remark')):
                                 sku = ProductSku.objects.filter(id=acc.get('sku_id'), product=accessory_product).first() or ensure_default_sku(accessory_product, accessory)
                                 FinishedProductAccessory.objects.create(
                                     finished_product=finished,

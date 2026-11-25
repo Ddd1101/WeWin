@@ -41,3 +41,22 @@ def backup(request):
     except (OSError, ValueError, KeyError):
         ok = False
     return JsonResponse({'ok': ok}, status=200 if ok else 503)
+
+
+@require_GET
+def core(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+    except Exception:
+        return JsonResponse({'ok': False}, status=503)
+    return JsonResponse({'ok': True})
+
+
+@require_GET
+def media(request):
+    try:
+        check_media()
+    except Exception:
+        return JsonResponse({'ok': False}, status=503)
+    return JsonResponse({'ok': True})

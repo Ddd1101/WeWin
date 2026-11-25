@@ -29,6 +29,13 @@ object RetrofitClient {
             }
 
             val okHttpClient = OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    if (chain.request().body is okhttp3.MultipartBody) {
+                        chain.withReadTimeout(180, TimeUnit.SECONDS)
+                            .withWriteTimeout(180, TimeUnit.SECONDS)
+                            .proceed(chain.request())
+                    } else chain.proceed(chain.request())
+                }
                 .addInterceptor(AuthInterceptor(tokenStore))
                 .addInterceptor(Global401Interceptor(tokenStore))
                 .addInterceptor(loggingInterceptor)

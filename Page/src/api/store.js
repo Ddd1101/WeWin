@@ -84,6 +84,7 @@ export const createProduct = (data) => {
       }
     }
     return storeApi.post("/products/create/", formData, {
+      timeout: 180000,
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -106,6 +107,7 @@ export const updateProduct = (id, data) => {
       }
     }
     return storeApi.post(`/products/${id}/update/`, formData, {
+      timeout: 180000,
       headers: {
         'Content-Type': 'multipart/form-data',
       },

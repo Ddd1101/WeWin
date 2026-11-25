@@ -21,6 +21,8 @@ from django.conf.urls.static import static
 from . import health
 
 urlpatterns = [
+    path('health/core/', health.core),
+    path('health/media/', health.media),
     path('health/live/', health.live),
     path('health/ready/', health.ready),
     path('health/backup/', health.backup),

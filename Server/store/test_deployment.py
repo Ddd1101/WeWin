@@ -148,3 +148,15 @@ class DeploymentTests(TransactionTestCase):
             auto_pull_orders()
         self.assertEqual(seen, [watermark])
         self.assertEqual(StoreDataConfig.objects.get(store=store).pull_status, DataPullStatus.SUCCESS)
+
+
+    def test_text_edit_preserves_skus_used_by_finished_product(self):
+        from store.models import Accessory, ProductSku, FinishedProduct, FinishedProductAccessory
+        accessory = Accessory.objects.create(product=self.product)
+        sku = ProductSku.objects.create(product=self.product, sku_code='material-sku', is_default=True)
+        finished_product = Product.objects.create(code='finished-test', name='finished', product_type=ProductType.FINISHED, company=self.company, selling_price=10)
+        finished = FinishedProduct.objects.create(product=finished_product)
+        FinishedProductAccessory.objects.create(finished_product=finished, accessory=accessory, sku=sku, quantity=1)
+        response = self.update(name='Updated text')
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertTrue(ProductSku.objects.filter(pk=sku.pk).exists())

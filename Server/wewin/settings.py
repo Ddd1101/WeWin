@@ -194,3 +194,15 @@ PRODUCT_IMAGE_MAX_BYTES = 100 * 1024 * 1024
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# N1 media origin uses a private SSH tunnel, separate from public MEDIA_URL.
+MEDIA_ORIGIN_URL = os.getenv('MEDIA_ORIGIN_URL', '').rstrip('/')
+MEDIA_ORIGIN_READ_TOKEN = os.getenv('MEDIA_ORIGIN_READ_TOKEN', '')
+MEDIA_ORIGIN_WRITE_TOKEN = os.getenv('MEDIA_ORIGIN_WRITE_TOKEN', '')
+MEDIA_CLEANUP_DIR = os.getenv('MEDIA_CLEANUP_DIR', str(BASE_DIR / 'media-cleanup'))
+MEDIA_CACHE_ROOT = os.getenv('MEDIA_CACHE_ROOT', '')
+if MEDIA_ORIGIN_URL:
+    if not MEDIA_ORIGIN_URL.startswith('http://127.0.0.1:') or min(len(MEDIA_ORIGIN_READ_TOKEN), len(MEDIA_ORIGIN_WRITE_TOKEN)) < 32:
+        raise ImproperlyConfigured('N1 origin requires a loopback URL and separate credentials')
+    STORAGES['default']['BACKEND'] = 'utils.remote_media.N1ImageStorage'
+    FILE_UPLOAD_TEMP_DIR = os.getenv('FILE_UPLOAD_TEMP_DIR', '/var/lib/wewin-upload')

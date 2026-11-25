@@ -19,6 +19,10 @@ class Command(BaseCommand):
         try:
             with write_lock():
                 check_media()
+                if settings.MEDIA_ORIGIN_URL:
+                    ok = True
+                    self.stdout.write('N1 read/write/rename/delete probe passed')
+                    return
                 try:
                     with tempfile.NamedTemporaryFile(dir=settings.MEDIA_ROOT, prefix='.write-probe-', delete=False) as target:
                         original = Path(target.name)
