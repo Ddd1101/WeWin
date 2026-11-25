@@ -67,8 +67,13 @@ def pull(root, host, identity, known_hosts):
             else:
                 verify_archive(target)
             subprocess.run(ssh + ['ack ' + batch], check=True, timeout=60)
-            (root / 'latest.json.tmp').write_text(json.dumps(dict(info, completed_at=time.time())))
-            (root / 'latest.json.tmp').replace(root / 'latest.json')
+            try:
+                current = json.loads((root / 'latest.json').read_text()).get('batch', '')
+            except (OSError, ValueError):
+                current = ''
+            if info['batch'] >= current:
+                (root / 'latest.json.tmp').write_text(json.dumps(dict(info, completed_at=time.time())))
+                (root / 'latest.json.tmp').replace(root / 'latest.json')
         for old in sorted(root.glob('*.tar.gz'))[:-30]:
             old.unlink()
         print('Verified backup batches:', len(batches))

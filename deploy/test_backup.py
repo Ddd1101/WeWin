@@ -95,3 +95,15 @@ class RemoteBackupTests(BackupTests):
             file.truncate(512 * 1024 * 1024)
         with self.assertRaises(OSError):
             create_batch(self.database, self.media, self.output, self.root / 'lock')
+
+    def test_pull_does_not_regress_latest_marker(self):
+        from unittest.mock import patch
+        from backup_exchange import pull
+        import subprocess
+        older = create_batch(self.database, self.media, self.output, self.root / 'lock')
+        newer = create_batch(self.database, self.media, self.output, self.root / 'lock')
+        before = (self.output / 'latest.json').read_bytes()
+        with patch('backup_exchange.subprocess.check_output', return_value=json.dumps([older]).encode()), patch('backup_exchange.subprocess.run', return_value=subprocess.CompletedProcess([], 0)):
+            pull(self.output, 'root@localhost', self.root / 'key', self.root / 'known_hosts')
+        self.assertEqual((self.output / 'latest.json').read_bytes(), before)
+        self.assertEqual(json.loads(before)['batch'], newer['batch'])
