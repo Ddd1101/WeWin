@@ -19,6 +19,7 @@ from account.models import User, UserType
 from company.models import Company
 from store.models import Product, Store, FinishedProduct
 from django.core.files.storage import default_storage
+from django.conf import settings
 from utils.write_lock import write_lock
 
 
@@ -72,7 +73,8 @@ def run(state, base):
     call('GET', '/api/customer/%s/products/' % customer['id'])
     replaced = call('POST', '/api/store/products/%s/update/' % product_id, files={'image': ('new.png', image.getvalue(), 'image/png')}).json()
     assert replaced['image_url'] != first
-    assert requests.get(first, timeout=10).status_code == 404
+    old_status = requests.get(first, timeout=10).status_code
+    assert old_status in (200, 404) if settings.MEDIA_ORIGIN_URL else old_status == 404
     assert requests.get(replaced['image_url'], timeout=10).content == image.getvalue()
     call('POST', '/api/store/products/%s/update/' % product_id, expect=400, files={'image': ('bad.jpg', b'not-an-image', 'image/jpeg')})
     data['image_url'] = replaced['image_url']

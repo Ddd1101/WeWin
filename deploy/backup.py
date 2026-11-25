@@ -4,6 +4,7 @@ import argparse
 import fcntl
 import hashlib
 import json
+import urllib.request
 import os
 from pathlib import Path
 import shutil
@@ -46,6 +47,10 @@ def verify_archive(path):
 
 def create_batch(database, media, output, lock_path, status_path=None):
     output.mkdir(parents=True, exist_ok=True)
+    origin = os.getenv('MEDIA_ORIGIN_URL', '').rstrip('/')
+    # Fixed local budget: never let an unreachable backup node fill the cloud disk.
+    if sum(p.stat().st_size for p in output.rglob('*') if p.is_file()) + database.stat().st_size * 2 > 512 * 1024 * 1024:
+        raise OSError('Database backup staging budget exhausted')
     batch = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
     with tempfile.TemporaryDirectory(dir=output, prefix='.staging-') as staging:
         stage = Path(staging)
@@ -59,7 +64,18 @@ def create_batch(database, media, output, lock_path, status_path=None):
                         raise ValueError('Database integrity check failed')
                     if target.execute('PRAGMA foreign_key_check').fetchall():
                         raise ValueError('Database foreign key check failed')
-            shutil.copytree(media, stage / 'media')
+            if origin:
+                request = urllib.request.Request(origin + '/manifest', headers={'Authorization': 'Bearer ' + os.environ['MEDIA_ORIGIN_READ_TOKEN']})
+                with urllib.request.urlopen(request, timeout=10) as response:
+                    origin_manifest = json.load(response)
+                with sqlite3.connect('file:' + str(stage / 'db.sqlite3') + '?mode=ro', uri=True) as db:
+                    references = [r[0] for r in db.execute("SELECT DISTINCT image FROM product WHERE image IS NOT NULL AND image != ''")]
+                manifest_by_name = {r['name']: r for r in origin_manifest['files']}
+                media_inventory = {'storage': 'n1', 'references': references, 'files': origin_manifest['files'],
+                                   'missing': [name for name in references if name not in manifest_by_name]}
+                (stage / 'media-manifest.json').write_text(json.dumps(media_inventory, ensure_ascii=False, indent=2))
+            else:
+                shutil.copytree(media, stage / 'media')
             fcntl.flock(lock, fcntl.LOCK_UN)
         files = {str(p.relative_to(stage)): digest(p) for p in sorted(stage.rglob('*')) if p.is_file()}
         manifest = {'batch': batch, 'created_at': datetime.now(timezone.utc).isoformat(), 'files': files}

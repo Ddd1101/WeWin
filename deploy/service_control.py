@@ -7,7 +7,7 @@ import subprocess
 GROUPS = {
     'frontend': ['nginx.service'],
     'backend': ['wewin.service', 'wewin-scheduler.service'],
-    'data': ['wewin-backup.timer', 'wewin-storage-check.timer', 'wewin-cert-renew.timer'],
+    'data': ['wewin-backup.timer', 'wewin-storage-check.timer', 'wewin-cert-renew.timer', 'wewin-media-cleanup.timer'],
 }
 
 
@@ -25,7 +25,7 @@ def main():
         if group == 'data' and args.action == 'start':
             commands.append(['systemctl', 'start', 'wewin-storage-check.service'])
         if group == 'data' and args.action == 'stop':
-            commands.append(['systemctl', 'stop', 'wewin-backup.service', 'wewin-storage-check.service', 'wewin-cert-renew.service'])
+            commands.append(['systemctl', 'stop', 'wewin-backup.service', 'wewin-storage-check.service', 'wewin-cert-renew.service', 'wewin-media-cleanup.service'])
     for command in commands:
         print(shlex.join(command), flush=True)
         if not args.dry_run:

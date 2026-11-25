@@ -65,3 +65,33 @@ class BackupTests(unittest.TestCase):
             (self.output / (name + '.json')).write_text('{}')
         create_batch(self.database, self.media, self.output, self.root / 'lock')
         self.assertEqual(len(list(self.output.glob('*.tar.gz'))), 16)
+
+
+class RemoteBackupTests(BackupTests):
+    def test_remote_batch_contains_manifest_not_images(self):
+        from unittest.mock import patch
+        from contextlib import contextmanager
+        import os
+        import hashlib
+        data = (self.media / 'products/image.png').read_bytes()
+        inventory = {'files': [{'name': 'products/image.png', 'size': len(data), 'sha256': hashlib.sha256(data).hexdigest()}]}
+        @contextmanager
+        def fetch(*args, **kwargs):
+            yield io.BytesIO(json.dumps(inventory).encode())
+        with patch.dict(os.environ, {'MEDIA_ORIGIN_URL': 'http://127.0.0.1:10080', 'MEDIA_ORIGIN_READ_TOKEN': 'test-token'}), patch('urllib.request.urlopen', fetch):
+            info = create_batch(self.database, self.media, self.output, self.root / 'lock')
+        archive = self.output / (info['batch'] + '.tar.gz')
+        with tarfile.open(archive) as packed:
+            self.assertIn('media-manifest.json', packed.getnames())
+            self.assertNotIn('media/products/image.png', packed.getnames())
+        report = restore(archive, self.root / 'external-restore', self.media)
+        self.assertTrue(report['media_verified'])
+        self.assertEqual(report['missing_images'], [])
+
+    def test_cloud_budget_rejects_new_batch(self):
+        sparse = self.output / 'backlog.bin'
+        self.output.mkdir()
+        with open(sparse, 'wb') as file:
+            file.truncate(512 * 1024 * 1024)
+        with self.assertRaises(OSError):
+            create_batch(self.database, self.media, self.output, self.root / 'lock')
