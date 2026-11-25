@@ -1,6 +1,6 @@
-# WeWin 云侧主存储部署
+# WeWin 部署导航（N1在线图片）
 
-本实现采用《数据与图片存储分离部署方案》的优先方案：阿里云运行应用、SQLite 和媒体，N1 异步拉取数据库与媒体的联合备份。N1 不参与在线 API 或图片请求。未部署 n1 在线 MariaDB/SSHFS；该分支的延迟、系统权限和故障验收需另行完成后才能切换。
+当前已改为阿里云应用与SQLite、N1在线图片原文件。阿里云缓存硬上限2GB，上传暂存512MB，数据库备份暂存512MB。完整新指引见 [N1-MEDIA.md](N1-MEDIA.md)。以下云侧原媒体方案的步骤作为历史回退参考，生产必须使用N1配置。
 
 ## 当前部署
 
@@ -12,7 +12,8 @@
 | Python 环境 | `/opt/wewin-venv`，Python 3.12 / Django 5.2.19 |
 | Web 产物 / Django 静态文件 | `/srv/wewin/web` / `/srv/wewin/static` |
 | 生产配置 | `/etc/wewin/app.env`，root:wewin，0640 |
-| SQLite / 图片 | `/var/lib/wewin/db.sqlite3` / `/var/lib/wewin/media` |
+| SQLite / 在线图片 | Ali `/var/lib/wewin/db.sqlite3` / N1 `~/Documents/workplace_shop/wewin-media/objects` |
+| 缓存 / 上传暂存 | `/var/cache/wewin-media`（2GB）/ `/var/lib/wewin-upload`（512MB） |
 | 写入屏障 / 调度独占锁 | `/var/lib/wewin/writes.lock` / `scheduler.lock` |
 | 阿里云备份批次 | `/var/backups/wewin` |
 | N1 备份目录 | `/home/admin/Documents/workplace_shop/wewin-backups/batches` |
@@ -58,11 +59,11 @@ ANDROID_HOME=/path/to/android-sdk bash Android/gradlew -p Android -PAPI_BASE_URL
 
 ## 备份与健康检查
 
-- `wewin-backup.timer` 每小时产生新批次。API（包括可能有写入副作用的 GET）与拉单进程持有共享锁，备份取得独占锁，等待既有写入结束后复制 SQLite 与媒体；期间新 API 请求返回 503 和 Retry-After，不在文件复制期间接受写入。
-- 每批包含 SQLite、媒体、逐文件 SHA-256 清单。SQLite 在线备份保留主键、JSON、Decimal 和微秒时间精度，先校验再原子发布批次。
+- `wewin-backup.timer` 每小时产生新批次。API（包括可能有写入副作用的 GET）与拉单进程持有共享锁，备份取得独占锁，等待既有写入结束后复制SQLite并获取N1媒体清单；期间新 API 请求返回 503 和 Retry-After，不在文件复制期间接受写入。
+- 每批包含 SQLite、N1媒体引用/哈希清单与归档校验；不包含图片内容。SQLite 在线备份保留主键、JSON、Decimal 和微秒时间精度，先校验再原子发布批次。
 - N1 的 admin crontab 每 5 分钟拉取未完成批次。专用密钥只允许阿里云 root 上的 `backup_exchange.py serve`，禁用 PTY/转发等能力并固定 SSH 主机密钥。只支持 list/get/ack，无法执行任意 shell。
 - 下载使用临时文件，验证完整归档、路径和逐文件哈希后才重命名并确认。网络失败保留上一批；重连后按批次补传。阿里云保留至少 14 批且不删除尚未确认的批次，N1 独立保留 30 批。长期中断会增加阿里云磁盘占用，应监控剩余空间。
-- `/health/live/` 检查进程；`/health/ready/` 检查数据库、媒体探测文件及定期写探测；`wewin-storage-check.timer` 每 5 分钟以应用用户完成写入、读取、重命名和删除验证，结果超过 15 分钟未更新视为不可用；`/health/backup/` 同时检查源批次年龄及 N1 确认时间。当前过期阈值 25 小时，返回 503 可供外部监控告警，本次未配置向个人发送通知。
+- `/health/core/` 检查核心数据库业务，`/health/media/` 检查N1媒体；`/health/live/` 检查进程；`/health/ready/` 检查数据库、媒体探测文件及定期写探测；`wewin-storage-check.timer` 每 5 分钟以应用用户完成写入、读取、重命名和删除验证，结果超过 15 分钟未更新视为不可用；`/health/backup/` 同时检查源批次年龄及 N1 确认时间。当前过期阈值 25 小时，返回 503 可供外部监控告警，本次未配置向个人发送通知。
 - 目标 RPO 是每小时一次本地批次加 5 分钟轮询及实际传输时延。备份源和目标只有成功批次才可恢复，不以同步过程中的文件作为恢复源。
 
 手动执行阿里云备份：`systemctl start wewin-backup`。N1 手动补传使用现有 crontab 中的完整命令。查日志：`journalctl -u wewin-backup` 和 N1 `wewin-backups/pull.log`。

@@ -129,7 +129,7 @@ WeWin/
 
 ## 当前生产部署
 
-生产入口为 **https://47.250.165.79**。阿里云运行 Nginx、Gunicorn、独立调度、SQLite和媒体；N1只运行异步备份客户端。线上数据在 /var/lib/wewin，运行代码在 /srv/wewin/app，与本仓库分离。
+生产入口为 **https://47.250.165.79**。阿里云运行Nginx、Gunicorn、独立调度和SQLite，N1存放在线图片原文件并运行媒体服务；阿里云缓存上限2GB。线上数据在 /var/lib/wewin，运行代码在 /srv/wewin/app，与本仓库分离。
 
 | 组成 | 源码入口 |
 | --- | --- |
@@ -338,7 +338,7 @@ Company
 | N1备份拉取 | 阿里云SSH22，限制来源 |
 | N1管理FRP | 7000接入，6000转发SSH，限制来源 |
 
-线上数据库和媒体均位于阿里云 `/var/lib/wewin`，N1保存异步联合备份。开发环境使用 Django runserver 与 Vite，生产使用Nginx/Gunicorn及独立调度。
+线上数据库位于阿里云 `/var/lib/wewin`，图片原文件位于N1 `wewin-media/objects`。图片部署与故障表现见 [deploy/N1-MEDIA.md](deploy/N1-MEDIA.md)。开发环境使用 Django runserver 与 Vite，生产使用Nginx/Gunicorn及独立调度。
 
 ---
 

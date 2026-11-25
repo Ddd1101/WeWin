@@ -181,7 +181,7 @@ Company（企业）
 5. **前端向后兼容**：`src/api/index.js` 同时支持命名导出与默认导出，修改 API 模块时保持两种导出方式均可用。
 6. **数据库表名**：模型 `Meta.db_table` 显式指定表名（如 `product` 而非 `store_product`），新增模型需遵循此约定。
 7. **时区**：`TIME_ZONE = "Asia/Shanghai"`，`USE_TZ = True`，时间字段统一 UTC 存储、前端按需转换。
-8. **文件上传**：商品图片上传至 `products/%Y/%m/%d/`，开发 `MEDIA_ROOT = Server/media`，生产使用 `/var/lib/wewin/media`，单文件上限 100MB。
+8. **文件上传**：商品图片上传至 `products/%Y/%m/%d/`，开发 `MEDIA_ROOT = Server/media`，生产在线原文件使用N1 `wewin-media/objects`，阿里云缓存仅2GB，单文件上限 100MB。
 9. **规划文档**：`.trae/specs/` 下为各模块 PRD，`.trae/documents/` 下为分析与计划文档，开发新功能前应先查阅对应 spec。
 10. **提交日志**：每次 `git commit` 后必须在 `docs/log.txt` 追加一条记录，按提交时间**倒序**排列（最新在最上面），格式与步骤见「常见任务指引 → 提交代码与更新日志」。
 
@@ -245,6 +245,8 @@ python profit_counting.py [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--shops 店�
 ---
 
 ## 生产部署与数据端代码入口
+
+当前线上图片原文件存放N1，阿里云SQLite保留本地，图片缓存硬上限2GB。媒体模块为 `media-service/` 和 `Server/utils/remote_media.py`，部署指引 `deploy/N1-MEDIA.md`。新增图片写入不得回落到阿里云原文件目录，数据库备份不得包含全量图片。
 
 - `Page/` 为前端源码，`Server/` 为后端源码，`deploy/` 为服务配置、联合备份与恢复代码。
 - 统一启停使用 `start.sh` / `stop.sh` 或 `deploy/service_control.py`，支持 `--dry-run`，不恢复旧 runserver/8080 启动方式。

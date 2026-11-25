@@ -1,6 +1,6 @@
 # WeWin 统一部署入口
 
-前端源码在 Page/，后端源码在 Server/，数据端源码在 deploy/；N1安装入口在 deploy/n1/。当前为阿里云在线 SQLite/媒体 + N1 异步联合备份，访问 https://47.250.165.79。
+前端源码在 Page/，后端源码在 Server/，数据端源码在 deploy/；N1安装入口在 deploy/n1/。当前为阿里云在线SQLite + N1在线图片原文件，阿里云仅2GB有界缓存，访问 https://47.250.165.79。
 
 ## 生产服务启停（阿里云）
 
@@ -36,7 +36,7 @@ python3 deploy/sync_runtime.py --destination /srv/wewin/app --apply
 
 ## N1 数据端
 
-按 [deploy/n1/README.md](deploy/n1/README.md) 将三份备份脚本从本仓库安装到 N1。安装工具校验专用密钥已在仓库外配置，精确维护自己的cron块，保留FRP和其他任务。数据端只保存异步备份，不承担在线主库。
+按 [deploy/n1/README.md](deploy/n1/README.md) 将三份备份脚本从本仓库安装到 N1。安装工具校验专用密钥已在仓库外配置，精确维护自己的cron块，保留FRP和其他任务。N1除数据库/媒体清单备份外，还运行在线图片服务和独立SSH媒体隧道；安装与迁移见 [deploy/N1-MEDIA.md](deploy/N1-MEDIA.md)。数据库仍留在阿里云。
 
 ## 开发环境与日志
 
