@@ -4,7 +4,7 @@ import argparse
 import shlex
 import subprocess
 
-GROUPS = {'frontend': ['nginx.service']}
+GROUPS = {'frontend': ['nginx.service'], 'backend': ['wewin.service', 'wewin-scheduler.service']}
 
 
 def main():
