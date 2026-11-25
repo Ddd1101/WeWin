@@ -28,7 +28,7 @@ WeWin 是一套面向多企业的电商运营管理系统，围绕**手串（串
 ### 后端
 
 - Python 3.10+（当前环境 3.12）
-- Django 4.2.30（未使用 Django REST Framework）
+- Django 5.2.19（未使用 Django REST Framework）
 - PyJWT 2.8.0（HS256，手写认证装饰器）
 - SQLite（默认数据库）
 - django-cors-headers、python-dotenv、Pillow、APScheduler、openpyxl
@@ -80,7 +80,7 @@ WeWin 是一套面向多企业的电商运营管理系统，围绕**手串（串
 
 - 所有业务表通过 `company` 外键实现企业级数据隔离。
 - 认证为自定义 JWT：请求头 `Authorization: Bearer <token>`，Token 有效期 7 天。
-- 定时任务由 APScheduler 在 Django 进程内启动（每分钟检查一次自动拉单配置）。
+- 定时任务由独立的 run_scheduler 管理命令启动（每分钟检查一次自动拉单配置），与 Web worker 分离。
 
 ---
 
@@ -99,7 +99,7 @@ WeWin/
 │   │   ├── services/             # 拉单服务基类与 1688 实现
 │   │   ├── management/commands/  # 商品导入、成本历史初始化
 │   │   ├── tasks.py              # 自动拉单任务
-│   │   └── apps.py               # APScheduler 启动入口
+│   │   └── apps.py               # 应用注册，不在此启动调度
 │   ├── utils/decorators.py       # jwt_required / permission_required 等
 │   ├── manage.py
 │   └── requirements.txt
@@ -110,11 +110,12 @@ WeWin/
 │   │   ├── layout/               # 主布局（侧边栏 + 顶栏）
 │   │   ├── router/               # 路由与登录/权限守卫
 │   │   └── store/                # Pinia 状态
-│   ├── serve_spa.py              # 生产环境 SPA 静态服务（:8080）
+│   ├── serve_spa.py              # 历史本地预览工具（不用于当前生产）
 │   └── vite.config.js
 ├── Android/                      # Kotlin + Compose 原生客户端
 ├── AliData/                      # 1688 独立脚本（拉单、利润汇算、企微推送）
-├── docs/                         # CODE_WIKI.md、提交日志 log.txt
+├── deploy/                       # 生产服务配置、发布入口、N1备份与恢复工具
+├── docs/                         # 验收/整合记录、CODE_WIKI.md、提交日志 log.txt
 ├── document/                     # 业务与 1688 API 相关文档
 ├── .trae/                        # 规划文档与 specs
 ├── start.sh / stop.sh            # 一键启停脚本
@@ -126,122 +127,77 @@ WeWin/
 
 ---
 
-## 快速开始
+## 当前生产部署
 
-### 环境要求
+生产入口为 **https://47.250.165.79**。阿里云运行 Nginx、Gunicorn、独立调度、SQLite和媒体；N1只运行异步备份客户端。线上数据在 /var/lib/wewin，运行代码在 /srv/wewin/app，与本仓库分离。
 
-| 依赖 | 版本建议 |
+| 组成 | 源码入口 |
 | --- | --- |
-| Python | 3.10+（推荐 3.12） |
-| Node.js | 18+ |
-| npm | 9+ |
-| Android Studio / JDK | 仅开发 Android 端时需要（compileSdk 34，minSdk 24） |
+| 前端 | Page/；deploy/build_frontend.py |
+| 后端 | Server/；deploy/app.env.example；deploy/sync_runtime.py |
+| 数据端 | deploy/backup.py、backup_exchange.py、restore_backup.py；deploy/n1/ |
+| 统一运维 | start.sh、stop.sh、deploy/service_control.py；Makefile |
 
-### 1. 启动后端
+完整指引见 [DEPLOYMENT.md](DEPLOYMENT.md)、[云侧部署](deploy/README.md) 和 [N1安装](deploy/n1/README.md)。
+
+## 快速开始（开发环境）
+
+后端使用Python3.10+（推荐3.12），前端使用Node.js18+。激活虚拟环境后执行：
 
 ```bash
 cd Server
-
-# 创建并激活虚拟环境
 python3 -m venv venv
-source venv/bin/activate          # Windows: .\venv\Scripts\Activate.ps1
-
-# 安装依赖
+source venv/bin/activate
 pip install -r requirements.txt
-
-# 准备环境变量
-cp .env.example .env              # 按需修改
-
-# 初始化数据库
+cp .env.example .env
 python manage.py migrate
-
-# 创建默认超级管理员（superadmin / superadmin123，首次登录后请修改密码）
-python manage.py create_superadmin
-
-# 初始化页面可见性配置
+python manage.py create_superadmin       # 开发账号，使用前设置安全密码
 python manage.py init_page_config
-
-# 启动服务
-python manage.py runserver 0.0.0.0:8003
+python manage.py runserver 127.0.0.1:8003
 ```
 
-后端本地地址：`http://127.0.0.1:8003`，公网地址：`http://47.250.165.79:8003`，API 前缀：`/api/`。
-
-### 2. 启动 Web 前端
+另一个终端启动前端：
 
 ```bash
 cd Page
-npm install
-
-# 配置后端地址（代码默认 http://47.250.165.79:8003；本地开发可覆盖为 127.0.0.1）
-echo "VITE_API_BASE_URL=http://47.250.165.79:8003" > .env.local
-
-npm run dev                       # 开发环境，默认 http://localhost:5173
+npm ci
+npm run dev
 ```
 
-生产构建与本地预览：
+开发API默认 http://127.0.0.1:8003，需要覆盖时设置 Page/.env.local 中的 VITE_API_BASE_URL。生产默认同源HTTPS，不直接访问公网8003。
+
+Android构建默认HTTPS入口，可显式指定环境：
 
 ```bash
-npm run build                     # 产物输出到 Page/dist
-python3 serve_spa.py              # SPA 静态服务，http://localhost:8080
+bash Android/gradlew -p Android -PAPI_BASE_URL=https://47.250.165.79 assembleDebug
 ```
 
-### 3. 启动 Android 客户端（可选）
+配置本机Android SDK后构建；APK在 Android/app/build/outputs/apk/debug。当前仅完成调试构建，真机与签名发布另行验收。
+
+## 生产运维入口
 
 ```bash
-cd Android
-cp app/local.properties.example app/local.properties
-# 修改 API_BASE_URL：
-#   模拟器  -> http://10.0.2.2:8003
-#   真机    -> http://<后端局域网IP>:8003
-
-./gradlew assembleDebug
+bash start.sh --dry-run                  # 预览范围
+bash start.sh                            # 启动已安装的systemd服务
+python3 deploy/service_control.py all status
+bash stop.sh --dry-run                   # 预览停止范围
 ```
 
-APK 输出：`app/build/outputs/apk/debug/app-debug.apk`。
-
-### 4. 使用启动脚本（Linux 服务器）
-
-```bash
-./start.sh          # 同时启动后端（:8003）与前端（:8080，serve_spa.py）
-./stop.sh           # 停止两个服务
-
-./start_backend.sh  # 仅启动后端
-./start_frontend.sh # 仅启动前端（使用系统 Nginx + nginx_system.conf）
-./stop_backend.sh
-./stop_frontend.sh
-
-./start_wxwork.sh   # 启动企微定时推送服务
-./stop_wxwork.sh
-```
-
-日志：`backend.log`、`frontend.log`、`wxwork.log`。
-
----
+各端单独使用 start/stop_frontend.sh、start/stop_backend.sh、start/stop_data.sh。start_services.py保留为生产启动兼容入口。本地开发可使用 make run-backend、make run-frontend。企微独立脚本 start/stop_wxwork.sh 不受这些入口影响。
 
 ## 配置说明
 
-### 后端环境变量（`Server/.env`）
+| 配置 | 作用 |
+| --- | --- |
+| Server/.env.example | 本地后端配置示例 |
+| deploy/app.env.example | 生产配置参考；实际存放在仓库外 /etc/wewin/app.env |
+| WEWIN_ENV_FILE | 显式选择后端环境文件 |
+| DB_ENGINE / DB_NAME 等 | SQLite 或预留的 MariaDB 配置；当前生产使用云侧SQLite |
+| MEDIA_ROOT / MEDIA_URL | 独立媒体目录与HTTPS图片入口 |
+| Page/.env.production.example | Web同源生产API配置示例 |
+| API_BASE_URL / WEWIN_API_BASE_URL | Android通过Gradle参数或环境变量覆盖API地址 |
 
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `SECRET_KEY` | 内置开发值 | Django 与 JWT 签名密钥，生产环境必须修改 |
-| `DEBUG` | `True` | 调试模式；为 `True` 时 CORS 允许所有来源 |
-| `ALLOWED_HOSTS` | `*` | 逗号分隔的允许域名 |
-| `CORS_ALLOWED_ORIGINS` | 空 | 非 DEBUG 时生效的跨域白名单，逗号分隔 |
-| `DB_ENGINE` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` / `DB_HOST` / `DB_PORT` | - | 示例中预留，当前 `settings.py` 固定使用 SQLite，暂未读取 |
-
-### 前端环境变量（`Page/.env.local`）
-
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `VITE_API_BASE_URL` | `http://47.250.165.79:8003` | 后端 API 基址（本地开发可覆盖为 `http://127.0.0.1:8003`） |
-
-### Android（`Android/app/local.properties`）
-
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `API_BASE_URL` | `http://10.0.2.2:8003` | 模拟器访问宿主机后端；真机改为局域网地址 |
+生产 DEBUG=False，需要稳定的强 SECRET_KEY、明确的 ALLOWED_HOSTS，以及仓库外的数据库和媒体路径。密钥、实际环境文件、媒体及构建产物不提交。
 
 ---
 
@@ -258,12 +214,9 @@ APK 输出：`app/build/outputs/apk/debug/app-debug.apk`。
 | `python manage.py init_finished_cost_history` | 为现有成品初始化成本历史记录 |
 | `python manage.py migrate` | 执行数据库迁移 |
 
-### 数据库备份
+### 数据库与媒体联合备份
 
-```bash
-cd Server
-python backup_db.py --keep 10     # 备份并保留最近 10 份
-```
+生产备份由 wewin-backup.timer 每小时执行，N1每5分钟拉取。手动运行使用 `systemctl start wewin-backup`；恢复工具为 `deploy/restore_backup.py`。旧 `Server/backup_db.py` 仅用于开发SQLite备份，详见 [部署说明](deploy/README.md)。
 
 ### 服装利润汇算（AliData）
 
@@ -369,48 +322,23 @@ Company
 | 店铺自动拉单 | APScheduler，每 1 分钟检查 | 读取 `StoreDataConfig.auto_pull_enabled` 与 `pull_interval_hours` 决定是否拉取 |
 | 企微销售推送 | 独立进程，每日 00:03 | 由 `start_wxwork.sh` 启动 `AliData/hooks/wxwork.py` |
 
-> 自动拉单调度随 Django 进程启动。生产环境如使用多 worker（如 gunicorn 多进程），需改为单独进程或分布式调度，避免重复执行。
+自动拉单由 wewin-scheduler.service 独立运行，Web worker不启动调度。需要本地运行时执行 `python manage.py run_scheduler`。
 
 ---
 
-## 部署
+## 部署与端口
 
-### 开发环境
+统一生产启停、构建、代码同步和N1安装步骤见 [DEPLOYMENT.md](DEPLOYMENT.md)。阿里云已安装systemd单元后，在仓库根目录使用 `bash start.sh` 和 `python3 deploy/service_control.py all status`。
 
-- 后端：`python manage.py runserver 0.0.0.0:8003`
-- 前端：`npm run dev`（5173）
-
-### 生产环境
-
-```bash
-# 前端构建
-cd Page
-npm run build
-
-# 方式一：内置 SPA 服务（:8080）
-python3 serve_spa.py
-
-# 方式二：系统 Nginx（仓库提供 nginx_system.conf / wewin-nginx.conf）
-./start_frontend.sh
-```
-
-```bash
-# 后端：Django 开发服务器（脚本默认方式）
-./start_backend.sh
-
-# 或 gunicorn
-cd Server
-source venv/bin/activate
-gunicorn wewin.wsgi:application -b 0.0.0.0:8003
-```
-
-### 端口约定
-
-| 服务 | 端口 |
+| 服务 | 端口与范围 |
 | --- | --- |
-| 后端 API | 8003 |
+| 生产Web/API | 443 HTTPS；80跳转与证书验证 |
+| Gunicorn | 127.0.0.1:8003，仅由Nginx访问 |
 | 前端开发 | 5173 |
-| 前端生产 | 8080 |
+| N1备份拉取 | 阿里云SSH22，限制来源 |
+| N1管理FRP | 7000接入，6000转发SSH，限制来源 |
+
+线上数据库和媒体均位于阿里云 `/var/lib/wewin`，N1保存异步联合备份。开发环境使用 Django runserver 与 Vite，生产使用Nginx/Gunicorn及独立调度。
 
 ---
 
@@ -431,5 +359,5 @@ gunicorn wewin.wsgi:application -b 0.0.0.0:8003
 2. `AliData/global_params.py` 含 1688 店铺凭证，`Server/.env`、`Page/.env.local` 含敏感配置，禁止提交到公开仓库。
 3. 数据库当前为 SQLite；高并发或多人协作场景建议迁移到 PostgreSQL / MySQL。
 4. 仓库中的 `Server/db.sqlite3` 及备份文件可能包含真实业务数据，请勿随代码分发。
-5. 业务代码暂无自动化测试；`Server/` 下的 `check_*.py`、`create_*.py`、`test_*.py` 多为一次性运维脚本，请勿当作测试套件执行。
+5. 部署回归测试为 `Server/store/test_deployment.py` 和 `deploy/test_backup.py`；其他 `Server/` 下的 `check_*.py`、`create_*.py`、`test_*.py` 多为一次性运维脚本，应核实用途后执行。
 6. 提交代码后需按约定更新 `docs/log.txt`（倒序，每个 commit 一条），详见 [AGENTS.md](AGENTS.md)。

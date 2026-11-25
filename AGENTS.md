@@ -17,9 +17,9 @@
 ## 技术栈
 
 ### 后端（Server/）
-- **框架**：Django 4.2.30
+- **框架**：Django 5.2.19
 - **认证**：PyJWT 手写 JWT（非 DRF），通过 `utils/decorators.py` 的 `@jwt_required` 装饰器校验
-- **数据库**：SQLite（`Server/db.sqlite3`），表名通过 `Meta.db_table` 显式指定
+- **数据库**：SQLite（开发为 `Server/db.sqlite3`，生产为 `/var/lib/wewin/db.sqlite3`），表名通过 `Meta.db_table` 显式指定
 - **CORS**：django-cors-headers，开发环境 `CORS_ALLOW_ALL_ORIGINS=True`
 - **定时任务**：APScheduler（店铺自动拉单）
 - **关键依赖**：Django / PyJWT / requests / corsheaders / dotenv / Pillow / APScheduler
@@ -51,14 +51,14 @@ WeWin/
 │   │   ├── views/              # 按领域拆分为 helpers/store_views/order_views/product_views
 │   │   ├── services/           # base.py 基类 + ali1688.py 实现
 │   │   ├── tasks.py            # auto_pull_orders 自动拉单任务
-│   │   └── apps.py             # APScheduler 调度启动
+│   │   └── apps.py             # 应用注册，不启动调度
 │   ├── customer/               # 客户、报价、可见性
 │   ├── utils/                  # 共享装饰器（jwt_required / permission_required 等）
 │   ├── backup_db.py            # 数据库备份脚本
 │   ├── manage.py
 │   ├── requirements.txt
 │   └── .env.example
-├── Page/                       # Vue 3 前端（端口 5173 开发 / 8080 生产）
+├── Page/                       # Vue 3 前端（端口 5173 开发 / HTTPS 443 生产）
 │   └── src/
 │       ├── api/                # 按模块拆分的 API 客户端（account/company/store/customer）
 │       ├── views/              # 页面（products/ stores/ 已拆分，components/ 复用组件）
@@ -142,7 +142,7 @@ Company（企业）
 - 抽象基类：`Server/store/services/base.py` 的 `BaseDataPullService`
 - 1688 实现：`Server/store/services/ali1688.py`
 - 新增平台需继承基类并实现 `pull_orders` / `pull_order_detail` / `save_order`，在 `get_service_class` 中注册
-- 自动拉单：`store/tasks.py` 的 `auto_pull_orders`，由 `store/apps.py` 的 APScheduler 每分钟调度，按 `StoreDataConfig` 的 `auto_pull_enabled` + `pull_interval_hours` 触发
+- 自动拉单：`store/tasks.py` 的 `auto_pull_orders`，由 `python manage.py run_scheduler` 的独立 APScheduler 进程每分钟调度，按 `StoreDataConfig` 的 `auto_pull_enabled` + `pull_interval_hours` 触发
 
 ### 管理命令
 - `python manage.py create_superadmin` — 创建超级管理员
@@ -156,7 +156,7 @@ Company（企业）
 - 统一通过 `src/api/` 下的模块化客户端调用，**不要**直接使用 axios
 - 工厂函数：`Page/src/api/client.js` 的 `createApiClient(basePath)`
 - 拦截器自动注入 `Authorization: Bearer <token>`，401 时自动跳转登录
-- API 基址由 `VITE_API_BASE_URL` 环境变量配置，代码默认 `http://47.250.165.79:8003`（本地开发可覆盖为 `http://127.0.0.1:8003`）
+- API 基址由 `VITE_API_BASE_URL` 环境变量配置，生产默认同源 HTTPS，本地开发默认 `http://127.0.0.1:8003`
 
 ### 路由与权限
 - 路由配置：`Page/src/router/index.js`
@@ -181,7 +181,7 @@ Company（企业）
 5. **前端向后兼容**：`src/api/index.js` 同时支持命名导出与默认导出，修改 API 模块时保持两种导出方式均可用。
 6. **数据库表名**：模型 `Meta.db_table` 显式指定表名（如 `product` 而非 `store_product`），新增模型需遵循此约定。
 7. **时区**：`TIME_ZONE = "Asia/Shanghai"`，`USE_TZ = True`，时间字段统一 UTC 存储、前端按需转换。
-8. **文件上传**：商品图片上传至 `products/%Y/%m/%d/`，`MEDIA_ROOT = Server/media`，单文件上限 100MB。
+8. **文件上传**：商品图片上传至 `products/%Y/%m/%d/`，开发 `MEDIA_ROOT = Server/media`，生产使用 `/var/lib/wewin/media`，单文件上限 100MB。
 9. **规划文档**：`.trae/specs/` 下为各模块 PRD，`.trae/documents/` 下为分析与计划文档，开发新功能前应先查阅对应 spec。
 10. **提交日志**：每次 `git commit` 后必须在 `docs/log.txt` 追加一条记录，按提交时间**倒序**排列（最新在最上面），格式与步骤见「常见任务指引 → 提交代码与更新日志」。
 
@@ -221,15 +221,15 @@ npm run dev
 cd Page
 npm run build               # 产物在 Page/dist
 
-# 生产环境 SPA 服务（端口 8080）
-cd Page
-python serve_spa.py
+# 生产环境（仓库根目录，systemd 单元已安装）
+bash start.sh
+python3 deploy/service_control.py all status
 ```
 
 ### 数据库备份
 ```bash
-cd Server
-python backup_db.py --keep 10   # 备份并保留最近 10 份
+systemctl start wewin-backup    # 生产：数据库与媒体联合备份
+# 开发SQLite备份：cd Server && python backup_db.py --keep 10
 ```
 
 ### 服装利润汇算（AliData 命令行）
@@ -239,8 +239,18 @@ python profit_counting.py [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--shops 店�
 ```
 
 ### 部署端口约定
-- 前端：`8080`（生产）/ `5173`（开发）
-- 后端：`8003`
+- 前端：`443`（生产 HTTPS，80 跳转/证书验证）/ `5173`（开发）
+- 后端：`8003`（生产仅监听 127.0.0.1）
+
+---
+
+## 生产部署与数据端代码入口
+
+- `Page/` 为前端源码，`Server/` 为后端源码，`deploy/` 为服务配置、联合备份与恢复代码。
+- 统一启停使用 `start.sh` / `stop.sh` 或 `deploy/service_control.py`，支持 `--dry-run`，不恢复旧 runserver/8080 启动方式。
+- `deploy/sync_runtime.py` 仅复制 Git 跟踪的源码与示例；生产库、媒体、密钥、环境文件和构建产物保留在仓库外。
+- N1安装入口为 `deploy/n1/install_backup.py`，遵循 `deploy/n1/README.md`，保留既有FRP与其他cron任务。
+- 开发、生产配置与服务安装步骤见 `DEPLOYMENT.md`、`deploy/README.md`；上线验收和整合记录在 `docs/`。
 
 ---
 

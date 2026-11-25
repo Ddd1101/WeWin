@@ -23,6 +23,12 @@
 
 使用 Let's Encrypt shortlived IP 证书，由 Certbot 5.10.0 签发，续期后 reload Nginx。`wewin-cert-renew.timer` 每日检查两次。密钥和证书不入仓库。
 
+## 仓库集成入口
+
+前端、后端、数据端和统一启停入口见 [../DEPLOYMENT.md](../DEPLOYMENT.md)。生产脚本支持 `--dry-run`，使用明确的systemd单元；N1使用 [n1/install_backup.py](n1/install_backup.py) 管理备份脚本和专属cron块。
+
+`python3 deploy/build_frontend.py --output /tmp/wewin-web-release` 可在构建机生成仓库外产物。阿里云运行源码通过 `python3 deploy/sync_runtime.py --destination /srv/wewin/app --check` 核对，确认后用 `--apply` 复制；该工具不复制线上数据、不安装依赖、不运行迁移、不重启服务，也不删除目标目录中的旧文件。
+
 ## 更新部署
 
 先在有足够内存的构建机执行 `npm --prefix Page ci && npm --prefix Page run build -- --outDir /tmp/wewin-web-build`。2GB ECS 上默认 Node 堆不足，本次在本机构建后传输产物。不要提交 `Page/dist`、APK、数据库或环境文件。
