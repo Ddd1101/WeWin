@@ -32,6 +32,14 @@
 - **HTTP**：axios（封装于 `src/api/client.js` 的 `createApiClient` 工厂）
 - **其他**：echarts（图表）、xlsx + file-saver（导出 Excel）
 
+### Android（Android/）
+- **实现**：Kotlin + Jetpack Compose（Material3），Retrofit/OkHttp、kotlinx-serialization
+- **状态与认证**：ViewModel/StateFlow、DataStore Token 与用户信息持久化
+- **图片**：Coil + 系统 Photo Picker，上传使用 IO 线程有界临时文件
+- **当前范围**：登录、四类商品与 SKU、童装尺码成本/售价、成品 BOM 和克价模拟、图片操作、个人信息与退出登录
+- **构建**：JDK17、Android SDK34、Gradle Wrapper8.5；生产默认 HTTPS，参数见 `Android/README.md`
+- **验收**：P0110 / Android17 已完成指定企业负责人账号真机验证；正式签名发布及其他版本/角色另行验证
+
 ### N1 媒体服务（media-service/）
 - **实现**：Go 标准库，构建工具链 Go 1.27.4，部署为 ARM64 独立程序
 - **职责**：图片原文件读写、哈希校验、原子发布、空间保护、回收区和媒体清单
@@ -85,6 +93,12 @@ WeWin/
 │   ├── profit_counting.py      # 服装利润汇算命令行入口
 │   ├── utils/                  # ali_api / cloth_worksheet / utils
 │   └── global_params.py        # 店铺凭证（硬编码，敏感）
+├── Android/                    # Kotlin + Compose 原生客户端
+│   ├── app/src/main/java/com/wewin/app/
+│   │   ├── data/local/         # TokenStore 与认证事件
+│   │   ├── data/remote/        # ApiService、网络/认证拦截器、DTO
+│   │   └── ui/                # login / products / profile / navigation
+│   └── README.md               # SDK、API配置、安装和真机验证入口
 ├── media-service/              # N1 图片读写程序：main.go、main_test.go、go.mod
 ├── deploy/                     # Nginx/systemd 配置、发布/备份/恢复工具
 │   ├── n1/                    # N1 媒体监督与备份安装脚本
@@ -274,6 +288,28 @@ python profit_counting.py [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--shops 店�
 - `deploy/sync_runtime.py` 仅复制 Git 跟踪的源码与示例；生产库、媒体、密钥、环境文件和构建产物保留在仓库外。
 - N1安装入口为 `deploy/n1/install_backup.py`，遵循 `deploy/n1/README.md`，保留既有FRP与其他cron任务。
 - 开发、生产配置与服务安装步骤见 `DEPLOYMENT.md`、`deploy/README.md`；上线验收和整合记录在 `docs/`。
+
+---
+
+## Android 开发与真机验证约定
+
+- 通过 `data/remote/ApiService.kt` 定义接口，由 ViewModel 管理请求和状态；DTO保持与后端 JSON 兼容。
+- API地址优先顺序为 `-PAPI_BASE_URL`、`WEWIN_API_BASE_URL`、Android根目录 `local.properties`，默认 `https://47.250.165.79`。SDK路径使用实际 `ANDROID_HOME` 或根目录 `sdk.dir`。
+- 搜索应查询后端企业可见范围，先筛选再分页；切换筛选取消旧请求，过期响应不得覆盖新结果。返回页面时刷新，分页失败提供重试。
+- 编辑已有商品固定货号与类型；修改默认SKU时保留其他SKU的ID和数据。童装按尺码行保存，成品组成使用明确的材料/SKU和正整数数量。
+- 图片选择使用Photo Picker；不得在UI线程读取全部大文件，临时文件需限制大小并在完成/失败后清理。图片读取失败应提示，不可静默当作无图提交。
+- 错误密码留在登录页并展示反馈；业务401清除本地会话。Debug网络日志仅BASIC、Release关闭，禁止记录密码、Token或登录正文。
+- 真机写入验证只操作专门创建的验证商品；先核对账号企业和权限，测试结束清理商品/SKU/图片引用并恢复网络设置。
+- 变更按范围执行 `assembleDebug`、`lintDebug` 及真机复验。Lint Warning与Error分开报告；单设备、指定账号验收不能代替所有Android版本/角色或正式发布。
+- 已完成真机验证与修复的具体证据见 `docs/android-device-validation-2026-11-26.md`；原生端尚无订单/客户独立页面，不计为已验证。
+
+```bash
+# 仓库根目录；替换实际SDK路径和设备序列号
+ANDROID_HOME=/path/to/android-sdk bash Android/gradlew -p Android \
+  -PAPI_BASE_URL=https://47.250.165.79 assembleDebug lintDebug
+adb devices -l
+adb -s <serial> install -r Android/app/build/outputs/apk/debug/app-debug.apk
+```
 
 ---
 

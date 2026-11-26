@@ -16,7 +16,7 @@ WeWin 是一套面向多企业的电商运营管理系统，围绕**手串（串
 | 童装成本表 | 类 Excel 成本矩阵（行=货号、列=尺码），支持筛选、搜索、排序、冻结列与批量保存 |
 | 客户与报价 | 客户档案；客户可见商品配置；客户专属报价与报价历史 |
 | 数据看板 | 商品统计概览 |
-| 移动端 | Android 原生客户端，复用后端 API，支持登录与商品管理 |
+| 移动端 | Android 原生客户端：登录、四类商品/SKU、童装尺码、成品BOM与克价模拟、图片与个人信息 |
 | 辅助工具 | 1688 订单/利润汇算脚本；企业微信销售日报推送 |
 
 > 说明：Web 端「库存管理」「销售数据」目前为占位页面，功能尚未实现。
@@ -45,6 +45,8 @@ WeWin 是一套面向多企业的电商运营管理系统，围绕**手串（串
 - Kotlin + Jetpack Compose（Material3）
 - Retrofit + OkHttp + kotlinx-serialization
 - DataStore（Token 持久化）、Coil、Navigation Compose
+
+原生端当前覆盖商品管理和个人信息；订单、客户报价等独立页面使用Web后台。童装在原生端以商品/尺码表单编辑。功能和构建详见 [Android/README.md](Android/README.md)。
 
 ### N1 媒体服务
 
@@ -386,6 +388,17 @@ python3 -m unittest discover -s deploy -p 'test_*.py'
 cd media-service
 go test -race ./...
 ```
+
+Android变更在实际SDK环境中构建并静态检查，再安装到指定设备进行功能复验：
+
+```bash
+ANDROID_HOME=/path/to/android-sdk bash Android/gradlew -p Android \
+  -PAPI_BASE_URL=https://47.250.165.79 assembleDebug lintDebug
+adb devices -l
+adb -s <serial> install -r Android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+P0110 / Android17已验证登录、搜索分页、四类商品、SKU保留、图片、BOM、删除保护、离线恢复和会话持久化。完整结果与限制见 [真机验证报告](docs/android-device-validation-2026-11-26.md)。
 
 健康检查为 `/health/live/`、`/health/core/`、`/health/media/`、`/health/ready/`、`/health/backup/`。分别观察进程、数据库核心依赖、N1媒体、整体依赖和备份新鲜度。备份任务结果还需查看systemd日志，不能仅以备份健康200判定最近一次任务成功。
 
