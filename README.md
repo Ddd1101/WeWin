@@ -199,7 +199,7 @@ Android构建默认HTTPS入口，可显式指定环境：
 bash Android/gradlew -p Android -PAPI_BASE_URL=https://47.250.165.79 assembleDebug
 ```
 
-配置本机Android SDK后构建；APK在 Android/app/build/outputs/apk/debug。当前仅完成调试构建，真机与签名发布另行验收。
+配置本机Android SDK后构建；APK在 Android/app/build/outputs/apk/debug。已在 P0110（Android17）验证登录、商品/SKU、童装、BOM和图片操作；见 [真机验证记录](docs/android-device-validation-2026-11-26.md)。正式签名发布另行配置。
 
 ## 生产运维入口
 
@@ -399,6 +399,7 @@ go test -race ./...
 - [DEPLOYMENT.md](DEPLOYMENT.md)：部署与启停脚本说明
 - [deploy/N1-MEDIA.md](deploy/N1-MEDIA.md)：图片服务、专用隧道、缓存、迁移与恢复
 - [docs/n1-media-validation-2026-11-26.md](docs/n1-media-validation-2026-11-26.md)：N1图片部署验收记录
+- [docs/android-device-validation-2026-11-26.md](docs/android-device-validation-2026-11-26.md)：Android真机验证与修复记录
 - [document/](document/)：数据库设计、1688 API、业务模块等原始文档
 - [.trae/specs/](.trae/specs/)：各功能模块的需求与实现规格
 

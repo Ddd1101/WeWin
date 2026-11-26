@@ -1,118 +1,49 @@
 # WeWin Android App
 
-WeWin 电商 ERP 系统的安卓原生客户端，使用 Kotlin + Jetpack Compose 开发，复用 Django 后端 API，优先支持商品管理模块。
+WeWin 的 Kotlin + Jetpack Compose 原生客户端，复用 Django API，当前覆盖商品管理和个人信息。生产 API 使用统一 HTTPS 入口，图片经阿里云缓存读取 N1 原文件。
 
-## 技术栈
-- Kotlin + Jetpack Compose（Material3）
-- Retrofit + OkHttp（网络）
-- kotlinx-serialization（JSON）
-- DataStore Preferences（Token 持久化）
-- Coil（图片加载）
-- Navigation Compose（路由）
-- Coroutines（异步）
+## 功能与代码入口
 
-## 工程结构
-```
-Android/
-├── build.gradle.kts              # 根构建脚本（声明 AGP/Kotlin 插件版本）
-├── settings.gradle.kts           # 工程设置（仓库名、模块）
-├── gradle.properties             # Gradle 属性
-├── gradlew / gradlew.bat         # Gradle Wrapper 脚本
-├── gradle/wrapper/               # Gradle Wrapper 配置（Gradle 8.5）
-└── app/
-    ├── build.gradle.kts          # 模块构建脚本（依赖、SDK、BuildConfig）
-    ├── local.properties.example  # API_BASE_URL 配置示例
-    ├── proguard-rules.pro        # ProGuard 规则
-    └── src/main/
-        ├── AndroidManifest.xml   # 清单（INTERNET 权限、网络安全配置）
-        ├── res/
-        │   ├── drawable/         # 图标资源
-        │   ├── mipmap-anydpi-v26/# 自适应启动图标
-        │   ├── values/           # colors / strings / themes
-        │   └── xml/
-        │       └── network_security_config.xml  # 允许 10.0.2.2 明文 HTTP
-        └── java/com/wewin/app/
-            ├── MainActivity.kt          # 入口 Activity
-            ├── WeWinApp.kt              # Application，初始化 RetrofitClient
-            ├── data/
-            │   ├── local/
-            │   │   ├── TokenStore.kt        # DataStore 持久化 Token 与用户信息
-            │   │   └── AuthEventBus.kt      # 401 登出事件总线
-            │   └── remote/
-            │       ├── ApiService.kt        # Retrofit 接口定义（登录、商品 CRUD）
-            │       ├── RetrofitClient.kt    # Retrofit/OkHttp 单例初始化
-            │       ├── AuthInterceptor.kt   # 自动注入 Bearer Token
-            │       ├── Global401Interceptor.kt  # 401 清 Token 并触发登出
-            │       └── dto/                 # 数据传输对象（与后端 JSON 对应）
-            │           ├── LoginRequest.kt / LoginResponse.kt
-            │           ├── ProductDto.kt / ProductListResponse.kt
-            │           ├── ProductStatsDto.kt / ProductTypesDto.kt
-            │           ├── BeadDto.kt / AccessoryDto.kt / FinishedDto.kt
-            │           ├── SkuDto.kt / SkuListResponse.kt
-            │           ├── BeadListDto.kt / AccessoryListDto.kt
-            │           ├── FinishedBeadItemDto.kt / FinishedAccessoryItemDto.kt
-            │           ├── FinishedComponentRequest.kt  # 成品组成提交结构
-            │           ├── MessageResponse.kt / ErrorResponse.kt
-            └── ui/
-                ├── login/
-                │   ├── LoginScreen.kt       # 登录页 UI
-                │   └── LoginViewModel.kt    # 登录逻辑
-                ├── navigation/
-                │   ├── Screen.kt            # 路由定义
-                │   ├── AppNavGraph.kt       # 顶层导航图（登录/主页/详情/编辑）
-                │   └── MainScaffold.kt      # 主页底部导航（商品/我的）
-                ├── products/
-                │   ├── ProductListScreen.kt     # 商品列表（统计卡片、筛选、搜索、分页）
-                │   ├── ProductListViewModel.kt
-                │   ├── ProductDetailScreen.kt   # 商品详情（基础信息/SKU/成品组成）
-                │   ├── ProductDetailViewModel.kt
-                │   ├── ProductEditScreen.kt     # 新建/编辑（动态表单、图片上传）
-                │   └── ProductEditViewModel.kt
-                ├── profile/
-                │   └── ProfileScreen.kt     # 我的页（用户信息、退出登录）
-                └── theme/
-                    ├── Color.kt / Theme.kt / Type.kt  # Material3 主题
-```
+| 功能 | 入口 |
+| --- | --- |
+| 登录、会话持久化与过期处理 | `ui/login/`、`data/local/TokenStore.kt`、认证拦截器 |
+| 商品筛选、服务端搜索与分页 | `ProductListScreen.kt`、`ProductListViewModel.kt` |
+| 基础信息、SKU、童装与成品详情 | `ProductDetailScreen.kt`、`ProductDetailViewModel.kt` |
+| 四种商品的新建和编辑、图片选择及上传 | `ProductEditScreen.kt`、`ProductEditViewModel.kt` |
+| 童装尺码成本与售价 | 编辑页的尺码行，数字尺码和英文尺码均支持 |
+| 成品 BOM 与克价模拟 | 材料/SKU 搜索选择、数量和工费；详情页提供本地模拟 |
+| 删除确认与材料引用保护 | 详情页删除入口，使用后端 BOM 保护规则 |
+| 个人信息、所属企业和退出登录 | `ui/profile/ProfileScreen.kt` |
 
-## 环境要求
-- Android Studio Hedgehog 或更高
-- JDK 17
-- Android SDK 34（compileSdk）
-- Gradle 8.5（wrapper 已含）
+`data/remote/ApiService.kt` 定义接口；`RetrofitClient.kt` 配置 HTTPS 与超时；`dto/` 对应后端数据。仓库根目录 [AGENTS.md](../AGENTS.md) 和 [README.md](../README.md) 提供整体架构。
 
-## 配置
-1. 复制 `app/local.properties.example` 为 `app/local.properties`（或根目录 `local.properties`）
-2. 修改 `API_BASE_URL` 指向后端地址：
-   - 模拟器访问宿主机：`http://10.0.2.2:8003`
-   - 真机调试：`http://<你的电脑局域网IP>:8003`
-3. 确保后端 Django 服务已启动（`cd Server && python manage.py runserver 0.0.0.0:8003`）
+原生 App 当前未提供订单、客户报价等独立页面，这些功能使用 Web 后台。童装在原生端以商品与尺码表单查看/编辑，不是 Web Handsontable 的整表界面。
 
-## 构建与运行
+## 构建与安装
+
+需要 JDK 17、Android SDK 34、Gradle Wrapper 8.5。API 地址优先顺序：Gradle `-PAPI_BASE_URL`、环境变量 `WEWIN_API_BASE_URL`、Android 根目录 `local.properties` 的 `API_BASE_URL`，默认 `https://47.250.165.79`。SDK 路径通过 `ANDROID_HOME` 或根目录 `local.properties` 的 `sdk.dir` 指定。
+
 ```bash
-# Debug 构建
-./gradlew assembleDebug
+# 从仓库根目录运行；用实际 SDK 路径替换占位路径
+ANDROID_HOME=/path/to/android-sdk bash Android/gradlew -p Android \
+  -PAPI_BASE_URL=https://47.250.165.79 assembleDebug
 
-# 安装到连接的设备/模拟器
-./gradlew installDebug
+adb devices -l
+adb -s <serial> install -r Android/app/build/outputs/apk/debug/app-debug.apk
+adb -s <serial> shell am start -n com.wewin.app/.MainActivity
 ```
 
-或在 Android Studio 中直接打开 `Android/` 目录运行。
+开发时可显式指定模拟器 `http://10.0.2.2:8003` 或局域网后端。生产客户端只连接 HTTPS443，不直接访问 Gunicorn8003 或 N1 私有媒体端口。网络与存储部署见 [N1-MEDIA.md](../deploy/N1-MEDIA.md)。
 
-## 功能
-- 登录（JWT 鉴权，Token 持久化，401 自动登出）
-- 商品管理（核心）：
-  - 商品列表（类型筛选、搜索、分页、统计卡片）
-  - 商品详情（基础信息、SKU、成品组成）
-  - 新建/编辑商品（动态表单、成品组成选择、图片上传）
-  - 删除商品（二次确认）
-- 我的（用户信息、退出登录）
+## 编辑和错误处理
 
-## 与后端联调
-- 后端 API 文档见项目根目录 `AGENT.md`
-- 商品相关接口前缀：`/api/store/products/`
-- 登录接口：`/api/account/login/`
-- 所有业务接口需 `Authorization: Bearer <token>` 头
-- 图片上传走 multipart/form-data
+- 货号和类型在编辑已有商品时固定。成本、售价及重量须为有效非负数字；材料数量须为正整数。
+- 编辑串珠/配件基本信息会同步默认 SKU，同时保留其他 SKU 的 ID 和数据。童装按尺码行保存成本和售价。
+- 图片在 IO 线程复制到有上限的临时文件后上传，读取失败会报错，提交完成或失败后清理暂存。取消选择会保留原图，移除操作需要保存。
+- 搜索查询整个企业可见数据，先筛选再分页。切换筛选取消旧请求并阻止旧结果覆盖；从编辑或详情返回列表时刷新。
+- 错误密码保留登录页和错误提示；业务401清除本地会话并返回登录。网络失败允许重试，不自动重放写入。
+- Debug 网络日志只记录 BASIC 请求信息，Release关闭网络日志；不输出登录正文、密码或 Token。
 
-## 与 Page/android 的关系
-`Page/android/` 是 Vue 前端的 Capacitor WebView 包装，与本原生 App 相互独立。本 App 为纯原生实现，体验更流畅，后续可逐步覆盖更多模块。
+## 真机验证
+
+使用 `P0110`（Android 17 / API37）验证当前 HTTPS 构建。详细范围、发现的问题、修复与清理结果见 [真机验证记录](../docs/android-device-validation-2026-11-26.md)。APK为调试构建，正式签名发布另行配置。

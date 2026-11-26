@@ -6,6 +6,16 @@ WeWin 项目提交日志
 
 
 ------------------------------------------------------------
+[2026-11-26] docs: 记录 Android 真机验证与修复结果
+  Commit: eaaebf2
+  分支:   update/storage_2026_11_22
+  变更:   3 files changed, +96 / -105
+  说明:
+    - 更新HTTPS构建、原生功能范围、代码入口和真机验证指引
+    - 记录P0110 Android17验证、修复、数据清理与验收限制
+    - assembleDebug和lintDebug通过，无Lint Error，12条Warning另行记录
+
+------------------------------------------------------------
 [2026-11-26] fix: 完善 Android 商品表单与 SKU、图片操作
   Commit: 1d451bb
   分支:   update/storage_2026_11_22
