@@ -13,7 +13,7 @@ from decimal import Decimal
 from account.models import User, UserType
 from company.models import Company
 from store.models import Product, ProductType, ProductSku, Bead, Accessory, FinishedProduct, FinishedProductBead, FinishedProductAccessory, ChildrenClothing
-from .helpers import sku_to_dict, get_default_sku, ensure_default_sku, sync_skus, sku_schema_ready, product_skus_payload, record_finished_cost_history, recalculate_related_finished_products, finished_cost_summary, material_cost_change_reason
+from .helpers import sku_to_dict, get_default_sku, ensure_default_sku, sync_skus, sku_schema_ready, product_skus_payload, record_finished_cost_history, recalculate_related_finished_products, finished_cost_summary, material_cost_change_reason, finished_cost_payload, validate_finished_cost
 from utils.decorators import jwt_required
 
 
@@ -159,8 +159,6 @@ def get_products(request):
                         'labor_cost': float(finished.labor_cost),
                         'elastic_cost': float(finished.elastic_cost)
                     }
-                    # 计算总成本
-                    total_cost = Decimal('0')
                     # 获取成品的串珠组成
                     for fpb in FinishedProductBead.objects.select_related('bead__product', 'sku').filter(finished_product=finished):
                         bead_product = fpb.bead.product
@@ -169,7 +167,6 @@ def get_products(request):
                         sku_payload = sku_to_dict(sku) if sku else None
                         bead_cost_price = sku.cost_price if sku else bead_product.cost_price
                         bead_purchase_cost = sku.purchase_cost if sku else bead_product.purchase_cost
-                        total_cost += bead_cost_price * fpb.quantity
                         product_data['finished']['beads'].append({
                             'bead_id': bead_product.id,
                             'sku_id': sku.id if sku else None,
@@ -191,7 +188,6 @@ def get_products(request):
                         sku = fpa.sku if fpa.sku_id else get_default_sku(acc_product)
                         sku_payload = sku_to_dict(sku) if sku else None
                         accessory_cost_price = sku.cost_price if sku else acc_product.cost_price
-                        total_cost += accessory_cost_price * fpa.quantity
                         product_data['finished']['accessories'].append({
                             'accessory_id': acc_product.id,
                             'sku_id': sku.id if sku else None,
@@ -202,10 +198,8 @@ def get_products(request):
                             'accessory_image_url': request.build_absolute_uri(acc_product.image.url) if acc_product.image else None,
                             'quantity': fpa.quantity
                         })
-                    # 加上工费和弹性成本
-                    total_cost += finished.labor_cost
-                    total_cost += finished.elastic_cost
-                    product_data['cost_price'] = float(total_cost)
+                    product_data['finished'].update(finished_cost_payload(finished))
+                    product_data['cost_price'] = product_data['finished']['adopted_cost']
                     # 成品成本监控：历史最高/当前/最低成本
                     product_data['finished']['cost_summary'] = finished_cost_summary(finished)
                 except FinishedProduct.DoesNotExist:
@@ -342,6 +336,12 @@ def create_product(request):
         if Product.objects.filter(code=code, company=company).exists():
             return JsonResponse({'error': '货号已存在'}, status=400)
 
+        if product_type == ProductType.FINISHED:
+            try:
+                cost_mode, manual_cost, cost_note, change_type = validate_finished_cost(data_dict)
+            except ValueError as error:
+                return JsonResponse({'error': str(error)}, status=400)
+
         with transaction.atomic():
             # 计算单颗成本（仅对串珠有效）
             if product_type == ProductType.BEAD:
@@ -401,7 +401,7 @@ def create_product(request):
                     }], to_decimal, to_integer, accessory)
             elif product_type == ProductType.FINISHED:
                 finished = FinishedProduct.objects.create(
-                    product=product,
+                    product=product, cost_mode=cost_mode, manual_cost=manual_cost,
                     labor_cost=to_decimal(data_dict.get('labor_cost', 0)),
                     elastic_cost=to_decimal(data_dict.get('elastic_cost', 0))
                 )
@@ -453,7 +453,7 @@ def create_product(request):
                         pass
                 
                 # 重新计算并保存成品的成本价格（同时记录初始成本快照）
-                product.cost_price = record_finished_cost_history(finished, '成品创建', request.user)
+                product.cost_price = record_finished_cost_history(finished, '成品创建' + ('：' + cost_note if cost_note else ''), request.user, 'creation')
                 product.save()
             elif product_type == ProductType.CHILDREN_CLOTHING:
                 ChildrenClothing.objects.create(
@@ -593,6 +593,13 @@ def update_product(request, product_id):
                 return default
             return str(value).lower() in ['true', '1', 'yes', 'on']
 
+        if product.product_type == ProductType.FINISHED:
+            finished = FinishedProduct.objects.get(product=product)
+            try:
+                cost_mode, manual_cost, cost_note, change_type = validate_finished_cost(data_dict, finished)
+            except ValueError as error:
+                return JsonResponse({'error': str(error)}, status=400)
+
         # 记录物料成本变动前的快照，用于生成触发文案
         old_cost = product.cost_price
         old_sku_costs = {}
@@ -608,7 +615,7 @@ def update_product(request, product_id):
 
         if 'cost_price' in data_dict:
             # 对串珠不直接更新 cost_price，会在后面根据 weight 和 purchase_cost 计算
-            if product.product_type != ProductType.BEAD:
+            if product.product_type not in (ProductType.BEAD, ProductType.FINISHED):
                 product.cost_price = to_decimal(data_dict['cost_price'])
 
         if 'selling_price' in data_dict:
@@ -696,6 +703,8 @@ def update_product(request, product_id):
         elif product.product_type == ProductType.FINISHED:
             try:
                 finished = FinishedProduct.objects.get(product=product)
+                finished.cost_mode = cost_mode
+                finished.manual_cost = manual_cost
                 # 更新工费和弹性成本
                 if 'labor_cost' in data_dict:
                     finished.labor_cost = to_decimal(data_dict['labor_cost'])
@@ -766,7 +775,7 @@ def update_product(request, product_id):
                             pass
                 
                 # 重新计算并保存成品的成本价格（同时记录成本快照）
-                product.cost_price = record_finished_cost_history(finished, '成品成本核算', request.user)
+                product.cost_price = record_finished_cost_history(finished, ('成本模式切换' if change_type == 'mode_switch' else '独立成本调整' if change_type == 'manual_adjustment' else '成品成本核算') + ('：' + cost_note if cost_note else ''), request.user, change_type)
                 product.save()
             except FinishedProduct.DoesNotExist:
                 pass
@@ -943,8 +952,6 @@ def get_product_detail(request, product_id):
                     'labor_cost': float(finished.labor_cost),
                     'elastic_cost': float(finished.elastic_cost)
                 }
-                # 计算总成本
-                total_cost = Decimal('0')
                 # 获取成品的串珠组成
                 for fpb in FinishedProductBead.objects.select_related('bead__product', 'sku').filter(finished_product=finished):
                     bead_product = fpb.bead.product
@@ -953,7 +960,6 @@ def get_product_detail(request, product_id):
                     sku_payload = sku_to_dict(sku) if sku else None
                     bead_cost_price = sku.cost_price if sku else bead_product.cost_price
                     bead_purchase_cost = sku.purchase_cost if sku else bead_product.purchase_cost
-                    total_cost += bead_cost_price * fpb.quantity
                     product_data['finished']['beads'].append({
                         'bead_id': bead_product.id,
                         'sku_id': sku.id if sku else None,
@@ -975,7 +981,6 @@ def get_product_detail(request, product_id):
                     sku = fpa.sku if fpa.sku_id else get_default_sku(acc_product)
                     sku_payload = sku_to_dict(sku) if sku else None
                     accessory_cost_price = sku.cost_price if sku else acc_product.cost_price
-                    total_cost += accessory_cost_price * fpa.quantity
                     product_data['finished']['accessories'].append({
                         'accessory_id': acc_product.id,
                         'sku_id': sku.id if sku else None,
@@ -986,10 +991,8 @@ def get_product_detail(request, product_id):
                         'accessory_image_url': request.build_absolute_uri(acc_product.image.url) if acc_product.image else None,
                         'quantity': fpa.quantity
                     })
-                # 加上工费和弹性成本
-                total_cost += finished.labor_cost
-                total_cost += finished.elastic_cost
-                product_data['cost_price'] = float(total_cost)
+                product_data['finished'].update(finished_cost_payload(finished))
+                product_data['cost_price'] = product_data['finished']['adopted_cost']
                 # 成品成本监控：历史最高/当前/最低成本
                 product_data['finished']['cost_summary'] = finished_cost_summary(finished)
             except FinishedProduct.DoesNotExist:
@@ -1060,6 +1063,9 @@ def get_finished_cost_history(request, product_id):
             history.append({
                 'id': h.id,
                 'cost_price': float(h.cost_price),
+                'cost_mode': h.cost_mode,
+                'reference_cost': float(h.reference_cost),
+                'change_type': h.change_type,
                 'bead_cost': float(h.bead_cost),
                 'accessory_cost': float(h.accessory_cost),
                 'labor_cost': float(h.labor_cost),

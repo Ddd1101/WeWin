@@ -139,6 +139,8 @@ class Accessory(models.Model):
 
 
 class FinishedProduct(models.Model):
+    cost_mode = models.CharField(max_length=10, choices=[('auto', '按组成核算'), ('manual', '独立定价')], default='auto', verbose_name='成本模式')
+    manual_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='独立整件成本')
     product = models.OneToOneField(
         Product,
         on_delete=models.CASCADE,
@@ -271,6 +273,9 @@ class FinishedProductAccessory(models.Model):
 
 
 class FinishedProductCostHistory(models.Model):
+    cost_mode = models.CharField(max_length=10, default='auto', verbose_name='当时成本模式')
+    reference_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='参考测算成本')
+    change_type = models.CharField(max_length=20, default='legacy', verbose_name='变更类型')
     finished_product = models.ForeignKey(
         FinishedProduct,
         on_delete=models.CASCADE,

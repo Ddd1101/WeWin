@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from store.models import ProductSku, ProductType
 
 
@@ -10,12 +10,12 @@ def _finished_cost_breakdown(finished):
         if fpb.sku_id and fpb.sku:
             bead_cost += fpb.sku.cost_price * fpb.quantity
         else:
-            bead_cost += fpb.bead.product.cost_price * fpb.quantity
+            bead_cost += (get_default_sku(fpb.bead.product) or fpb.bead.product).cost_price * fpb.quantity
     for fpa in finished.accessories.all():
         if fpa.sku_id and fpa.sku:
             accessory_cost += fpa.sku.cost_price * fpa.quantity
         else:
-            accessory_cost += fpa.accessory.product.cost_price * fpa.quantity
+            accessory_cost += (get_default_sku(fpa.accessory.product) or fpa.accessory.product).cost_price * fpa.quantity
     return bead_cost, accessory_cost
 
 
@@ -23,7 +23,7 @@ def _finished_bom_snapshot(finished):
     """构建成品 BOM 快照（串珠/配件明细），用于成本历史可追溯"""
     beads = []
     for fpb in finished.beads.select_related('bead__product', 'sku'):
-        unit_cost = fpb.sku.cost_price if (fpb.sku_id and fpb.sku) else fpb.bead.product.cost_price
+        unit_cost = fpb.sku.cost_price if (fpb.sku_id and fpb.sku) else (get_default_sku(fpb.bead.product) or fpb.bead.product).cost_price
         beads.append({
             'code': fpb.bead.product.code,
             'sku_code': fpb.sku.sku_code if fpb.sku else None,
@@ -33,7 +33,7 @@ def _finished_bom_snapshot(finished):
         })
     accessories = []
     for fpa in finished.accessories.select_related('accessory__product', 'sku'):
-        unit_cost = fpa.sku.cost_price if (fpa.sku_id and fpa.sku) else fpa.accessory.product.cost_price
+        unit_cost = fpa.sku.cost_price if (fpa.sku_id and fpa.sku) else (get_default_sku(fpa.accessory.product) or fpa.accessory.product).cost_price
         accessories.append({
             'code': fpa.accessory.product.code,
             'sku_code': fpa.sku.sku_code if fpa.sku else None,
@@ -44,26 +44,67 @@ def _finished_bom_snapshot(finished):
     return {'beads': beads, 'accessories': accessories}
 
 
-def record_finished_cost_history(finished, trigger_reason='', created_by=None):
-    """记录成品成本快照（仅当成本或组成发生变化时），返回总成本"""
-    from store.models import FinishedProductCostHistory
+def finished_cost_values(finished):
     bead_cost, accessory_cost = _finished_cost_breakdown(finished)
-    total = bead_cost + accessory_cost + finished.labor_cost + finished.elastic_cost
-    bom_snapshot = _finished_bom_snapshot(finished)
-    last = finished.cost_history.order_by('-created_at').first()
-    if last and last.cost_price == total and last.bead_cost == bead_cost and last.accessory_cost == accessory_cost and last.labor_cost == finished.labor_cost and last.elastic_cost == finished.elastic_cost and last.bom_snapshot == bom_snapshot:
-        return total
+    reference = (bead_cost + accessory_cost + finished.labor_cost + finished.elastic_cost).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    adopted = finished.manual_cost if finished.cost_mode == 'manual' else reference
+    return adopted, reference, bead_cost, accessory_cost
 
+
+def finished_cost_payload(finished):
+    adopted, reference, _, _ = finished_cost_values(finished)
+    return {
+        'cost_mode': finished.cost_mode,
+        'manual_cost': float(finished.manual_cost),
+        'reference_cost': float(reference),
+        'adopted_cost': float(adopted),
+    }
+
+
+def validate_finished_cost(data, finished=None):
+    """Validate before mutation; old clients cannot overwrite an independent cost."""
+    mode = data.get('cost_mode', finished.cost_mode if finished else 'auto')
+    if mode not in ('auto', 'manual'):
+        raise ValueError('成本模式必须为 auto 或 manual')
+    manual = finished.manual_cost if finished else Decimal('0')
+    switching = finished is not None and mode != finished.cost_mode
+    if mode == 'manual' and (finished is None or switching) and 'manual_cost' not in data:
+        raise ValueError('独立定价必须填写整件成本')
+    if 'manual_cost' in data:
+        try:
+            manual = Decimal(str(data['manual_cost']))
+        except (InvalidOperation, ValueError, TypeError):
+            raise ValueError('独立成本必须为有效金额')
+        if not manual.is_finite() or manual < 0 or manual >= Decimal('10000000000') or manual != manual.quantize(Decimal('0.01')):
+            raise ValueError('独立成本须为非负金额，最多两位小数且小于100亿元')
+    note = data.get('cost_note', '')
+    if not isinstance(note, str) or len(note.strip()) > 400:
+        raise ValueError('成本变更原因须为400字以内的文字')
+    note = note.strip()
+    manual_changed = mode == 'manual' and (finished is None or manual != finished.manual_cost)
+    if (switching or manual_changed) and not note:
+        raise ValueError('调整独立成本或切换成本模式，请填写原因')
+    change_type = 'mode_switch' if switching else 'manual_adjustment' if manual_changed else 'recalculation'
+    return mode, manual, note, change_type
+
+
+def record_finished_cost_history(finished, trigger_reason='', created_by=None, change_type='recalculation'):
+    """Persist adopted cost and immutable reference/BOM snapshots together."""
+    from store.models import FinishedProductCostHistory
+    total, reference, bead_cost, accessory_cost = finished_cost_values(finished)
+    bom_snapshot = _finished_bom_snapshot(finished)
+    last = finished.cost_history.order_by('-created_at', '-id').first()
+    finished.product.cost_price = total
+    finished.product.save(update_fields=['cost_price'])
+    if last and last.cost_mode == finished.cost_mode and last.cost_price == total and last.reference_cost == reference and last.bead_cost == bead_cost and last.accessory_cost == accessory_cost and last.labor_cost == finished.labor_cost and last.elastic_cost == finished.elastic_cost and last.bom_snapshot == bom_snapshot:
+        return total
     FinishedProductCostHistory.objects.create(
-        finished_product=finished,
-        cost_price=total,
-        bead_cost=bead_cost,
-        accessory_cost=accessory_cost,
-        labor_cost=finished.labor_cost,
-        elastic_cost=finished.elastic_cost,
+        finished_product=finished, cost_mode=finished.cost_mode,
+        cost_price=total, reference_cost=reference, change_type=change_type,
+        bead_cost=bead_cost, accessory_cost=accessory_cost,
+        labor_cost=finished.labor_cost, elastic_cost=finished.elastic_cost,
         trigger_reason=(trigger_reason.strip() or '成本变动')[:500],
-        created_by=created_by,
-        bom_snapshot=bom_snapshot,
+        created_by=created_by, bom_snapshot=bom_snapshot,
     )
     return total
 
@@ -112,19 +153,17 @@ def recalculate_related_finished_products(material_product, trigger_reason='', c
         return
 
     for finished in FinishedProduct.objects.filter(product_id__in=finished_ids).select_related('product'):
-        total = record_finished_cost_history(finished, trigger_reason, created_by)
-        finished.product.cost_price = total
-        finished.product.save(update_fields=['cost_price'])
+        record_finished_cost_history(finished, trigger_reason, created_by, 'material_change')
 
 
 def finished_cost_summary(finished):
     """返回成品的历史最高/当前/最低成本"""
-    costs = list(finished.cost_history.order_by('created_at').values_list('cost_price', flat=True))
+    costs = list(finished.cost_history.order_by('created_at', 'id').values_list('cost_price', flat=True))
     if not costs:
         return {'highest_cost': None, 'current_cost': None, 'lowest_cost': None}
     return {
         'highest_cost': float(max(costs)),
-        'current_cost': float(costs[-1]),
+        'current_cost': float(finished_cost_values(finished)[0]),
         'lowest_cost': float(min(costs)),
     }
 
