@@ -46,6 +46,12 @@ WeWin 是一套面向多企业的电商运营管理系统，围绕**手串（串
 - Retrofit + OkHttp + kotlinx-serialization
 - DataStore（Token 持久化）、Coil、Navigation Compose
 
+### N1 媒体服务
+
+- Go 标准库，使用 Go 1.27.4 构建 ARM64 独立程序
+- 原文件读写、内容哈希、原子发布、受限空间与删除回收区
+- 经专用反向 SSH 隧道提供内部媒体接口，阿里云 Nginx 统一代理和缓存
+
 ### 独立脚本
 
 - Python + requests 直连 1688 OpenAPI
@@ -56,31 +62,30 @@ WeWin 是一套面向多企业的电商运营管理系统，围绕**手串（串
 
 ## 系统架构
 
-```
-┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
-│  Page (Vue 3)   │   │ Android (Kotlin)│   │ AliData (脚本)  │
-│  Web 管理后台   │   │  移动端客户端   │   │ 1688 拉单/汇算  │
-└────────┬────────┘   └────────┬────────┘   └────────┬────────┘
-         │  HTTP + JWT         │                     │ 1688 OpenAPI
-         └──────────┬──────────┘                     │
-                    ▼                                ▼
-        ┌───────────────────────┐          ┌──────────────────┐
-        │  Server (Django)      │          │  1688 开放平台   │
-        │  /api/<app>/  :8003   │          └──────────────────┘
-        └───────────┬───────────┘
-                    │
-     ┌──────────────┼───────────────┬──────────────┐
-     ▼              ▼               ▼              ▼
-  account        company          store         customer
-  用户/权限      企业隔离      店铺/商品/订单    客户/报价
-                    │
-                    ▼
-              SQLite (db.sqlite3)
+```mermaid
+flowchart LR
+    WEB["Web / Android"] -->|HTTPS 443| NG["阿里云 Nginx"]
+    NG --> PAGE["Vue 静态前端"]
+    NG -->|/api/| APP["Gunicorn + Django"]
+    APP --> DB["阿里云 SQLite"]
+    JOB["独立拉单进程"] --> DB
+    NG -->|/media/| CACHE["阿里云图片缓存：最多 2GiB"]
+    CACHE -->|未命中| TUNNEL["Ali 回环 10080"]
+    APP -->|事务外上传| TUNNEL
+    TUNNEL -->|专用 SSH 隧道| ORIGIN["N1 媒体服务：回环 18080"]
+    ORIGIN --> IMAGES["N1 图片原文件及回收区"]
+    DB -.->|快照| BATCH["Ali 数据库与图片清单暂存"]
+    ORIGIN -.->|图片哈希清单| BATCH
+    BATCH -.->|N1 每 5 分钟经 SSH22 拉取| BACKUP["N1 完整备份批次"]
 ```
 
-- 所有业务表通过 `company` 外键实现企业级数据隔离。
-- 认证为自定义 JWT：请求头 `Authorization: Bearer <token>`，Token 有效期 7 天。
-- 定时任务由独立的 run_scheduler 管理命令启动（每分钟检查一次自动拉单配置），与 Web worker 分离。
+图中箭头表示请求或数据流向；媒体 SSH 隧道由 N1 主动连接阿里云22建立。FRP7000/6000保留为独立管理通道。`AliData/` 是独立1688汇算/推送工具，不参与在线图片链路。
+
+- 数据库保留在阿里云，图片原文件存放N1；阿里云只保留有界缓存和上传临时文件。
+- 图片URL仍为同一HTTPS入口。缓存未命中时，Nginx经隧道读取N1原图、返回浏览器并缓存，不经过Django。
+- N1媒体失联时，缓存图可读；未缓存图与图片写操作503，核心业务按独立依赖继续运行。
+- 业务表通过 `company` 外键隔离，JWT有效期7天；自动拉单使用独立 `run_scheduler` 进程。
+- 数据库快照和媒体清单备份不包含图片内容。N1回收区最多7天/5GiB，仍需独立设备备份来覆盖硬件损坏。
 
 ---
 
@@ -101,6 +106,8 @@ WeWin/
 │   │   ├── tasks.py              # 自动拉单任务
 │   │   └── apps.py               # 应用注册，不在此启动调度
 │   ├── utils/decorators.py       # jwt_required / permission_required 等
+│   ├── utils/media.py            # 上传事务、引用更新和清理队列
+│   ├── utils/remote_media.py     # N1 存储适配
 │   ├── manage.py
 │   └── requirements.txt
 ├── Page/                         # Vue 3 前端
@@ -114,7 +121,14 @@ WeWin/
 │   └── vite.config.js
 ├── Android/                      # Kotlin + Compose 原生客户端
 ├── AliData/                      # 1688 独立脚本（拉单、利润汇算、企微推送）
-├── deploy/                       # 生产服务配置、发布入口、N1备份与恢复工具
+├── media-service/                # N1 图片存储程序（Go）
+│   ├── main.go                  # 原图读写、校验、回收区和清单
+│   └── main_test.go / go.mod
+├── deploy/                       # 部署和运维工具
+│   ├── nginx.conf / *.service / *.timer
+│   ├── n1/                      # 媒体监督、备份客户端安装
+│   ├── backup.py / backup_exchange.py / restore_backup.py
+│   └── N1-MEDIA.md               # 在线图片部署、迁移及恢复
 ├── docs/                         # 验收/整合记录、CODE_WIKI.md、提交日志 log.txt
 ├── document/                     # 业务与 1688 API 相关文档
 ├── .trae/                        # 规划文档与 specs
@@ -129,16 +143,29 @@ WeWin/
 
 ## 当前生产部署
 
-生产入口为 **https://47.250.165.79**。阿里云运行Nginx、Gunicorn、独立调度和SQLite，N1存放在线图片原文件并运行媒体服务；阿里云缓存上限2GB。线上数据在 /var/lib/wewin，运行代码在 /srv/wewin/app，与本仓库分离。
+生产入口为 **https://47.250.165.79**。阿里云运行Nginx、Gunicorn、独立调度和SQLite，N1存放在线图片原文件并运行媒体服务；阿里云缓存上限2GB。线上数据库位于 /var/lib/wewin，原图位于N1 wewin-media/objects，运行代码在 /srv/wewin/app；发布时独立管理代码与数据。
 
 | 组成 | 源码入口 |
 | --- | --- |
 | 前端 | Page/；deploy/build_frontend.py |
 | 后端 | Server/；deploy/app.env.example；deploy/sync_runtime.py |
-| 数据端 | deploy/backup.py、backup_exchange.py、restore_backup.py；deploy/n1/ |
+| 在线图片存储 | media-service/；Server/utils/remote_media.py；Server/utils/media.py |
+| 备份与恢复 | deploy/backup.py、backup_exchange.py、restore_backup.py |
+| N1 运行监督 | deploy/n1/run_media.py；deploy/n1/install_backup.py |
 | 统一运维 | start.sh、stop.sh、deploy/service_control.py；Makefile |
 
-完整指引见 [DEPLOYMENT.md](DEPLOYMENT.md)、[云侧部署](deploy/README.md) 和 [N1安装](deploy/n1/README.md)。
+完整指引见 [DEPLOYMENT.md](DEPLOYMENT.md)、[部署导航](deploy/README.md)、[N1在线图片部署](deploy/N1-MEDIA.md) 和 [N1备份安装](deploy/n1/README.md)。
+
+| 对象 | 生产位置 | 容量或规则 |
+| --- | --- | --- |
+| SQLite | Ali /var/lib/wewin/db.sqlite3 | 唯一在线主库 |
+| 图片原文件 | N1 ~/Documents/workplace_shop/wewin-media/objects/products | 不长期保留在阿里云 |
+| 图片缓存 | Ali /var/cache/wewin-media | 独立2GiB硬上限，淘汰目标1.5GiB |
+| 上传暂存 | Ali /var/lib/wewin-upload | 独立512MiB硬上限 |
+| 数据库/清单备份暂存 | Ali /var/backups/wewin | 512MiB预算检查，超限停止新增 |
+| 图片回收区 | N1 objects/.trash | 最多7天及5GiB，不等同独立备份 |
+
+源码提交与业务数据录入分别管理：生产数据库、图片、实际凭据和备份归档保存在仓库外，Git推送用于发布代码。
 
 ## 快速开始（开发环境）
 
@@ -193,7 +220,10 @@ bash stop.sh --dry-run                   # 预览停止范围
 | deploy/app.env.example | 生产配置参考；实际存放在仓库外 /etc/wewin/app.env |
 | WEWIN_ENV_FILE | 显式选择后端环境文件 |
 | DB_ENGINE / DB_NAME 等 | SQLite 或预留的 MariaDB 配置；当前生产使用云侧SQLite |
-| MEDIA_ROOT / MEDIA_URL | 独立媒体目录与HTTPS图片入口 |
+| MEDIA_ROOT / MEDIA_URL | 开发本地媒体目录；生产客户端HTTPS图片入口 |
+| MEDIA_ORIGIN_URL / MEDIA_ORIGIN_READ_TOKEN / MEDIA_ORIGIN_WRITE_TOKEN | 生产N1回环源地址及独立读取/写入凭据 |
+| MEDIA_CACHE_ROOT / FILE_UPLOAD_TEMP_DIR | 阿里云有界缓存及上传暂存 |
+| MEDIA_CLEANUP_DIR | 持久清理队列位置 |
 | Page/.env.production.example | Web同源生产API配置示例 |
 | API_BASE_URL / WEWIN_API_BASE_URL | Android通过Gradle参数或环境变量覆盖API地址 |
 
@@ -214,9 +244,9 @@ bash stop.sh --dry-run                   # 预览停止范围
 | `python manage.py init_finished_cost_history` | 为现有成品初始化成本历史记录 |
 | `python manage.py migrate` | 执行数据库迁移 |
 
-### 数据库与媒体联合备份
+### 数据库快照与媒体清单备份
 
-生产备份由 wewin-backup.timer 每小时执行，N1每5分钟拉取。手动运行使用 `systemctl start wewin-backup`；恢复工具为 `deploy/restore_backup.py`。旧 `Server/backup_db.py` 仅用于开发SQLite备份，详见 [部署说明](deploy/README.md)。
+生产备份由 wewin-backup.timer 每小时执行，N1每5分钟拉取，归档仅包含数据库与图片清单，不打包原图。手动运行使用 `systemctl start wewin-backup`。联合恢复使用 `deploy/restore_backup.py` 并指定 `--media-root` 对N1原文件/回收区核对哈希；只恢复数据库与清单时不能声明原图已恢复。旧 `Server/backup_db.py` 仅用于开发SQLite备份。
 
 ### 服装利润汇算（AliData）
 
@@ -335,10 +365,29 @@ Company
 | 生产Web/API | 443 HTTPS；80跳转与证书验证 |
 | Gunicorn | 127.0.0.1:8003，仅由Nginx访问 |
 | 前端开发 | 5173 |
-| N1备份拉取 | 阿里云SSH22，限制来源 |
+| N1媒体隧道/备份拉取 | 阿里云SSH22，限制来源 |
+| 私有媒体端口 | Ali 127.0.0.1:10080 → N1 127.0.0.1:18080，不开放公网 |
 | N1管理FRP | 7000接入，6000转发SSH，限制来源 |
 
 线上数据库位于阿里云 `/var/lib/wewin`，图片原文件位于N1 `wewin-media/objects`。图片部署与故障表现见 [deploy/N1-MEDIA.md](deploy/N1-MEDIA.md)。开发环境使用 Django runserver 与 Vite，生产使用Nginx/Gunicorn及独立调度。
+
+---
+
+## 验证与健康检查
+
+```bash
+# 后端：在准备好开发/测试Python环境后运行
+cd Server
+python manage.py test store.test_deployment store.test_remote_media --noinput
+cd ..
+python3 -m unittest discover -s deploy -p 'test_*.py'
+
+# N1媒体模块：在Go构建环境中运行
+cd media-service
+go test -race ./...
+```
+
+健康检查为 `/health/live/`、`/health/core/`、`/health/media/`、`/health/ready/`、`/health/backup/`。分别观察进程、数据库核心依赖、N1媒体、整体依赖和备份新鲜度。备份任务结果还需查看systemd日志，不能仅以备份健康200判定最近一次任务成功。
 
 ---
 
@@ -348,6 +397,8 @@ Company
 - [docs/CODE_WIKI.md](docs/CODE_WIKI.md)：逐模块代码导读
 - [docs/log.txt](docs/log.txt)：提交日志（倒序）
 - [DEPLOYMENT.md](DEPLOYMENT.md)：部署与启停脚本说明
+- [deploy/N1-MEDIA.md](deploy/N1-MEDIA.md)：图片服务、专用隧道、缓存、迁移与恢复
+- [docs/n1-media-validation-2026-11-26.md](docs/n1-media-validation-2026-11-26.md)：N1图片部署验收记录
 - [document/](document/)：数据库设计、1688 API、业务模块等原始文档
 - [.trae/specs/](.trae/specs/)：各功能模块的需求与实现规格
 
@@ -359,5 +410,5 @@ Company
 2. `AliData/global_params.py` 含 1688 店铺凭证，`Server/.env`、`Page/.env.local` 含敏感配置，禁止提交到公开仓库。
 3. 数据库当前为 SQLite；高并发或多人协作场景建议迁移到 PostgreSQL / MySQL。
 4. 仓库中的 `Server/db.sqlite3` 及备份文件可能包含真实业务数据，请勿随代码分发。
-5. 部署回归测试为 `Server/store/test_deployment.py` 和 `deploy/test_backup.py`；其他 `Server/` 下的 `check_*.py`、`create_*.py`、`test_*.py` 多为一次性运维脚本，应核实用途后执行。
+5. 部署回归测试为 `Server/store/test_deployment.py`、`Server/store/test_remote_media.py`、`deploy/test_backup.py` 和 `media-service/main_test.go`；其他 `Server/` 下的 `check_*.py`、`create_*.py`、`test_*.py` 多为一次性运维脚本，应核实用途后执行。
 6. 提交代码后需按约定更新 `docs/log.txt`（倒序，每个 commit 一条），详见 [AGENTS.md](AGENTS.md)。

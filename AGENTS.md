@@ -9,7 +9,7 @@
 **WeWin** 是一套面向多企业的电商 ERP 管理系统，支持多店铺、多平台订单拉取、商品（串珠/配件/成品）管理、客户报价与权限隔离。
 
 - **业务领域**：电商运营管理（店铺、商品、订单、客户、库存、销售数据）
-- **核心商品类型**：串珠（bead）、手串配件（accessory）、手串成品（finished，由串珠+配件组成）
+- **核心商品类型**：串珠（bead）、手串配件（accessory）、手串成品（finished，由串珠+配件组成）、童装（children_clothing）
 - **支持平台**：1688（已实现）、淘宝/天猫/京东/拼多多/抖音/快手/小红书/微信小店（模型已预留，服务待实现）
 
 ---
@@ -32,6 +32,19 @@
 - **HTTP**：axios（封装于 `src/api/client.js` 的 `createApiClient` 工厂）
 - **其他**：echarts（图表）、xlsx + file-saver（导出 Excel）
 
+### N1 媒体服务（media-service/）
+- **实现**：Go 标准库，构建工具链 Go 1.27.4，部署为 ARM64 独立程序
+- **职责**：图片原文件读写、哈希校验、原子发布、空间保护、回收区和媒体清单
+- **链路**：N1 主动连接阿里云 SSH22，反向映射 Ali `127.0.0.1:10080` → N1 `127.0.0.1:18080`
+- **数据位置**：N1 `~/Documents/workplace_shop/wewin-media/objects`；数据库仍在阿里云
+- **运行监督**：`deploy/n1/run_media.py` 管理媒体进程和专用隧道，独占锁防止重复实例
+
+### 部署与运维（deploy/）
+- Nginx、systemd 服务与 timer 配置，前端构建、运行代码同步及统一启停入口
+- 数据库/媒体清单备份、校验传输、联合恢复，以及 N1 安装与监督脚本
+- `deploy/` 维护配置和运维工具，图片实际读写逻辑位于 `media-service/`
+- 完整指引见 `DEPLOYMENT.md`、`deploy/N1-MEDIA.md`
+
 ### 独立脚本（AliData/）
 - 独立 Python 脚本，直连 1688 OpenAPI，含销售/利润汇算与服装利润命令行入口
 - `global_params.py` 中含硬编码的店铺凭证，属敏感信息
@@ -53,7 +66,7 @@ WeWin/
 │   │   ├── tasks.py            # auto_pull_orders 自动拉单任务
 │   │   └── apps.py             # 应用注册，不启动调度
 │   ├── customer/               # 客户、报价、可见性
-│   ├── utils/                  # 共享装饰器（jwt_required / permission_required 等）
+│   ├── utils/                  # 认证装饰器、media.py 上传事务/清理队列、remote_media.py N1 存储适配
 │   ├── backup_db.py            # 数据库备份脚本
 │   ├── manage.py
 │   ├── requirements.txt
@@ -72,6 +85,11 @@ WeWin/
 │   ├── profit_counting.py      # 服装利润汇算命令行入口
 │   ├── utils/                  # ali_api / cloth_worksheet / utils
 │   └── global_params.py        # 店铺凭证（硬编码，敏感）
+├── media-service/              # N1 图片读写程序：main.go、main_test.go、go.mod
+├── deploy/                     # Nginx/systemd 配置、发布/备份/恢复工具
+│   ├── n1/                    # N1 媒体监督与备份安装脚本
+│   ├── backup.py / backup_exchange.py / restore_backup.py
+│   └── N1-MEDIA.md             # 图片存储、缓存、迁移及恢复指引
 ├── ShopManager/                # 独立第三方工程（已 gitignore，不纳入本仓库）
 ├── docs/log.txt                # 提交日志
 ├── AGENTS.md                   # 本文件
@@ -105,6 +123,7 @@ Company（企业）
   │     ├── ProductSku（SKU）
   │     ├── Bead（串珠详情，OneToOne）
   │     ├── Accessory（配件详情，OneToOne）
+  │     ├── ChildrenClothing（童装详情）
   │     └── FinishedProduct（成品详情）
   │           ├── FinishedProductBead（成品-串珠组成）
   │           └── FinishedProductAccessory（成品-配件组成）
@@ -228,7 +247,7 @@ python3 deploy/service_control.py all status
 
 ### 数据库备份
 ```bash
-systemctl start wewin-backup    # 生产：数据库与媒体联合备份
+systemctl start wewin-backup    # 生产：数据库快照 + N1 媒体清单，不包含图片内容
 # 开发SQLite备份：cd Server && python backup_db.py --keep 10
 ```
 
@@ -241,6 +260,8 @@ python profit_counting.py [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--shops 店�
 ### 部署端口约定
 - 前端：`443`（生产 HTTPS，80 跳转/证书验证）/ `5173`（开发）
 - 后端：`8003`（生产仅监听 127.0.0.1）
+- N1 媒体映射：Ali `127.0.0.1:10080` → N1 `127.0.0.1:18080`，不开放公网
+- SSH22 用于管理、媒体隧道和受限备份传输；FRP7000/6000 为独立管理链路，按来源限制
 
 ---
 
@@ -253,6 +274,18 @@ python profit_counting.py [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--shops 店�
 - `deploy/sync_runtime.py` 仅复制 Git 跟踪的源码与示例；生产库、媒体、密钥、环境文件和构建产物保留在仓库外。
 - N1安装入口为 `deploy/n1/install_backup.py`，遵循 `deploy/n1/README.md`，保留既有FRP与其他cron任务。
 - 开发、生产配置与服务安装步骤见 `DEPLOYMENT.md`、`deploy/README.md`；上线验收和整合记录在 `docs/`。
+
+---
+
+## 图片存储开发与验证约定
+
+1. `media-service/main.go` 负责 N1 文件操作，`Server/utils/remote_media.py` 负责后端远程存储，`Server/utils/media.py` 负责上传校验和引用/清理队列。
+2. 远程上传先完成文件校验和写入，再在短数据库事务内更新引用；网络写入不得长期持有 SQLite 事务锁。
+3. 删除与替换通过 `cleanup_media` 任务再次核对引用后回收文件并失效缓存。写入结果不确定时保留现场，不盲目删除或重试业务写入。
+4. 阿里云缓存使用独立 2GiB 文件系统，淘汰目标 1.5GiB；上传暂存使用独立 512MiB 文件系统。数据库备份使用 512MiB预算检查，不与文件系统硬上限混淆。
+5. N1 断线时缓存图可读，未缓存图片和图片写操作返回503，登录/订单/文字业务保持独立。N1 同机回收区不是独立设备备份。
+6. 变更验证按范围选择：Django `store.test_deployment` / `store.test_remote_media`；`python3 -m unittest discover -s deploy -p 'test_*.py'`；在 `media-service/` 执行 `go test -race ./...`。
+7. 联合恢复须提供 N1 原文件或回收区并核对哈希；只恢复数据库和清单时，不能声明图片已恢复。
 
 ---
 
