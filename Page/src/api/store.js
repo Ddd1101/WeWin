@@ -84,6 +84,7 @@ export const createProduct = (data) => {
       }
     }
     return storeApi.post("/products/create/", formData, {
+      timeout: 180000,
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -106,6 +107,7 @@ export const updateProduct = (id, data) => {
       }
     }
     return storeApi.post(`/products/${id}/update/`, formData, {
+      timeout: 180000,
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -122,6 +124,10 @@ export const getProductDetail = (id) => {
   return storeApi.get(`/products/${id}/detail/`);
 };
 
+export const getFinishedCostHistory = (id, params) => {
+  return storeApi.get(`/products/${id}/cost-history/`, { params });
+};
+
 export const getAccessories = () => {
   return storeApi.get("/products/accessories/");
 };
@@ -132,6 +138,15 @@ export const getBeads = () => {
 
 export const getProductSkus = (id) => {
   return storeApi.get(`/products/${id}/skus/`);
+};
+
+// 童装成本矩阵
+export const getChildrenClothingCosts = () => {
+  return storeApi.get("/products/children-clothing/costs/");
+};
+
+export const saveChildrenClothingCosts = (rows) => {
+  return storeApi.post("/products/children-clothing/costs/save/", { rows });
 };
 
 export default storeApi;

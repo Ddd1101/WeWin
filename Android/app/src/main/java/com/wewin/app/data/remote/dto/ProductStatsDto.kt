@@ -13,6 +13,7 @@ data class ProductStatsDto(
         val bead_count: Int = 0,
         val accessory_count: Int = 0,
         val finished_count: Int = 0,
+        val children_clothing_count: Int = 0,
         val sku_count: Int = 0
     )
 }

@@ -1,61 +1,6 @@
 <template>
   <div>
-    <!-- 自定义图片预览 -->
-    <div v-if="previewVisible" class="image-preview-overlay" @click="closePreview">
-      <div class="image-preview-container" @click.stop>
-        <div class="image-preview-toolbar">
-          <button class="image-preview-btn" @click="zoomOut" title="缩小">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </button>
-          <button class="image-preview-btn" @click="zoomIn" title="放大">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </button>
-          <button class="image-preview-btn" @click="rotateLeft" title="逆时针旋转">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M1 4v6h6"></path>
-              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-            </svg>
-          </button>
-          <button class="image-preview-btn" @click="rotateRight" title="顺时针旋转">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"></path>
-              <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"></path>
-            </svg>
-          </button>
-          <button class="image-preview-btn image-preview-btn-reset" @click="resetTransform" title="重置">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"></path>
-              <path d="M1 20v-6h6"></path>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
-              <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
-            </svg>
-          </button>
-          <button class="image-preview-close" @click="closePreview" title="关闭">×</button>
-        </div>
-        <div 
-          class="image-preview-img-wrapper"
-          @mousedown="startDrag"
-          @mousemove="onDrag"
-          @mouseup="stopDrag"
-          @mouseleave="stopDrag"
-          @touchstart="startDrag"
-          @touchmove="onDrag"
-          @touchend="stopDrag"
-        >
-          <img 
-            :src="previewImage" 
-            class="image-preview-img" 
-            :style="imgStyle"
-            alt="预览图片" 
-          />
-        </div>
-      </div>
-    </div>
+    <ProductImageCell ref="imagePreviewRef" />
 
     <!-- 筛选区域 -->
     <div class="filter-container" :class="{ 'filter-mobile': isMobile }">
@@ -116,7 +61,7 @@
               </thead>
               <tbody>
                 <tr v-for="(bead, index) in scope.row.finished.beads" :key="index">
-                  <td><img v-if="bead.bead_image_url" :src="bead.bead_image_url" class="detail-thumb" @click="openPreview(bead.bead_image_url)" /></td>
+                  <td><img v-if="bead.bead_image_url" :src="bead.bead_image_url" class="detail-thumb" @click="imagePreviewRef.openPreview(bead.bead_image_url)" /></td>
                   <td>{{ bead.bead_code || '-' }}</td>
                   <td>{{ bead.sku?.name || bead.sku?.sku_name || bead.bead_name }}</td>
                   <td>{{ bead.quantity }}</td>
@@ -144,7 +89,7 @@
               </thead>
               <tbody>
                 <tr v-for="(acc, index) in scope.row.finished.accessories" :key="index">
-                  <td><img v-if="acc.accessory_image_url" :src="acc.accessory_image_url" class="detail-thumb" @click="openPreview(acc.accessory_image_url)" /></td>
+                  <td><img v-if="acc.accessory_image_url" :src="acc.accessory_image_url" class="detail-thumb" @click="imagePreviewRef.openPreview(acc.accessory_image_url)" /></td>
                   <td>{{ acc.accessory_code || '-' }}</td>
                   <td>{{ acc.sku?.name || acc.sku?.sku_name || acc.accessory_name }}</td>
                   <td>{{ acc.quantity }}</td>
@@ -157,8 +102,14 @@
               <span>工费: ¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
               <span>弹性成本: ¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
             </div>
+            <div v-if="scope.row.finished.cost_summary" class="cost-monitor">
+              <span class="cost-monitor-item highest">历史最高: {{ formatCostMonitor(scope.row.finished.cost_summary.highest_cost) }}</span>
+              <span class="cost-monitor-item current">当前成本: {{ formatCostMonitor(scope.row.finished.cost_summary.current_cost) }}</span>
+              <span class="cost-monitor-item lowest">历史最低: {{ formatCostMonitor(scope.row.finished.cost_summary.lowest_cost) }}</span>
+              <el-button link type="primary" size="small" @click="openCostHistory(scope.row)">成本历史</el-button>
+            </div>
           </div>
-          <div v-else-if="['bead', 'accessory'].includes(scope.row.product_type)" class="sku-details">
+          <div v-else-if="['bead', 'accessory', 'children_clothing'].includes(scope.row.product_type)" class="sku-details">
             <h4>SKU列表</h4>
             <el-table v-if="scope.row.skus && scope.row.skus.length > 0" :data="scope.row.skus" size="small" style="width: 100%">
               <el-table-column prop="sku_code" label="SKU编码" min-width="120" />
@@ -203,7 +154,7 @@
             v-if="scope.row.image_url"
             :src="scope.row.image_url"
             style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; cursor: pointer;"
-            @click="openPreview(scope.row.image_url)"
+            @click="imagePreviewRef.openPreview(scope.row.image_url)"
             alt="商品图片"
           />
           <span v-else style="color: #999">无图</span>
@@ -233,7 +184,7 @@
       <!-- 显示成本价格 -->
       <el-table-column label="成本价格" width="100">
         <template #default="scope">
-          ¥{{ formatPrice(scope.row.product_type === 'finished' ? scope.row.cost_price : getDefaultSku(scope.row)?.cost_price) }}
+          ¥{{ formatPrice(scope.row.product_type === 'finished' ? scope.row.cost_price : getListCost(scope.row)) }}
         </template>
       </el-table-column>
       <!-- 显示售卖价格 -->
@@ -291,7 +242,7 @@
               v-if="row.image_url"
               :src="row.image_url"
               class="mobile-card-img"
-              @click.stop="openPreview(row.image_url)"
+              @click.stop="imagePreviewRef.openPreview(row.image_url)"
               alt="商品图片"
             />
             <div v-else class="mobile-card-no-img">无图</div>
@@ -300,7 +251,7 @@
             <div class="mobile-card-name">{{ row.name }}</div>
             <div class="mobile-card-code">{{ row.code }}</div>
             <div class="mobile-card-prices">
-              <span class="mobile-price">成本: ¥{{ formatPrice(row.product_type === 'finished' ? row.cost_price : getDefaultSku(row)?.cost_price) }}</span>
+              <span class="mobile-price">成本: ¥{{ formatPrice(row.product_type === 'finished' ? row.cost_price : getListCost(row)) }}</span>
               <span class="mobile-price">售价: ¥{{ formatPrice(row.product_type === 'finished' ? row.selling_price : getDefaultSku(row)?.selling_price) }}</span>
             </div>
           </div>
@@ -334,7 +285,7 @@
               </thead>
               <tbody>
                 <tr v-for="(bead, index) in row.finished.beads" :key="index">
-                  <td><img v-if="bead.bead_image_url" :src="bead.bead_image_url" class="detail-thumb" @click="openPreview(bead.bead_image_url)" /></td>
+                  <td><img v-if="bead.bead_image_url" :src="bead.bead_image_url" class="detail-thumb" @click="imagePreviewRef.openPreview(bead.bead_image_url)" /></td>
                   <td>{{ bead.bead_code || '-' }}</td>
                   <td>{{ bead.sku?.name || bead.sku?.sku_name || bead.bead_name }}</td>
                   <td>{{ bead.quantity }}</td>
@@ -362,7 +313,7 @@
               </thead>
               <tbody>
                 <tr v-for="(acc, index) in row.finished.accessories" :key="index">
-                  <td><img v-if="acc.accessory_image_url" :src="acc.accessory_image_url" class="detail-thumb" @click="openPreview(acc.accessory_image_url)" /></td>
+                  <td><img v-if="acc.accessory_image_url" :src="acc.accessory_image_url" class="detail-thumb" @click="imagePreviewRef.openPreview(acc.accessory_image_url)" /></td>
                   <td>{{ acc.accessory_code || '-' }}</td>
                   <td>{{ acc.sku?.name || acc.sku?.sku_name || acc.accessory_name }}</td>
                   <td>{{ acc.quantity }}</td>
@@ -374,6 +325,12 @@
             <div class="detail-summary">
               <span>工费: ¥{{ row.finished.labor_cost.toFixed(2) }}</span>
               <span>弹性成本: ¥{{ row.finished.elastic_cost.toFixed(2) }}</span>
+            </div>
+            <div v-if="row.finished.cost_summary" class="cost-monitor">
+              <span class="cost-monitor-item highest">历史最高: {{ formatCostMonitor(row.finished.cost_summary.highest_cost) }}</span>
+              <span class="cost-monitor-item current">当前成本: {{ formatCostMonitor(row.finished.cost_summary.current_cost) }}</span>
+              <span class="cost-monitor-item lowest">历史最低: {{ formatCostMonitor(row.finished.cost_summary.lowest_cost) }}</span>
+              <el-button link type="primary" size="small" @click="openCostHistory(row)">成本历史</el-button>
             </div>
           </div>
           <!-- 串珠/配件展开 -->
@@ -408,179 +365,22 @@
     <el-empty v-if="filteredProducts.length === 0 && !loading" description="暂无数据" />
 
     <!-- 模拟克价对话框 -->
-    <el-dialog v-model="simulateVisible" title="克价模拟" :width="isMobile ? '95%' : '1200px'" :fullscreen="isMobile">
-      <div v-if="simulateRow" class="simulate-content">
-        <div class="simulate-info" :class="{ 'simulate-info-mobile': isMobile }">
-          <span>货号: {{ simulateRow.code }}</span>
-          <span>商品名称: {{ simulateRow.name }}</span>
-          <span>售价: ¥{{ simulateRow.selling_price.toFixed(2) }}</span>
-        </div>
+    <PriceSimulateDialog v-model="simulateVisible" :row="simulateRow" :is-mobile="isMobile" />
 
-        <!-- 桌面端：表格布局 -->
-        <template v-if="!isMobile">
-          <table class="detail-table simulate-table" v-if="simulateBeads.length > 0">
-            <thead>
-              <tr>
-                <th colspan="9" class="detail-table-header">串珠（{{ simulateBeads.length }}种，共{{ calculateBeadsQuantity(simulateBeads) }}颗）</th>
-              </tr>
-              <tr>
-                <th style="width:140px">SKU名称</th>
-                <th style="width:50px">数量</th>
-                <th style="width:60px">克重</th>
-                <th style="width:80px">原克价</th>
-                <th style="width:140px">新克价(元/克)</th>
-                <th style="width:70px">原单价</th>
-                <th style="width:70px">新单价</th>
-                <th style="width:70px">原小计</th>
-                <th style="width:70px">新小计</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(bead, index) in simulateBeads" :key="'b'+index">
-                <td class="simulate-text">{{ bead.sku?.name || bead.sku?.sku_name || bead.bead_name }}</td>
-                <td>{{ bead.quantity }}</td>
-                <td>{{ bead.bead_weight ? bead.bead_weight.toFixed(2) + 'g' : '-' }}</td>
-                <td>¥{{ formatPrice(bead.bead_purchase_cost, 2) }}</td>
-                <td>
-                  <el-input-number v-model="bead.newPurchaseCost" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input" />
-                </td>
-                <td>¥{{ bead.bead_cost_price.toFixed(2) }}</td>
-                <td>¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0)).toFixed(2) }}</td>
-                <td>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</td>
-                <td>¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0) * bead.quantity).toFixed(2) }}</td>
-              </tr>
-            </tbody>
-          </table>
-          <table class="detail-table simulate-table" v-if="simulateAccessories.length > 0">
-            <thead>
-              <tr>
-                <th colspan="7" class="detail-table-header">配件（{{ simulateAccessories.length }}种，共{{ calculateAccessoriesQuantity(simulateAccessories) }}个）</th>
-              </tr>
-              <tr>
-                <th style="width:140px">SKU名称</th>
-                <th style="width:50px">数量</th>
-                <th style="width:80px">原单价</th>
-                <th style="width:130px">新单价</th>
-                <th style="width:70px">原小计</th>
-                <th style="width:70px">新小计</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(acc, index) in simulateAccessories" :key="'a'+index">
-                <td class="simulate-text">{{ acc.sku?.name || acc.sku?.sku_name || acc.accessory_name }}</td>
-                <td>{{ acc.quantity }}</td>
-                <td>¥{{ acc.accessory_cost_price.toFixed(2) }}</td>
-                <td>
-                  <el-input-number v-model="acc.newCostPrice" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input" />
-                </td>
-                <td>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</td>
-                <td>¥{{ (acc.newCostPrice * acc.quantity).toFixed(2) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </template>
-
-        <!-- 手机端：卡片式布局 -->
-        <template v-else>
-          <div v-if="simulateBeads.length > 0" class="simulate-mobile-section">
-            <div class="simulate-mobile-title">串珠（{{ simulateBeads.length }}种，共{{ calculateBeadsQuantity(simulateBeads) }}颗）</div>
-            <div v-for="(bead, index) in simulateBeads" :key="'mb'+index" class="simulate-mobile-card">
-              <div class="simulate-mobile-card-header">{{ bead.sku?.name || bead.sku?.sku_name || bead.bead_name }}</div>
-              <div class="simulate-mobile-grid">
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">数量</span>
-                  <span>{{ bead.quantity }}</span>
-                </div>
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">克重</span>
-                  <span>{{ bead.bead_weight ? bead.bead_weight.toFixed(2) + 'g' : '-' }}</span>
-                </div>
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">原克价</span>
-                  <span>¥{{ formatPrice(bead.bead_purchase_cost, 2) }}</span>
-                </div>
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">新克价</span>
-                  <el-input-number v-model="bead.newPurchaseCost" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input-mobile" />
-                </div>
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">原单价</span>
-                  <span>¥{{ bead.bead_cost_price.toFixed(2) }}</span>
-                </div>
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">新单价</span>
-                  <span>¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0)).toFixed(2) }}</span>
-                </div>
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">原小计</span>
-                  <span>¥{{ (bead.bead_cost_price * bead.quantity).toFixed(2) }}</span>
-                </div>
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">新小计</span>
-                  <span :style="{ color: (bead.newPurchaseCost * (bead.bead_weight || 0) * bead.quantity) > (bead.bead_cost_price * bead.quantity) ? '#ef4444' : '#10b981' }">¥{{ (bead.newPurchaseCost * (bead.bead_weight || 0) * bead.quantity).toFixed(2) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div v-if="simulateAccessories.length > 0" class="simulate-mobile-section">
-            <div class="simulate-mobile-title">配件（{{ simulateAccessories.length }}种，共{{ calculateAccessoriesQuantity(simulateAccessories) }}个）</div>
-            <div v-for="(acc, index) in simulateAccessories" :key="'ma'+index" class="simulate-mobile-card">
-              <div class="simulate-mobile-card-header">{{ acc.sku?.name || acc.sku?.sku_name || acc.accessory_name }}</div>
-              <div class="simulate-mobile-grid">
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">数量</span>
-                  <span>{{ acc.quantity }}</span>
-                </div>
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">原单价</span>
-                  <span>¥{{ acc.accessory_cost_price.toFixed(2) }}</span>
-                </div>
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">新单价</span>
-                  <el-input-number v-model="acc.newCostPrice" :min="0" :step="0.01" :precision="2" :controls="false" size="small" class="simulate-input-mobile" />
-                </div>
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">原小计</span>
-                  <span>¥{{ (acc.accessory_cost_price * acc.quantity).toFixed(2) }}</span>
-                </div>
-                <div class="simulate-mobile-row">
-                  <span class="simulate-mobile-label">新小计</span>
-                  <span :style="{ color: (acc.newCostPrice * acc.quantity) > (acc.accessory_cost_price * acc.quantity) ? '#ef4444' : '#10b981' }">¥{{ (acc.newCostPrice * acc.quantity).toFixed(2) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </template>
-
-        <div class="simulate-summary" :class="{ 'simulate-summary-mobile': isMobile }">
-          <div class="summary-row">
-            <span>原成本: <b>¥{{ simulateOriginalCost.toFixed(2) }}</b></span>
-            <span>新成本: <b :style="{ color: simulateNewCost > simulateOriginalCost ? '#ef4444' : '#10b981' }">¥{{ simulateNewCost.toFixed(2) }}</b></span>
-            <span>成本变动: <b :style="{ color: simulateNewCost > simulateOriginalCost ? '#ef4444' : '#10b981' }">{{ simulateNewCost > simulateOriginalCost ? '+' : '' }}¥{{ (simulateNewCost - simulateOriginalCost).toFixed(2) }}</b></span>
-          </div>
-          <div class="summary-row">
-            <span>原利润: <b>¥{{ (simulateRow.selling_price - simulateOriginalCost).toFixed(2) }}</b></span>
-            <span>新利润: <b :style="{ color: (simulateRow.selling_price - simulateNewCost) >= 0 ? '#10b981' : '#ef4444' }">¥{{ (simulateRow.selling_price - simulateNewCost).toFixed(2) }}</b></span>
-            <span>原利润率: <b>{{ simulateRow.selling_price > 0 ? ((simulateRow.selling_price - simulateOriginalCost) / simulateRow.selling_price * 100).toFixed(1) : 0 }}%</b></span>
-            <span>新利润率: <b :style="{ color: simulateNewProfitRate >= 30 ? '#10b981' : simulateNewProfitRate >= 15 ? '#f59e0b' : '#ef4444' }">{{ simulateNewProfitRate }}%</b></span>
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <div :class="{ 'simulate-footer-mobile': isMobile }">
-          <el-button @click="resetSimulate">{{ isMobile ? '重置' : '重置' }}</el-button>
-          <el-button type="primary" @click="simulateVisible = false">{{ isMobile ? '关闭' : '关闭' }}</el-button>
-        </div>
-      </template>
-    </el-dialog>
+    <!-- 成本历史对话框 -->
+    <FinishedCostHistoryDialog v-model="costHistoryVisible" :row="costHistoryRow" :is-mobile="isMobile" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Search } from '@element-plus/icons-vue'
+import ProductImageCell from './ProductImageCell.vue'
+import PriceSimulateDialog from './PriceSimulateDialog.vue'
+import FinishedCostHistoryDialog from './FinishedCostHistoryDialog.vue'
 
 const tableRef = ref(null)
+const imagePreviewRef = ref(null)
 
 // 手机端检测
 const isMobile = ref(false)
@@ -644,113 +444,6 @@ const localFilter = ref({
   is_active: ''
 })
 
-// 图片预览相关
-const previewVisible = ref(false)
-const previewImage = ref('')
-const scale = ref(1)
-const rotation = ref(0)
-const positionX = ref(0)
-const positionY = ref(0)
-const isDragging = ref(false)
-const startX = ref(0)
-const startY = ref(0)
-
-const imgStyle = computed(() => {
-  return {
-    transform: `translate(${positionX.value}px, ${positionY.value}px) scale(${scale.value}) rotate(${rotation.value}deg)`,
-    transition: isDragging.value ? 'none' : 'transform 0.2s ease-out'
-  }
-})
-
-const openPreview = (imageUrl) => {
-  previewImage.value = imageUrl
-  previewVisible.value = true
-  scale.value = 1
-  rotation.value = 0
-  positionX.value = 0
-  positionY.value = 0
-  isDragging.value = false
-  document.body.style.overflow = 'hidden'
-}
-
-const closePreview = () => {
-  previewVisible.value = false
-  previewImage.value = ''
-  scale.value = 1
-  rotation.value = 0
-  positionX.value = 0
-  positionY.value = 0
-  isDragging.value = false
-  document.body.style.overflow = ''
-}
-
-const zoomIn = () => {
-  scale.value = Math.min(scale.value + 0.25, 5)
-}
-
-const zoomOut = () => {
-  scale.value = Math.max(scale.value - 0.25, 0.25)
-}
-
-const rotateLeft = () => {
-  rotation.value -= 90
-}
-
-const rotateRight = () => {
-  rotation.value += 90
-}
-
-const resetTransform = () => {
-  scale.value = 1
-  rotation.value = 0
-  positionX.value = 0
-  positionY.value = 0
-}
-
-// 拖动功能
-const startDrag = (e) => {
-  if (scale.value <= 1) return
-  
-  isDragging.value = true
-  const clientX = e.clientX || e.touches?.[0]?.clientX
-  const clientY = e.clientY || e.touches?.[0]?.clientY
-  startX.value = clientX - positionX.value
-  startY.value = clientY - positionY.value
-}
-
-const onDrag = (e) => {
-  if (!isDragging.value || scale.value <= 1) return
-  
-  e.preventDefault()
-  const clientX = e.clientX || e.touches?.[0]?.clientX
-  const clientY = e.clientY || e.touches?.[0]?.clientY
-  positionX.value = clientX - startX.value
-  positionY.value = clientY - startY.value
-}
-
-const stopDrag = () => {
-  isDragging.value = false
-}
-
-// ESC键关闭预览
-document.addEventListener('keydown', (e) => {
-  if (!previewVisible.value) return
-  
-  if (e.key === 'Escape') {
-    closePreview()
-  } else if (e.key === '+' || e.key === '=') {
-    zoomIn()
-  } else if (e.key === '-') {
-    zoomOut()
-  } else if (e.key === 'ArrowLeft') {
-    rotateLeft()
-  } else if (e.key === 'ArrowRight') {
-    rotateRight()
-  } else if (e.key.toLowerCase() === 'r') {
-    resetTransform()
-  }
-})
-
 // 获取默认SKU的工具函数
 const getDefaultSku = (product) => {
   if (!product.skus || product.skus.length === 0) {
@@ -763,6 +456,15 @@ const getDefaultSku = (product) => {
     defaultSku = product.skus[0]
   }
   return defaultSku
+}
+
+// 童装列表成本取最低尺码成本，与成本表口径一致
+const getListCost = (product) => {
+  if (product.product_type === 'children_clothing') {
+    const costs = (product.skus || []).map((sku) => Number(sku.cost_price))
+    return costs.length ? Math.min(...costs) : 0
+  }
+  return getDefaultSku(product)?.cost_price
 }
 
 // 过滤后的产品列表
@@ -821,6 +523,11 @@ const formatPrice = (value, digits = 2) => {
   return num.toFixed(digits)
 }
 
+const formatCostMonitor = (value) => {
+  if (value === null || value === undefined) return '—'
+  return '¥' + Number(value).toFixed(2)
+}
+
 const calculateBeadsTotal = (beads) => {
   return beads.reduce((sum, bead) => sum + bead.bead_cost_price * bead.quantity, 0)
 }
@@ -872,62 +579,23 @@ const calculateProfitRate = (product, finished) => {
   return ((sellingPrice - costPrice) / sellingPrice * 100).toFixed(1)
 }
 
-// 模拟克价相关
+// 模拟克价相关（弹窗由 PriceSimulateDialog 负责）
 const simulateVisible = ref(false)
 const simulateRow = ref(null)
-const simulateBeads = ref([])
-const simulateAccessories = ref([])
 
 const openSimulate = (row) => {
   simulateRow.value = row
-  simulateBeads.value = (row.finished?.beads || []).map(b => ({
-    ...b,
-    newPurchaseCost: b.bead_purchase_cost || 0
-  }))
-  simulateAccessories.value = (row.finished?.accessories || []).map(a => ({
-    ...a,
-    newCostPrice: a.accessory_cost_price || 0
-  }))
   simulateVisible.value = true
 }
 
-const resetSimulate = () => {
-  simulateBeads.value.forEach(b => {
-    b.newPurchaseCost = b.bead_purchase_cost || 0
-  })
-  simulateAccessories.value.forEach(a => {
-    a.newCostPrice = a.accessory_cost_price || 0
-  })
+// 成本历史相关（弹窗由 FinishedCostHistoryDialog 负责）
+const costHistoryVisible = ref(false)
+const costHistoryRow = ref(null)
+
+const openCostHistory = (row) => {
+  costHistoryRow.value = row
+  costHistoryVisible.value = true
 }
-
-const simulateOriginalCost = computed(() => {
-  if (!simulateRow.value?.finished) return 0
-  const f = simulateRow.value.finished
-  let total = 0
-  f.beads.forEach(b => { total += b.bead_cost_price * b.quantity })
-  f.accessories.forEach(a => { total += a.accessory_cost_price * a.quantity })
-  total += f.labor_cost + f.elastic_cost
-  return total
-})
-
-const simulateNewCost = computed(() => {
-  if (!simulateRow.value?.finished) return 0
-  const f = simulateRow.value.finished
-  let total = 0
-  simulateBeads.value.forEach(b => {
-    total += (b.newPurchaseCost * (b.bead_weight || 0)) * b.quantity
-  })
-  simulateAccessories.value.forEach(a => {
-    total += a.newCostPrice * a.quantity
-  })
-  total += f.labor_cost + f.elastic_cost
-  return total
-})
-
-const simulateNewProfitRate = computed(() => {
-  if (!simulateRow.value || simulateRow.value.selling_price <= 0) return '0.0'
-  return ((simulateRow.value.selling_price - simulateNewCost.value) / simulateRow.value.selling_price * 100).toFixed(1)
-})
 </script>
 
 <style scoped>
@@ -1012,6 +680,32 @@ const simulateNewProfitRate = computed(() => {
   font-weight: 700;
   color: #303133;
   border-top: 2px solid #ebeef5;
+}
+
+.cost-monitor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 8px 10px;
+  background: #f0f9ff;
+  border-top: 1px dashed #d0e6f5;
+}
+
+.cost-monitor-item {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cost-monitor-item.highest {
+  color: #ef4444;
+}
+
+.cost-monitor-item.current {
+  color: #303133;
+}
+
+.cost-monitor-item.lowest {
+  color: #10b981;
 }
 
 .detail-total {
@@ -1180,307 +874,5 @@ const simulateNewProfitRate = computed(() => {
   gap: 8px;
   margin-top: 8px;
   justify-content: flex-end;
-}
-
-.simulate-content {
-  padding: 0 4px;
-}
-
-.simulate-info {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 16px;
-  font-size: 14px;
-  color: #606266;
-}
-
-.simulate-info-mobile {
-  flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
-  background: #fafafa;
-  border-radius: 6px;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-}
-
-.simulate-info-mobile span {
-  word-break: break-all;
-}
-
-.simulate-table {
-  font-size: 13px;
-  table-layout: fixed;
-  width: 100%;
-}
-
-.simulate-table th,
-.simulate-table td {
-  padding: 8px 6px;
-  text-align: center;
-  vertical-align: middle;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.simulate-table .simulate-text {
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.simulate-input {
-  width: 100%;
-  min-width: 0;
-}
-
-.simulate-input :deep(.el-input__wrapper) {
-  box-shadow: 0 0 0 1px #dcdfe6 inset;
-}
-
-/* 手机端卡片式布局 */
-.simulate-mobile-section {
-  margin-bottom: 14px;
-}
-
-.simulate-mobile-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  border-radius: 6px 6px 0 0;
-}
-
-.simulate-mobile-card {
-  background: #fff;
-  border: 1px solid #ebeef5;
-  border-top: none;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-}
-
-.simulate-mobile-card:last-child {
-  border-radius: 0 0 6px 6px;
-}
-
-.simulate-mobile-card-header {
-  font-size: 13px;
-  font-weight: 600;
-  color: #303133;
-  padding-bottom: 8px;
-  margin-bottom: 8px;
-  border-bottom: 1px dashed #ebeef5;
-  word-break: break-all;
-}
-
-.simulate-mobile-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 12px;
-}
-
-.simulate-mobile-row {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  color: #606266;
-}
-
-.simulate-mobile-row:nth-child(4),
-.simulate-mobile-row:nth-child(8) {
-  grid-column: 1 / -1;
-}
-
-.simulate-mobile-label {
-  color: #909399;
-  margin-right: 8px;
-  min-width: 44px;
-  flex-shrink: 0;
-}
-
-.simulate-input-mobile {
-  flex: 1;
-  min-width: 0;
-}
-
-.simulate-input-mobile :deep(.el-input__wrapper) {
-  box-shadow: 0 0 0 1px #dcdfe6 inset;
-}
-
-.simulate-summary {
-  margin-top: 16px;
-  padding: 12px 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
-}
-
-.summary-row {
-  display: flex;
-  gap: 32px;
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: #606266;
-}
-
-.summary-row:last-child {
-  margin-bottom: 0;
-}
-
-.summary-row b {
-  color: #303133;
-}
-
-.simulate-summary-mobile {
-  padding: 10px 12px;
-  margin-top: 12px;
-}
-
-.simulate-summary-mobile .summary-row {
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  font-size: 12px;
-}
-
-.simulate-footer-mobile {
-  display: flex;
-  gap: 10px;
-}
-
-.simulate-footer-mobile .el-button {
-  flex: 1;
-}
-
-</style>
-
-<style>
-/* 自定义图片预览样式 */
-.image-preview-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 99999;
-  animation: fadeIn 0.2s ease-out;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.image-preview-container {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-
-.image-preview-toolbar {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 12px 20px;
-  border-radius: 50px;
-  backdrop-filter: blur(10px);
-}
-
-.image-preview-btn {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
-  cursor: pointer;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.image-preview-btn svg {
-  width: 20px;
-  height: 20px;
-}
-
-.image-preview-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
-}
-
-.image-preview-btn:active {
-  transform: scale(0.95);
-}
-
-.image-preview-btn-reset {
-  margin-right: 8px;
-}
-
-.image-preview-close {
-  width: 44px;
-  height: 44px;
-  border: none;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  line-height: 1;
-}
-
-.image-preview-close:hover {
-  background: rgba(255, 255, 255, 0.4);
-  transform: scale(1.1);
-}
-
-.image-preview-img-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 90vw;
-  max-height: 75vh;
-  overflow: hidden;
-  cursor: grab;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-.image-preview-img-wrapper:active {
-  cursor: grabbing;
-}
-
-.image-preview-img {
-  max-width: 100%;
-  max-height: 75vh;
-  border-radius: 8px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
-  object-fit: contain;
-  pointer-events: none;
 }
 </style>

@@ -2,7 +2,7 @@ import axios from "axios";
 import { API_BASE_URL } from "./config";
 
 // 创建基础 axios 实例的工厂函数
-function createApiClient(basePath) {
+function createApiClient(basePath, { authenticated = true } = {}) {
   const client = axios.create({
     baseURL: `${API_BASE_URL}${basePath}`,
     timeout: 10000,
@@ -12,7 +12,7 @@ function createApiClient(basePath) {
   client.interceptors.request.use(
     (config) => {
       const token = localStorage.getItem("token");
-      if (token) {
+      if (authenticated && token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
       return config;
@@ -26,7 +26,7 @@ function createApiClient(basePath) {
   client.interceptors.response.use(
     (response) => response,
     (error) => {
-      if (error.response && error.response.status === 401) {
+      if (authenticated && error.response && error.response.status === 401) {
         localStorage.removeItem("token");
         localStorage.removeItem("userInfo");
         window.location.href = "/login";

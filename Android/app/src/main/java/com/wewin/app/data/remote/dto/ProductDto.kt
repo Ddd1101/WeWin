@@ -25,5 +25,16 @@ data class ProductDto(
     val bead: BeadDto? = null,
     val accessory: AccessoryDto? = null,
     val finished: FinishedDto? = null,
+    val children_clothing: ChildrenClothingDto? = null,
     val skus: List<SkuDto> = emptyList()
+)
+
+@Serializable
+data class ChildrenClothingDto(
+    val fabric: String? = null,
+    val size: String? = null,
+    val color: String? = null,
+    val season: String? = null,
+    val gender: String? = null,
+    val age_range: String? = null
 )

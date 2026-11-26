@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -23,6 +26,10 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.io.File
+import java.util.concurrent.atomic.AtomicReference
+import okhttp3.RequestBody.Companion.asRequestBody
+import com.wewin.app.data.remote.dto.SkuDto
 
 data class BeadComponent(
     val beadId: Int? = null,
@@ -35,6 +42,8 @@ data class AccessoryComponent(
     val skuId: Int? = null,
     val quantity: Int = 1
 )
+
+data class ClothingSkuInput(val size: String = "", val cost: String = "", val price: String = "")
 
 data class ProductEditUiState(
     val isLoading: Boolean = false,
@@ -69,7 +78,14 @@ data class ProductEditUiState(
     val beadComponents: List<BeadComponent> = emptyList(),
     val accessoryComponents: List<AccessoryComponent> = emptyList(),
     // 图片
-    val imageUri: Uri? = null
+    val imageUri: Uri? = null,
+    val removeImage: Boolean = false,
+    val fabric: String = "",
+    val clothingSize: String = "",
+    val season: String = "",
+    val gender: String = "",
+    val ageRange: String = "",
+    val clothingSkus: List<ClothingSkuInput> = emptyList()
 )
 
 class ProductEditViewModel(
@@ -196,23 +212,36 @@ class ProductEditViewModel(
                 isActive = product.is_active,
                 material = material,
                 size = size,
-                color = color,
+                color = product.children_clothing?.color ?: color,
                 weight = weight,
                 qualityLevel = qualityLevel,
                 remark = remark,
                 laborCost = laborCost,
                 elasticCost = elasticCost,
                 beadComponents = beadComponents,
-                accessoryComponents = accessoryComponents
+                accessoryComponents = accessoryComponents,
+                fabric = product.children_clothing?.fabric.orEmpty(),
+                clothingSize = product.children_clothing?.size.orEmpty(),
+                season = product.children_clothing?.season.orEmpty(),
+                gender = product.children_clothing?.gender.orEmpty(),
+                ageRange = product.children_clothing?.age_range.orEmpty(),
+                clothingSkus = if (product.product_type == "children_clothing") product.skus.map {
+                    ClothingSkuInput(it.size?.toString() ?: it.name.orEmpty(), it.cost_price.toString(), it.selling_price.toString())
+                } else emptyList()
             )
         }
     }
 
-    private fun loadFinishedOptions() {
+    fun loadFinishedOptions() {
         viewModelScope.launch {
             try {
                 val beadsResponse = apiService.getBeads()
                 val accessoriesResponse = apiService.getAccessories()
+                if (!beadsResponse.isSuccessful || !accessoriesResponse.isSuccessful) {
+                    val failed = if (!beadsResponse.isSuccessful) beadsResponse else accessoriesResponse
+                    _uiState.update { it.copy(error = parseError(failed.code(), failed.errorBody()?.string())) }
+                    return@launch
+                }
                 val beads = if (beadsResponse.isSuccessful) {
                     beadsResponse.body()?.beads ?: emptyList()
                 } else emptyList()
@@ -222,14 +251,27 @@ class ProductEditViewModel(
                 _uiState.update {
                     it.copy(beadOptions = beads, accessoryOptions = accessories)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                // 选项加载失败不阻塞表单填写
+                _uiState.update { it.copy(error = "材料选项加载失败，请刷新材料") }
             }
         }
     }
 
+    fun updateForm(change: (ProductEditUiState) -> ProductEditUiState) {
+        if (_uiState.value.isSubmitting) return
+        val oldType = _uiState.value.productType
+        _uiState.update { change(it).copy(error = null) }
+        if (oldType != "finished" && _uiState.value.productType == "finished") loadFinishedOptions()
+    }
+
+    fun removeImage() {
+        _uiState.update { it.copy(imageUri = null, removeImage = true, error = null) }
+    }
+
     fun setImageUri(uri: Uri?) {
-        _uiState.update { it.copy(imageUri = uri) }
+        _uiState.update { it.copy(imageUri = uri, removeImage = false, error = null) }
     }
 
     fun submit() {
@@ -250,11 +292,34 @@ class ProductEditViewModel(
             return
         }
 
+        val numericValues = listOf(current.purchaseCost, current.costPrice, current.sellingPrice, current.weight, current.laborCost, current.elasticCost)
+        if (numericValues.any { it.isNotBlank() && (it.toBigDecimalOrNull()?.signum() ?: -1) < 0 }) {
+            _uiState.update { it.copy(error = "成本、售价和重量必须是非负数字") }; return
+        }
+        if (current.productType == "bead" && current.qualityLevel.toIntOrNull() !in 1..10) {
+            _uiState.update { it.copy(error = "品质等级须为1至10") }; return
+        }
+        if (current.productType in listOf("bead", "accessory") && current.size.isNotBlank() && current.size.toIntOrNull() == null) {
+            _uiState.update { it.copy(error = "规格须为整数") }; return
+        }
+        if ((current.beadComponents.any { it.beadId == null || it.quantity <= 0 } || current.accessoryComponents.any { it.accessoryId == null || it.quantity <= 0 }) && current.productType == "finished") {
+            _uiState.update { it.copy(error = "请选择组成材料，并填写正整数数量") }; return
+        }
+        if (current.productType == "children_clothing") {
+            val sizes = current.clothingSkus.map { it.size.trim().uppercase() }
+            if (sizes.isEmpty() || sizes.any { it.isBlank() } || sizes.distinct().size != sizes.size) {
+                _uiState.update { it.copy(error = "请填写至少一个不重复的尺码") }; return
+            }
+            if (current.clothingSkus.any { it.cost.toBigDecimalOrNull()?.signum()?.let { sign -> sign < 0 } != false || (it.price.isNotBlank() && (it.price.toBigDecimalOrNull()?.signum() ?: -1) < 0) }) {
+                _uiState.update { it.copy(error = "请填写有效的尺码成本与售价") }; return
+            }
+        }
         _uiState.update { it.copy(isSubmitting = true, error = null) }
         viewModelScope.launch {
+            val uploadFile = AtomicReference<File?>()
             try {
                 val fields = buildFields(current)
-                val imagePart = buildImagePart(current.imageUri)
+                val imagePart = withContext(Dispatchers.IO) { prepareImage(current.imageUri) { uploadFile.set(it) } }
 
                 val response = if (current.isEditMode) {
                     apiService.updateProductMultipart(productId!!, fields, imagePart)
@@ -270,6 +335,10 @@ class ProductEditViewModel(
                     val errorMsg = parseError(response.code(), response.errorBody()?.string())
                     _uiState.update { it.copy(isSubmitting = false, error = errorMsg) }
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ImagePreparationException) {
+                _uiState.update { it.copy(isSubmitting = false, error = e.message ?: "图片读取失败") }
             } catch (e: IOException) {
                 _uiState.update {
                     it.copy(isSubmitting = false, error = "网络连接失败，请检查网络")
@@ -281,6 +350,8 @@ class ProductEditViewModel(
                         error = "提交失败：${e.message ?: "未知错误"}"
                     )
                 }
+            } finally {
+                uploadFile.get()?.delete()
             }
         }
     }
@@ -303,6 +374,24 @@ class ProductEditViewModel(
         put("supplier", state.supplier)
         put("is_active", state.isActive.toString())
 
+        if (state.removeImage) put("remove_image", "true")
+        if (state.isEditMode && state.productType in listOf("bead", "accessory") && state.initialProduct?.skus?.isNotEmpty() == true) {
+            val skus = state.initialProduct.skus
+            val defaultId = (skus.firstOrNull { it.is_default } ?: skus.first()).id
+            val updated = skus.map { sku ->
+                if (sku.id != defaultId) sku else sku.copy(
+                    material = state.material, size = state.size.toIntOrNull(), color = state.color,
+                    purchase_cost = state.purchaseCost.toDoubleOrNull() ?: 0.0,
+                    cost_price = if (state.productType == "bead") (state.purchaseCost.toDoubleOrNull() ?: 0.0) * (state.weight.toDoubleOrNull() ?: 0.0) else state.costPrice.toDoubleOrNull() ?: 0.0,
+                    weight = state.weight.toDoubleOrNull() ?: sku.weight,
+                    quality_level = state.qualityLevel.toIntOrNull() ?: sku.quality_level,
+                    remark = if (state.productType == "bead") state.remark else sku.remark,
+                    location = state.location, supplier = state.supplier,
+                    selling_price = state.sellingPrice.toDoubleOrNull() ?: 0.0
+                )
+            }
+            put("skus", json.encodeToString(ListSerializer(SkuDto.serializer()), updated))
+        }
         when (state.productType) {
             "bead" -> {
                 put("material", state.material)
@@ -316,6 +405,16 @@ class ProductEditViewModel(
                 put("material", state.material)
                 put("size", state.size)
                 put("color", state.color)
+            }
+            "children_clothing" -> {
+                put("fabric", state.fabric)
+                put("size", state.clothingSize)
+                put("color", state.color)
+                put("season", state.season)
+                put("gender", state.gender)
+                put("age_range", state.ageRange)
+                val items = state.clothingSkus.map { mapOf("size" to it.size.trim().uppercase(), "cost_price" to it.cost, "selling_price" to it.price.ifBlank { "0" }) }
+                put("skus", json.encodeToString(kotlinx.serialization.builtins.ListSerializer(kotlinx.serialization.builtins.MapSerializer(kotlinx.serialization.serializer<String>(), kotlinx.serialization.serializer<String>())), items))
             }
             "finished" -> {
                 put("labor_cost", state.laborCost)
@@ -346,16 +445,34 @@ class ProductEditViewModel(
         return fields
     }
 
-    private fun buildImagePart(uri: Uri?): MultipartBody.Part? {
+    private class ImagePreparationException(message: String, cause: Throwable) : IOException(message, cause)
+
+    private fun prepareImage(uri: Uri?, onFileCreated: (File) -> Unit): MultipartBody.Part? {
         if (uri == null) return null
-        return try {
-            val context = getApplication<Application>()
-            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-            val bytes = inputStream.use { it.readBytes() }
-            val requestBody = bytes.toRequestBody("image/*".toMediaTypeOrNull())
-            MultipartBody.Part.createFormData("image", "image.jpg", requestBody)
+        val context = getApplication<Application>()
+        val file = try { File.createTempFile("wewin-upload-", ".tmp", context.cacheDir) }
+        catch (e: IOException) { throw ImagePreparationException("无法创建图片暂存文件", e) }
+        onFileCreated(file)
+        try {
+            val input = context.contentResolver.openInputStream(uri) ?: throw IOException("无法读取选中的图片")
+            input.use { source -> file.outputStream().use { target ->
+                val buffer = ByteArray(64 * 1024)
+                var size = 0L
+                while (true) {
+                    val read = source.read(buffer)
+                    if (read == -1) break
+                    size += read
+                    if (size > 100L * 1024 * 1024) throw IOException("图片不能超过100MB")
+                    target.write(buffer, 0, read)
+                }
+                if (size == 0L) throw IOException("图片文件为空")
+            } }
+            val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
+            val part = MultipartBody.Part.createFormData("image", "upload", file.asRequestBody(mime.toMediaTypeOrNull()))
+            return part
         } catch (e: Exception) {
-            null
+            file.delete()
+            throw ImagePreparationException("图片读取失败：${e.message ?: "请重新选择图片"}", e)
         }
     }
 

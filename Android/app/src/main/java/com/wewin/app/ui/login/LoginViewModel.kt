@@ -49,6 +49,9 @@ class LoginViewModel(
     fun login() {
         val current = _uiState.value
         if (current.isLoading) return
+        if (current.username.isBlank() || current.password.isBlank()) {
+            _uiState.update { it.copy(error = "请输入用户名和密码") }; return
+        }
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             try {

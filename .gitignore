@@ -22,6 +22,7 @@ wheels/
 
 # Virtual Environment
 venv/
+venv2/
 env/
 ENV/
 
@@ -30,6 +31,7 @@ ENV/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+db.sqlite3.bak.*
 
 # Node
 node_modules/
@@ -92,3 +94,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 独立的第三方工程（自带 git 仓库，不纳入本仓库版本管理）
+ShopManager/

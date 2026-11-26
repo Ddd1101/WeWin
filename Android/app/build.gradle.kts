@@ -22,14 +22,17 @@ android {
             useSupportLibrary = true
         }
 
-        // Read API_BASE_URL from root local.properties (fallback to emulator host).
+        // Read API_BASE_URL from build property, environment or root local.properties; default to production HTTPS.
         val localProperties = Properties().apply {
             val file = rootProject.file("local.properties")
             if (file.exists()) {
                 file.inputStream().use { load(it) }
             }
         }
-        val apiBaseUrl = localProperties.getProperty("API_BASE_URL") ?: "http://10.0.2.2:8003"
+        val apiBaseUrl = providers.gradleProperty("API_BASE_URL").orNull
+            ?: System.getenv("WEWIN_API_BASE_URL")
+            ?: localProperties.getProperty("API_BASE_URL")
+            ?: "https://47.250.165.79"
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 

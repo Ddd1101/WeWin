@@ -28,10 +28,6 @@
           <el-button type="primary" size="large" style="width: 100%" :loading="loading" @click="handleLogin">登录</el-button>
         </el-form-item>
       </el-form>
-      <div class="account-hint">
-        <p><strong>默认账号：</strong></p>
-        <p>网站超级管理员: superadmin / superadmin123</p>
-      </div>
       <div class="register-link">
         还没有账号？<router-link to="/register">立即注册</router-link>
       </div>
@@ -122,10 +118,8 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
-        console.log('Attempting to login with:', loginForm.username)
         const response = await login(loginForm.username, loginForm.password)
         
-        console.log('Login response:', response)
         const data = response.data
         
         // 保存登录历史
@@ -137,13 +131,9 @@ const handleLogin = async () => {
         ElMessage.success('登录成功')
         router.push('/')
       } catch (error) {
-        console.log('Login error:', error)
         if (error.response) {
           // 服务器返回了错误响应
-          console.log('Error response status:', error.response.status)
-          console.log('Error response data:', error.response.data)
           const errorMessage = error.response.data?.error || '登录失败，请重试'
-          console.log('Error message:', errorMessage)
           if (errorMessage.includes('账户已被禁用')) {
             ElMessage.error('账户已被禁用，请联系管理员')
           } else {
@@ -151,11 +141,9 @@ const handleLogin = async () => {
           }
         } else if (error.request) {
           // 请求已发送但没有收到响应
-          console.log('Error request:', error.request)
           ElMessage.error('网络错误，请检查网络连接')
         } else {
           // 请求配置出错
-          console.log('Error message:', error.message)
           ElMessage.error('登录失败，请重试')
         }
       } finally {
@@ -186,17 +174,6 @@ const handleLogin = async () => {
   text-align: center;
   margin-bottom: 30px;
   color: #333;
-}
-.account-hint {
-  margin-top: 20px;
-  padding: 15px;
-  background: #f5f7fa;
-  border-radius: 4px;
-  font-size: 14px;
-  color: #666;
-}
-.account-hint p {
-  margin: 5px 0;
 }
 .register-link {
   text-align: center;

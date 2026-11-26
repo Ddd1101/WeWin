@@ -1,0 +1,10 @@
+[Unit]
+Description=Create hourly WeWin backups
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

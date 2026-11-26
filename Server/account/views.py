@@ -11,6 +11,7 @@ import jwt
 from django.conf import settings
 import random
 import string
+from utils.decorators import jwt_required
 
 
 def generate_company_code():
@@ -226,31 +227,19 @@ def create_enterprise_user(request):
 
 
 @require_http_methods(['GET'])
+@jwt_required
 def get_users(request):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        current_user = User.objects.get(id=payload['user_id'])
         
         users = []
-        if current_user.user_type == UserType.SUPER_ADMIN:
+        if request.user.user_type == UserType.SUPER_ADMIN:
             users = User.objects.all()
-        elif current_user.user_type == UserType.SITE_ADMIN:
+        elif request.user.user_type == UserType.SITE_ADMIN:
             users = User.objects.exclude(user_type=UserType.SUPER_ADMIN)
-        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
-            users = User.objects.filter(company=current_user.company)
-        elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
-            users = User.objects.filter(company=current_user.company)
+        elif request.user.user_type == UserType.ENTERPRISE_LEADER:
+            users = User.objects.filter(company=request.user.company)
+        elif request.user.user_type == UserType.ENTERPRISE_ADMIN:
+            users = User.objects.filter(company=request.user.company)
         else:
             return JsonResponse({'error': '无权限查看用户'}, status=403)
 
@@ -284,21 +273,9 @@ def get_users(request):
 
 @csrf_exempt
 @require_http_methods(['POST'])
+@jwt_required
 def create_user(request):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        current_user = User.objects.get(id=payload['user_id'])
         
         data = json.loads(request.body)
         username = data.get('username')
@@ -323,16 +300,16 @@ def create_user(request):
                 return JsonResponse({'error': '企业不存在'}, status=404)
 
         has_permission = False
-        if current_user.user_type == UserType.SUPER_ADMIN:
+        if request.user.user_type == UserType.SUPER_ADMIN:
             has_permission = True
-        elif current_user.user_type == UserType.SITE_ADMIN:
+        elif request.user.user_type == UserType.SITE_ADMIN:
             if user_type != UserType.SUPER_ADMIN:
                 has_permission = True
-        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
-            if user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER] and company == current_user.company:
+        elif request.user.user_type == UserType.ENTERPRISE_LEADER:
+            if user_type in [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER] and company == request.user.company:
                 has_permission = True
-        elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
-            if user_type == UserType.ENTERPRISE_USER and company == current_user.company:
+        elif request.user.user_type == UserType.ENTERPRISE_ADMIN:
+            if user_type == UserType.ENTERPRISE_USER and company == request.user.company:
                 has_permission = True
 
         if not has_permission:
@@ -346,7 +323,7 @@ def create_user(request):
             company=company,
             phone=phone,
             real_name=real_name,
-            created_by=current_user
+            created_by=request.user
         )
 
         return JsonResponse({
@@ -372,21 +349,10 @@ def create_user(request):
 
 
 @require_http_methods(['GET'])
+@jwt_required
 def get_page_config(request):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        user_type = payload['user_type']
+        user_type = request.user.user_type
         configs = PageConfig.objects.filter(user_type=user_type, is_visible=True).order_by('order')
         
         pages = []
@@ -404,35 +370,23 @@ def get_page_config(request):
 
 @csrf_exempt
 @require_http_methods(['PUT'])
+@jwt_required
 def update_user_status(request, user_id):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        current_user = User.objects.get(id=payload['user_id'])
         target_user = User.objects.get(id=user_id)
         
         has_permission = False
-        if current_user.user_type == UserType.SUPER_ADMIN:
+        if request.user.user_type == UserType.SUPER_ADMIN:
             if target_user.user_type != UserType.SUPER_ADMIN:
                 has_permission = True
-        elif current_user.user_type == UserType.SITE_ADMIN:
+        elif request.user.user_type == UserType.SITE_ADMIN:
             if target_user.user_type != UserType.SUPER_ADMIN:
                 has_permission = True
-        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
-            if target_user.company == current_user.company and target_user.user_type != UserType.SUPER_ADMIN:
+        elif request.user.user_type == UserType.ENTERPRISE_LEADER:
+            if target_user.company == request.user.company and target_user.user_type != UserType.SUPER_ADMIN:
                 has_permission = True
-        elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
-            if target_user.user_type == UserType.ENTERPRISE_USER and target_user.company == current_user.company:
+        elif request.user.user_type == UserType.ENTERPRISE_ADMIN:
+            if target_user.user_type == UserType.ENTERPRISE_USER and target_user.company == request.user.company:
                 has_permission = True
 
         if not has_permission:
@@ -464,40 +418,28 @@ def update_user_status(request, user_id):
 
 @csrf_exempt
 @require_http_methods(['DELETE'])
+@jwt_required
 def delete_user(request, user_id):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        current_user = User.objects.get(id=payload['user_id'])
         target_user = User.objects.get(id=user_id)
         
         has_permission = False
-        if current_user.user_type == UserType.SUPER_ADMIN:
+        if request.user.user_type == UserType.SUPER_ADMIN:
             has_permission = True
-        elif current_user.user_type == UserType.SITE_ADMIN:
+        elif request.user.user_type == UserType.SITE_ADMIN:
             if target_user.user_type != UserType.SUPER_ADMIN:
                 has_permission = True
-        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
-            if target_user.company == current_user.company and target_user.user_type != UserType.SUPER_ADMIN:
+        elif request.user.user_type == UserType.ENTERPRISE_LEADER:
+            if target_user.company == request.user.company and target_user.user_type != UserType.SUPER_ADMIN:
                 has_permission = True
-        elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
-            if target_user.user_type == UserType.ENTERPRISE_USER and target_user.company == current_user.company:
+        elif request.user.user_type == UserType.ENTERPRISE_ADMIN:
+            if target_user.user_type == UserType.ENTERPRISE_USER and target_user.company == request.user.company:
                 has_permission = True
 
         if not has_permission:
             return JsonResponse({'error': '无权限删除该用户'}, status=403)
 
-        if target_user.id == current_user.id:
+        if target_user.id == request.user.id:
             return JsonResponse({'error': '不能删除自己'}, status=400)
 
         target_user.delete()
@@ -520,21 +462,9 @@ USER_TYPE_RANK = {
 
 @csrf_exempt
 @require_http_methods(['PUT'])
+@jwt_required
 def update_user_type(request, user_id):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        current_user = User.objects.get(id=payload['user_id'])
         target_user = User.objects.get(id=user_id)
         
         data = json.loads(request.body)
@@ -544,14 +474,14 @@ def update_user_type(request, user_id):
             return JsonResponse({'error': '用户类型不能为空'}, status=400)
 
         # 不能修改自己的类型
-        if current_user.id == target_user.id:
+        if request.user.id == target_user.id:
             return JsonResponse({'error': '不能修改自己的用户类型'}, status=403)
 
         has_permission = False
         valid_user_types = []
 
         # 获取当前用户和目标用户的权限等级
-        current_rank = USER_TYPE_RANK.get(current_user.user_type, 999)
+        current_rank = USER_TYPE_RANK.get(request.user.user_type, 999)
         target_rank = USER_TYPE_RANK.get(target_user.user_type, 999)
         new_rank = USER_TYPE_RANK.get(user_type, 999)
 
@@ -560,22 +490,22 @@ def update_user_type(request, user_id):
         if target_rank <= current_rank or new_rank <= current_rank:
             return JsonResponse({'error': '无权限变更此用户类型或目标类型权限过高'}, status=403)
 
-        if current_user.user_type == UserType.SUPER_ADMIN:
+        if request.user.user_type == UserType.SUPER_ADMIN:
             # 超级管理员：可以修改除自己外的任何用户为任何类型（除不能修改自己）
             valid_user_types = [UserType.SUPER_ADMIN, UserType.SITE_ADMIN, UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER, UserType.TEMPORARY]
             has_permission = True
-        elif current_user.user_type == UserType.SITE_ADMIN:
+        elif request.user.user_type == UserType.SITE_ADMIN:
             # 网站管理员：可以修改权限低于自己的用户
             valid_user_types = [UserType.ENTERPRISE_LEADER, UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER, UserType.TEMPORARY]
             has_permission = True
-        elif current_user.user_type == UserType.ENTERPRISE_LEADER:
+        elif request.user.user_type == UserType.ENTERPRISE_LEADER:
             # 企业负责人：只能修改自己企业内权限低于自己的用户
-            if target_user.company == current_user.company:
+            if target_user.company == request.user.company:
                 valid_user_types = [UserType.ENTERPRISE_ADMIN, UserType.ENTERPRISE_USER, UserType.TEMPORARY]
                 has_permission = True
-        elif current_user.user_type == UserType.ENTERPRISE_ADMIN:
+        elif request.user.user_type == UserType.ENTERPRISE_ADMIN:
             # 企业用户管理员：只能修改自己企业内权限低于自己的用户
-            if target_user.company == current_user.company:
+            if target_user.company == request.user.company:
                 valid_user_types = [UserType.ENTERPRISE_USER, UserType.TEMPORARY]
                 has_permission = True
 
@@ -653,21 +583,10 @@ def simple_register(request):
 
 
 @require_http_methods(['GET'])
+@jwt_required
 def get_current_user(request):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-        
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-        
-        user = User.objects.get(id=payload['user_id'])
+        user = request.user
         
         return JsonResponse({
             'id': user.id,
@@ -689,21 +608,10 @@ def get_current_user(request):
 
 @csrf_exempt
 @require_http_methods(['POST'])
+@jwt_required
 def create_and_bind_company(request):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-        
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-        
-        user = User.objects.get(id=payload['user_id'])
+        user = request.user
         
         if user.company:
             return JsonResponse({'error': '您已经绑定了企业'}, status=400)
@@ -755,21 +663,10 @@ def create_and_bind_company(request):
 
 @csrf_exempt
 @require_http_methods(['POST'])
+@jwt_required
 def bind_existing_company(request):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-        
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-        
-        user = User.objects.get(id=payload['user_id'])
+        user = request.user
         
         if user.company:
             return JsonResponse({'error': '您已经绑定了企业'}, status=400)
@@ -809,21 +706,10 @@ def bind_existing_company(request):
 
 @csrf_exempt
 @require_http_methods(['PUT'])
+@jwt_required
 def update_profile(request):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-        
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-        
-        user = User.objects.get(id=payload['user_id'])
+        user = request.user
         
         data = json.loads(request.body)
         email = data.get('email')
@@ -861,21 +747,10 @@ def update_profile(request):
 
 @csrf_exempt
 @require_http_methods(['POST'])
+@jwt_required
 def change_password(request):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-        
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-        
-        user = User.objects.get(id=payload['user_id'])
+        user = request.user
         
         data = json.loads(request.body)
         old_password = data.get('old_password')
@@ -891,6 +766,47 @@ def change_password(request):
         user.save()
         
         return JsonResponse({'message': '密码修改成功'})
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '无效的请求数据'}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({'error': '用户不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+@jwt_required
+def reset_user_password(request, user_id):
+    """管理员重置他人密码：super_admin 可重置除自己外任意账号；site_admin 不可重置 super_admin"""
+    try:
+        target_user = User.objects.get(id=user_id)
+
+        if target_user.id == request.user.id:
+            return JsonResponse({'error': '不能重置自己的密码，请在个人信息中修改'}, status=400)
+
+        if request.user.user_type == UserType.SUPER_ADMIN:
+            pass
+        elif request.user.user_type == UserType.SITE_ADMIN:
+            if target_user.user_type == UserType.SUPER_ADMIN:
+                return JsonResponse({'error': '无权限重置超级管理员密码'}, status=403)
+        else:
+            return JsonResponse({'error': '无权限重置该用户密码'}, status=403)
+
+        data = json.loads(request.body)
+        new_password = data.get('new_password')
+
+        if not new_password:
+            return JsonResponse({'error': '新密码不能为空'}, status=400)
+
+        target_user.set_password(new_password)
+        target_user.save()
+
+        return JsonResponse({
+            'message': '密码重置成功',
+            'id': target_user.id,
+            'username': target_user.username,
+        })
     except json.JSONDecodeError:
         return JsonResponse({'error': '无效的请求数据'}, status=400)
     except User.DoesNotExist:

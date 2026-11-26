@@ -1,0 +1,6 @@
+[Unit]
+Description=Renew WeWin short-lived IP certificate
+
+[Service]
+Type=oneshot
+ExecStart=/opt/wewin-venv/bin/certbot renew --quiet --deploy-hook "systemctl reload nginx"

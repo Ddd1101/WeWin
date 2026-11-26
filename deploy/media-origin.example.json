@@ -1,0 +1,7 @@
+{
+  "root": "/home/admin/Documents/workplace_shop/wewin-media/objects",
+  "listen": "127.0.0.1:18080",
+  "read_token": "REPLACE_WITH_A_UNIQUE_RANDOM_READ_CREDENTIAL",
+  "write_token": "REPLACE_WITH_A_DIFFERENT_RANDOM_WRITE_CREDENTIAL",
+  "min_free": 5368709120
+}

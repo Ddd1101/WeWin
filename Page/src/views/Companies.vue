@@ -175,7 +175,7 @@
 import { ref, onMounted } from 'vue'
 import { Plus, Edit, Delete, User, OfficeBuilding, Check, Close } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCompanies, createCompany, updateCompany, deleteCompany as deleteCompanyApi, getCompanyUsers, batchUpdateCompanyStatus } from '../api'
+import { getCompanies, createCompany, updateCompany, deleteCompany as deleteCompanyApi, getCompanyUsers, batchUpdateCompanyStatus, updateUserStatus as updateUserStatusApi } from '../api'
 
 const companies = ref([])
 const currentPage = ref(1)
@@ -284,7 +284,7 @@ const viewCompanyUsers = async (companyId) => {
 const updateUserStatus = async (userId, isActive) => {
   try {
     // 调用更新用户状态的API
-    await updateUserStatusApi(userId, isActive)
+    await updateUserStatusApi(userId, { is_active: isActive })
     ElMessage.success('用户状态更新成功')
   } catch (error) {
     ElMessage.error('更新用户状态失败')

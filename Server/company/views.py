@@ -8,29 +8,18 @@ from django.conf import settings
 
 from account.models import User, UserType
 from .models import Company
+from utils.decorators import jwt_required
 
 
 SECRET_KEY = settings.SECRET_KEY
 
 
 @require_http_methods(['GET'])
+@jwt_required
 def get_companies(request):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        current_user = User.objects.get(id=payload['user_id'])
         
-        if current_user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+        if request.user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
             return JsonResponse({'error': '无权限查看企业列表'}, status=403)
 
         companies = Company.objects.all()
@@ -55,23 +44,11 @@ def get_companies(request):
 
 @csrf_exempt
 @require_http_methods(['POST'])
+@jwt_required
 def create_company(request):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        current_user = User.objects.get(id=payload['user_id'])
         
-        if current_user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+        if request.user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
             return JsonResponse({'error': '无权限创建企业'}, status=403)
 
         data = json.loads(request.body)
@@ -134,23 +111,11 @@ def create_company(request):
 
 @csrf_exempt
 @require_http_methods(['PUT'])
+@jwt_required
 def update_company(request, company_id):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        current_user = User.objects.get(id=payload['user_id'])
         
-        if current_user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+        if request.user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
             return JsonResponse({'error': '无权限更新企业'}, status=403)
 
         company = Company.objects.get(id=company_id)
@@ -203,23 +168,11 @@ def update_company(request, company_id):
 
 @csrf_exempt
 @require_http_methods(['DELETE'])
+@jwt_required
 def delete_company(request, company_id):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        current_user = User.objects.get(id=payload['user_id'])
         
-        if current_user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+        if request.user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
             return JsonResponse({'error': '无权限删除企业'}, status=403)
 
         company = Company.objects.get(id=company_id)
@@ -238,23 +191,11 @@ def delete_company(request, company_id):
 
 
 @require_http_methods(['GET'])
+@jwt_required
 def get_company_users(request, company_id):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        current_user = User.objects.get(id=payload['user_id'])
         
-        if current_user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+        if request.user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
             return JsonResponse({'error': '无权限查看企业用户'}, status=403)
 
         company = Company.objects.get(id=company_id)
@@ -285,23 +226,11 @@ def get_company_users(request, company_id):
 
 @csrf_exempt
 @require_http_methods(['POST'])
+@jwt_required
 def batch_update_company_status(request):
     try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': '未授权'}, status=401)
-
-        token = auth_header.split(' ')[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Token已过期'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': '无效的Token'}, status=401)
-
-        current_user = User.objects.get(id=payload['user_id'])
         
-        if current_user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
+        if request.user.user_type not in [UserType.SUPER_ADMIN, UserType.SITE_ADMIN]:
             return JsonResponse({'error': '无权限批量更新企业状态'}, status=403)
 
         data = json.loads(request.body)

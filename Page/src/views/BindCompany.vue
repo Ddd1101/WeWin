@@ -206,7 +206,7 @@ const handleSkip = () => {
 };
 
 onMounted(() => {
-  const user = userStore.user;
+  const user = userStore.userInfo;
   if (user && user.company_id) {
     ElMessage.info("您已经绑定了企业");
     router.push("/");

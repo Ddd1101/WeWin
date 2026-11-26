@@ -423,42 +423,51 @@ class Ali1688DataPullService(BaseDataPullService):
 
     def _save_order_receiver(self, order: Order, order_data: Dict[str, Any]):
         """
-        保存订单收货人信息
+        保存订单收货人信息。
 
-        Args:
-            order: 订单对象
-            order_data: 订单数据
+        1688 订单列表接口通常不含收货人字段，此时调用详情接口补全；
+        收货人拆分为 baseInfo.receiverInfo（to* 平台字段）与顶层
+        nativeLogistics（省市区/详细地址）。
         """
         base_info = order_data.get("baseInfo", {})
+        receiver_info = base_info.get("receiverInfo") or {}
+        logistics = order_data.get("nativeLogistics") or {}
 
-        receiver_info = base_info.get("receiveAddressInfo", {})
+        # 列表数据无收货人字段时，尝试调详情接口补全
+        if not receiver_info and not logistics:
+            try:
+                detail = self.pull_order_detail(order.platform_order_id)
+                if detail:
+                    detail_base = detail.get("baseInfo", {})
+                    receiver_info = detail_base.get("receiverInfo") or {}
+                    logistics = detail.get("nativeLogistics") or {}
+            except Exception:
+                pass
 
-        if not receiver_info:
+        if not receiver_info and not logistics:
             return
 
+        defaults = {
+            "to_full_name": receiver_info.get("toFullName"),
+            "to_division_code": receiver_info.get("toDivisionCode"),
+            "receiver_mobile": receiver_info.get("toMobile"),
+            "to_post": receiver_info.get("toPost"),
+            "to_area": receiver_info.get("toArea"),
+            "receiver_name": logistics.get("contactPerson"),
+            "receiver_phone": logistics.get("mobile"),
+            "province": logistics.get("province"),
+            "city": logistics.get("city"),
+            "district": logistics.get("area"),
+            "address": logistics.get("address"),
+            "zip_code": logistics.get("zip"),
+            "full_address": logistics.get("address"),
+        }
+
         receiver, created = OrderReceiver.objects.get_or_create(
-            order=order,
-            defaults={
-                "receiver_name": receiver_info.get("fullName"),
-                "receiver_phone": receiver_info.get("phone"),
-                "receiver_mobile": receiver_info.get("mobile"),
-                "province": receiver_info.get("province"),
-                "city": receiver_info.get("city"),
-                "district": receiver_info.get("area"),
-                "address": receiver_info.get("address"),
-                "zip_code": receiver_info.get("zip"),
-                "to_division_code": receiver_info.get("toDivisionCode"),
-                "full_address": receiver_info.get("address"),
-            },
+            order=order, defaults=defaults
         )
 
         if not created:
-            receiver.receiver_name = receiver_info.get("fullName")
-            receiver.receiver_phone = receiver_info.get("phone")
-            receiver.receiver_mobile = receiver_info.get("mobile")
-            receiver.province = receiver_info.get("province")
-            receiver.city = receiver_info.get("city")
-            receiver.district = receiver_info.get("area")
-            receiver.address = receiver_info.get("address")
-            receiver.full_address = receiver_info.get("address")
+            for field, value in defaults.items():
+                setattr(receiver, field, value)
             receiver.save()

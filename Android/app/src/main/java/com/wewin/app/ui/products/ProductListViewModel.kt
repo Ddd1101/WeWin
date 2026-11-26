@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import java.io.IOException
 
@@ -44,6 +46,10 @@ class ProductListViewModel : ViewModel() {
     private val apiService = RetrofitClient.apiService
 
     private val pageSize: Int = 50
+    private var generation = 0L
+    private var activeKeyword: String? = null
+    private var initialJob: Job? = null
+    private var moreJob: Job? = null
 
     private val _uiState = MutableStateFlow(ProductListUiState())
     val uiState: StateFlow<ProductListUiState> = _uiState.asStateFlow()
@@ -59,152 +65,79 @@ class ProductListViewModel : ViewModel() {
     }
 
     fun loadInitial() {
-        val current = _uiState.value
-        if (current.isLoading) return
-        val selectedType = current.selectedType
-        _uiState.update {
-            it.copy(
-                isLoading = true,
-                error = null,
-                page = 1,
-                hasMore = true,
-                products = emptyList()
-            )
-        }
-        viewModelScope.launch {
+        val request = _uiState.value
+        val ticket = ++generation
+        activeKeyword = request.searchKeyword.trim().ifBlank { null }
+        initialJob?.cancel()
+        moreJob?.cancel()
+        _uiState.update { it.copy(isLoading = true, isLoadingMore = false, error = null, page = 1,
+            hasMore = false, products = emptyList(), skuMap = emptyMap()) }
+        initialJob = viewModelScope.launch {
             try {
                 coroutineScope {
-                    val listDeferred = async {
-                        apiService.getProducts(
-                            productType = selectedType,
-                            page = 1,
-                            pageSize = pageSize
-                        )
-                    }
-                    val statsDeferred = async { apiService.getProductStats() }
-
-                    val listResponse = listDeferred.await()
-                    val statsResponse = statsDeferred.await()
-
-                    if (listResponse.isSuccessful) {
-                        val body = listResponse.body()
-                        val products = body?.products ?: emptyList()
-                        val totalCount = body?.total_count ?: 0
-                        val newHasMore = pageSize < totalCount
-                        val stats = if (statsResponse.isSuccessful) {
-                            statsResponse.body()?.product_stats
-                        } else {
-                            null
-                        }
-                        _uiState.update {
-                            it.copy(
-                                products = products,
-                                totalCount = totalCount,
-                                page = 1,
-                                hasMore = newHasMore,
-                                stats = stats,
-                                isLoading = false,
-                                isRefreshing = false,
-                                error = null
-                            )
-                        }
+                    val list = async { apiService.getProducts(productType = request.selectedType, page = 1,
+                        pageSize = pageSize, search = request.searchKeyword.trim().ifBlank { null }) }
+                    val stats = async { apiService.getProductStats() }
+                    val response = list.await()
+                    val statistics = stats.await()
+                    if (ticket != generation) return@coroutineScope
+                    if (response.isSuccessful) {
+                        val body = response.body()
+                        val products = body?.products.orEmpty()
+                        val total = body?.total_count ?: 0
+                        _uiState.update { it.copy(products = products, totalCount = total, page = 1,
+                            hasMore = products.size < total, stats = if (statistics.isSuccessful) statistics.body()?.product_stats else it.stats,
+                            isLoading = false, isRefreshing = false, error = null) }
                     } else {
-                        val errorMsg = parseError(
-                            listResponse.code(),
-                            listResponse.errorBody()?.string()
-                        )
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                isRefreshing = false,
-                                error = errorMsg
-                            )
-                        }
+                        _uiState.update { it.copy(isLoading = false, isRefreshing = false,
+                            error = parseError(response.code(), response.errorBody()?.string())) }
                     }
                 }
-            } catch (e: IOException) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        isRefreshing = false,
-                        error = "网络连接失败，请检查网络"
-                    )
-                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        isRefreshing = false,
-                        error = "加载失败：${e.message ?: "未知错误"}"
-                    )
-                }
+                if (ticket == generation) _uiState.update { it.copy(isLoading = false, isRefreshing = false,
+                    error = if (e is IOException) "网络连接失败，请检查网络" else "加载失败：${e.message ?: "未知错误"}") }
             }
         }
     }
 
     fun loadMore() {
-        val current = _uiState.value
-        if (current.isLoadingMore || !current.hasMore) return
-        val nextPage = current.page + 1
-        val selectedType = current.selectedType
+        val request = _uiState.value
+        if (request.isLoading || request.isLoadingMore || !request.hasMore) return
+        val ticket = generation
+        val keyword = activeKeyword
         _uiState.update { it.copy(isLoadingMore = true) }
-        viewModelScope.launch {
+        moreJob = viewModelScope.launch {
             try {
-                val response = apiService.getProducts(
-                    productType = selectedType,
-                    page = nextPage,
-                    pageSize = pageSize
-                )
+                val response = apiService.getProducts(productType = request.selectedType, page = request.page + 1,
+                    pageSize = pageSize, search = keyword)
+                if (ticket != generation) return@launch
                 if (response.isSuccessful) {
                     val body = response.body()
-                    val newProducts = body?.products ?: emptyList()
-                    val totalCount = body?.total_count ?: current.totalCount
-                    val merged = current.products + newProducts
-                    val newHasMore = (nextPage * pageSize) < totalCount
-                    _uiState.update {
-                        it.copy(
-                            products = merged,
-                            page = nextPage,
-                            totalCount = totalCount,
-                            hasMore = newHasMore,
-                            isLoadingMore = false,
-                            error = null
-                        )
-                    }
+                    val products = (request.products + body?.products.orEmpty()).distinctBy { it.id }
+                    val total = body?.total_count ?: request.totalCount
+                    _uiState.update { it.copy(products = products, totalCount = total, page = request.page + 1,
+                        hasMore = products.size < total, isLoadingMore = false, error = null) }
                 } else {
-                    val errorMsg = parseError(
-                        response.code(),
-                        response.errorBody()?.string()
-                    )
-                    _uiState.update {
-                        it.copy(isLoadingMore = false, error = errorMsg)
-                    }
+                    _uiState.update { it.copy(isLoadingMore = false, error = parseError(response.code(), response.errorBody()?.string())) }
                 }
-            } catch (e: IOException) {
-                _uiState.update {
-                    it.copy(isLoadingMore = false, error = "网络连接失败，请检查网络")
-                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoadingMore = false,
-                        error = "加载失败：${e.message ?: "未知错误"}"
-                    )
-                }
+                if (ticket == generation) _uiState.update { it.copy(isLoadingMore = false,
+                    error = if (e is IOException) "网络连接失败，请检查网络" else "加载失败：${e.message ?: "未知错误"}") }
             }
         }
     }
 
     fun refresh() {
-        val current = _uiState.value
-        if (current.isLoading) return
         _uiState.update { it.copy(isRefreshing = true) }
         loadInitial()
     }
 
     fun selectType(type: String?) {
-        val current = _uiState.value
-        if (current.selectedType == type) return
+        if (_uiState.value.selectedType == type) return
         _uiState.update { it.copy(selectedType = type) }
         loadInitial()
     }
@@ -213,9 +146,7 @@ class ProductListViewModel : ViewModel() {
         _uiState.update { it.copy(searchKeyword = keyword) }
     }
 
-    fun search() {
-        loadInitial()
-    }
+    fun search() = loadInitial()
 
     fun loadSkusIfNeeded(productId: Int, existingSkus: List<SkuDto>) {
         if (existingSkus.isNotEmpty()) {
@@ -232,9 +163,11 @@ class ProductListViewModel : ViewModel() {
         _uiState.update {
             it.copy(skuMap = it.skuMap + (productId to SkuLoadState.Loading))
         }
+        val ticket = generation
         viewModelScope.launch {
             try {
                 val response = apiService.getProductSkus(productId)
+                if (ticket != generation) return@launch
                 if (response.isSuccessful) {
                     val skus = response.body()?.skus ?: emptyList()
                     _uiState.update {
@@ -249,11 +182,15 @@ class ProductListViewModel : ViewModel() {
                         it.copy(skuMap = it.skuMap + (productId to SkuLoadState.Error(errorMsg)))
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: IOException) {
+                if (ticket != generation) return@launch
                 _uiState.update {
                     it.copy(skuMap = it.skuMap + (productId to SkuLoadState.Error("网络连接失败，请检查网络")))
                 }
             } catch (e: Exception) {
+                if (ticket != generation) return@launch
                 _uiState.update {
                     it.copy(skuMap = it.skuMap + (productId to SkuLoadState.Error("加载失败：${e.message ?: "未知错误"}")))
                 }

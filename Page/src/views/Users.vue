@@ -178,6 +178,19 @@
           </el-select>
         </template>
       </el-table-column>
+      <el-table-column label="操作" width="120" fixed="right">
+        <template #default="{ row }">
+          <el-button
+            size="small"
+            type="warning"
+            plain
+            :disabled="!canResetPassword(row)"
+            @click="handleResetPassword(row)"
+          >
+            重置密码
+          </el-button>
+        </template>
+      </el-table-column>
     </el-table>
   </div>
 </template>
@@ -200,7 +213,7 @@ import {
   ElTooltip,
 } from "element-plus";
 import { API_BASE_URL } from "../api/config";
-import { getCurrentUser } from "../api/account";
+import { getCurrentUser, resetUserPassword } from "../api/account";
 
 // 定义用户类型权限等级（数值越小，权限越高）
 const USER_TYPE_RANK = {
@@ -475,6 +488,41 @@ const toggleUserStatus = async (user) => {
     ElMessage.error("操作失败，请重试");
     // 重新加载用户列表以确保数据一致性
     loadUsers();
+  }
+};
+
+// 判断是否可以重置某用户的密码
+const canResetPassword = (row) => {
+  if (!currentUser.value) return false;
+  const type = currentUser.value.user_type;
+  // 仅 super_admin 与 site_admin 可重置他人密码，且不能重置自己
+  if (type !== "super_admin" && type !== "site_admin") return false;
+  if (currentUser.value.id === row.id) return false;
+  // site_admin 不能重置 super_admin
+  if (type === "site_admin" && row.user_type === "super_admin") return false;
+  return true;
+};
+
+// 重置用户密码
+const handleResetPassword = async (row) => {
+  try {
+    const { value } = await ElMessageBox.prompt(
+      `请输入用户「${row.username}」的新密码`,
+      "重置密码",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        inputType: "password",
+        inputPattern: /^.{6,}$/,
+        inputErrorMessage: "密码长度至少 6 位",
+      },
+    );
+    await resetUserPassword(row.id, { new_password: value });
+    ElMessage.success("密码重置成功");
+  } catch (error) {
+    if (error !== "cancel" && error !== "close") {
+      ElMessage.error(error?.response?.data?.error || "重置失败");
+    }
   }
 };
 

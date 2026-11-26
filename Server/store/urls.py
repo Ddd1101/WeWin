@@ -23,7 +23,10 @@ urlpatterns = [
     path('products/<int:product_id>/update/', views.update_product, name='update-product'),
     path('products/<int:product_id>/delete/', views.delete_product, name='delete-product'),
     path('products/<int:product_id>/detail/', views.get_product_detail, name='get-product-detail'),
+    path('products/<int:product_id>/cost-history/', views.get_finished_cost_history, name='get-finished-cost-history'),
     path('products/accessories/', views.get_accessories, name='get-accessories'),
     path('products/beads/', views.get_beads, name='get-beads'),
     path('products/<int:product_id>/skus/', views.get_product_skus, name='get-product-skus'),
+    path('products/children-clothing/costs/', views.get_children_clothing_costs, name='get-children-clothing-costs'),
+    path('products/children-clothing/costs/save/', views.save_children_clothing_costs, name='save-children-clothing-costs'),
 ]

@@ -10,7 +10,7 @@ class Global401Interceptor(private val tokenStore: TokenStore) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val response = chain.proceed(chain.request())
-        if (response.code == 401) {
+        if (response.code == 401 && chain.request().url.encodedPath != "/api/account/login/") {
             runBlocking { tokenStore.clear() }
             AuthEventBus.emitLogout()
         }

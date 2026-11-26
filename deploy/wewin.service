@@ -1,0 +1,23 @@
+[Unit]
+Description=WeWin Gunicorn
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/var/lib/wewin-upload /var/cache/wewin-media
+
+[Service]
+User=wewin
+Group=wewin
+WorkingDirectory=/srv/wewin/app/Server
+EnvironmentFile=/etc/wewin/app.env
+ExecStart=/opt/wewin-venv/bin/gunicorn wewin.wsgi:application --bind 127.0.0.1:8003 --workers 2 --timeout 150 --access-logfile - --error-logfile -
+Restart=on-failure
+RestartSec=5
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/wewin /var/lib/wewin-upload
+
+[Install]
+WantedBy=multi-user.target
