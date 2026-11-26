@@ -56,7 +56,7 @@
             <div class="item-info">
               <span class="item-name">{{ bead.bead_name }}</span>
               <span class="item-code">{{ bead.bead_code }}</span>
-              <span class="item-price">{{ skuLabel(bead) }}</span>
+              <span class="item-price">{{ skuLabel(bead, 'bead') }}</span>
               <span class="item-price">单价: ¥{{ safePrice(bead.cost_price) }}</span>
             </div>
           </div>
@@ -114,7 +114,7 @@
             <div class="item-info">
               <span class="item-name">{{ acc.accessory_name }}</span>
               <span class="item-code">{{ acc.accessory_code }}</span>
-              <span class="item-price">{{ skuLabel(acc) }}</span>
+              <span class="item-price">{{ skuLabel(acc, 'accessory') }}</span>
               <span class="item-price">单价: ¥{{ safePrice(acc.cost_price) }}</span>
             </div>
           </div>
@@ -151,6 +151,7 @@
       title="选择串珠"
       :width="isMobile ? '95%' : '900px'"
       class="selection-dialog"
+      append-to-body
       :fullscreen="isMobile"
     >
       <div class="dialog-search-wrapper">
@@ -191,8 +192,8 @@
             <div class="product-code">{{ bead.code }}</div>
             <h4 class="product-name">{{ bead.name }}</h4>
             <div class="product-meta">
-              <span class="product-price">¥{{ bead.cost_price.toFixed(2) }}/g</span>
-              <span v-if="bead.weight" class="product-weight">{{ bead.weight?.toFixed(2) }}g</span>
+              <span class="product-price">¥{{ formatSkuPrice(bead.selectedSku?.purchase_cost) }}/g</span>
+              <span v-if="bead.selectedSku?.weight" class="product-weight">{{ Number(bead.selectedSku.weight).toFixed(2) }}g</span>
             </div>
             <div class="product-badges">
               <span class="badge quality-badge">{{ bead.skus?.length || 0 }} 个SKU</span>
@@ -203,10 +204,20 @@
               value-key="id"
               placeholder="选择SKU"
               style="width:100%; margin-top:8px"
-              :teleported="false"
+              :teleported="true"
+              :fit-input-width="false"
+              popper-class="wewin-material-sku-popper"
+              :popper-options="skuPopperOptions"
               @click.stop
             >
-              <el-option v-for="sku in bead.skus" :key="sku.id" :label="skuLabel(sku) || sku.sku_code" :value="sku" />
+              <el-option v-for="sku in bead.skus" :key="sku.id" :label="skuLabel(sku, 'bead')" :value="sku">
+                <div class="material-sku-option">
+                  <span class="material-sku-name">{{ sku.sku_name || sku.name || sku.sku_code }}</span>
+                  <div class="material-sku-details">
+                    <span v-for="detail in skuDetails(sku, 'bead')" :key="detail">{{ detail }}</span>
+                  </div>
+                </div>
+              </el-option>
             </el-select>
           </div>
           <div class="card-actions">
@@ -236,6 +247,7 @@
       title="选择配件"
       :width="isMobile ? '95%' : '900px'"
       class="selection-dialog"
+      append-to-body
       :fullscreen="isMobile"
     >
       <div class="dialog-search-wrapper">
@@ -276,7 +288,7 @@
             <div class="product-code">{{ accessory.code }}</div>
             <h4 class="product-name">{{ accessory.name }}</h4>
             <div class="product-meta">
-              <span class="product-price">¥{{ accessory.cost_price.toFixed(2) }}</span>
+              <span class="product-price">¥{{ formatSkuPrice(accessory.selectedSku?.cost_price ?? accessory.cost_price) }}/个</span>
             </div>
             <div class="product-badges"><span class="badge quality-badge">{{ accessory.skus?.length || 0 }} 个SKU</span></div>
             <el-select
@@ -285,10 +297,20 @@
               value-key="id"
               placeholder="选择SKU"
               style="width:100%; margin-top:8px"
-              :teleported="false"
+              :teleported="true"
+              :fit-input-width="false"
+              popper-class="wewin-material-sku-popper"
+              :popper-options="skuPopperOptions"
               @click.stop
             >
-              <el-option v-for="sku in accessory.skus" :key="sku.id" :label="skuLabel(sku) || sku.sku_code" :value="sku" />
+              <el-option v-for="sku in accessory.skus" :key="sku.id" :label="skuLabel(sku, 'accessory')" :value="sku">
+                <div class="material-sku-option">
+                  <span class="material-sku-name">{{ sku.sku_name || sku.name || sku.sku_code }}</span>
+                  <div class="material-sku-details">
+                    <span v-for="detail in skuDetails(sku, 'accessory')" :key="detail">{{ detail }}</span>
+                  </div>
+                </div>
+              </el-option>
             </el-select>
           </div>
           <div class="card-actions">
@@ -487,17 +509,31 @@ const handleSelectBead = (bead) => {
   beadDialogVisible.value = false
 }
 
-const skuLabel = (item, prefix = '') => {
+// Teleport avoids card stacking contexts and the grid's scroll clipping.
+const skuPopperOptions = {
+  strategy: 'fixed',
+  modifiers: [{ name: 'preventOverflow', options: { rootBoundary: 'viewport', padding: 16 } }]
+}
+
+const formatSkuPrice = (value) => Number(value ?? 0).toFixed(2)
+
+const skuDetails = (sku, kind) => {
+  const parts = []
+  if (sku.size) parts.push(`${sku.size}mm`)
+  if (sku.color) parts.push(sku.color)
+  if (kind === 'bead') {
+    if (sku.weight) parts.push(`${Number(sku.weight).toFixed(2)}g`)
+    parts.push(`克价 ¥${formatSkuPrice(sku.purchase_cost)}/g`)
+    parts.push(`单颗 ¥${formatSkuPrice(sku.cost_price)}`)
+  } else {
+    parts.push(`单件 ¥${formatSkuPrice(sku.cost_price)}`)
+  }
+  return parts
+}
+
+const skuLabel = (item, kind) => {
   const sku = item.sku || item
-  const parts = [sku.sku_name || sku.name, sku.size ? `${sku.size}mm` : '', sku.weight ? `${Number(sku.weight).toFixed(2)}g` : '']
-  // 添加采购成本或成本价格信息
-  if (sku.purchase_cost !== undefined && sku.purchase_cost !== null && sku.purchase_cost !== '') {
-    parts.push(`${Number(sku.purchase_cost).toFixed(2)}元/g`)
-  }
-  if (sku.cost_price !== undefined && sku.cost_price !== null && sku.cost_price !== '') {
-    parts.push(`${Number(sku.cost_price).toFixed(2)}元`)
-  }
-  return `${prefix}${parts.filter(Boolean).join(' / ')}`
+  return [sku.sku_name || sku.name || sku.sku_code, ...skuDetails(sku, kind)].filter(Boolean).join(' / ')
 }
 
 const handleAddAccessory = () => {
@@ -819,11 +855,6 @@ const handleSelectAccessory = (accessory) => {
   border: 1px solid #e2e8f0;
 }
 
-.product-card:has(.el-select__wrapper.is-focused),
-.product-card:has(.el-select-dropdown) {
-  z-index: 5;
-}
-
 .product-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 32px rgba(59, 130, 246, 0.15);
@@ -1058,5 +1089,38 @@ const handleSelectAccessory = (accessory) => {
   .selection-dialog :deep(.el-dialog__body) {
     padding: 12px;
   }
+}
+</style>
+
+<style>
+/* This dropdown is teleported to body; keep rules scoped by its popper class. */
+.wewin-material-sku-popper {
+  width: min(460px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+}
+.wewin-material-sku-popper .el-select-dropdown {
+  width: 100%;
+  min-width: 0 !important;
+}
+.wewin-material-sku-popper .el-select-dropdown__item {
+  height: auto;
+  min-height: 60px;
+  padding: 10px 16px;
+  line-height: 20px;
+  white-space: normal;
+}
+.wewin-material-sku-popper .material-sku-name {
+  display: block;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.wewin-material-sku-popper .material-sku-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
 }
 </style>
