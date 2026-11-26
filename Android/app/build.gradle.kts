@@ -22,7 +22,7 @@ android {
             useSupportLibrary = true
         }
 
-        // Read API_BASE_URL from root local.properties (fallback to emulator host).
+        // Read API_BASE_URL from build property, environment or root local.properties; default to production HTTPS.
         val localProperties = Properties().apply {
             val file = rootProject.file("local.properties")
             if (file.exists()) {

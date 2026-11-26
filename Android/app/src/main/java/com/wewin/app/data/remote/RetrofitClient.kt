@@ -25,7 +25,8 @@ object RetrofitClient {
             val tokenStore = TokenStore(context.applicationContext)
 
             val loggingInterceptor = HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+                level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
+                redactHeader("Authorization")
             }
 
             val okHttpClient = OkHttpClient.Builder()
