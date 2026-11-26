@@ -59,15 +59,26 @@
             </div>
           </el-form-item>
         </el-col>
-        <!-- 配件和成品显示成本价格 -->
+        <el-col v-if="form.product_type === 'finished'" :span="24">
+          <el-form-item label="成本模式">
+            <el-radio-group v-model="form.cost_mode">
+              <el-radio-button label="auto">按组成核算</el-radio-button>
+              <el-radio-button label="manual">独立定价</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+          <el-alert :title="form.cost_mode === 'manual' ? '独立成本为整件总成本；组成和工费仅用于参考测算，材料变价不会覆盖独立成本。' : '采用成本随组成、材料单价和工费自动更新。'" type="info" :closable="false" />
+          <el-form-item label="变更原因" style="margin-top: 16px">
+            <el-input v-model="form.cost_note" maxlength="400" show-word-limit placeholder="调整独立成本或切换模式时必填，例如供应商协议价" />
+          </el-form-item>
+        </el-col>
         <el-col v-if="form.product_type === 'finished'" :xs="24" :sm="12">
-          <el-form-item label="成本价格" prop="cost_price">
+          <el-form-item :label="form.cost_mode === 'manual' ? '独立整件成本' : '采用成本'" prop="cost_price">
             <el-input-number 
-              v-model="form.cost_price" 
+              :model-value="form.cost_mode === 'manual' ? form.manual_cost : form.cost_price" @update:model-value="form.manual_cost = $event"
               :min="0" 
               :step="0.01" 
               :precision="2" 
-              :disabled="form.product_type === 'finished'"
+              :disabled="form.cost_mode !== 'manual'"
               style="width: 100%" 
             />
           </el-form-item>
@@ -472,6 +483,9 @@ const form = reactive({
   product_type: '',
   purchase_cost: 0,
   cost_price: 0,
+  cost_mode: 'auto',
+  manual_cost: 0,
+  cost_note: '',
   selling_price: 0,
   is_active: true,
   location: '',
@@ -550,6 +564,9 @@ const resetFormFields = () => {
     product_type: '',
     purchase_cost: 0,
     cost_price: 0,
+    cost_mode: 'auto',
+    manual_cost: 0,
+    cost_note: '',
     selling_price: 0,
     is_active: true,
     location: '',
@@ -586,6 +603,9 @@ const initForm = () => {
       product_type: product.product_type,
       purchase_cost: product.purchase_cost || 0,
       cost_price: product.cost_price,
+      cost_mode: product.finished?.cost_mode || 'auto',
+      manual_cost: product.finished?.manual_cost || 0,
+      cost_note: '',
       selling_price: product.selling_price,
       is_active: product.is_active,
       location: product.location,
@@ -830,6 +850,9 @@ const handleSubmit = async () => {
           data.color = form.color
           data.skus = form.skus
         } else if (form.product_type === 'finished') {
+          data.cost_mode = form.cost_mode
+          data.manual_cost = form.manual_cost
+          data.cost_note = form.cost_note
           data.beads = form.beads
           data.accessories = form.accessories
           data.labor_cost = form.labor_cost
@@ -1126,5 +1149,27 @@ onMounted(() => {
   .sku-field.span-2 {
     grid-column: 1 / -1;
   }
+}
+</style>
+
+<style>
+/* Keep actions visible while scrolling a long composition form. */
+.el-dialog.product-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 64px);
+  margin-top: 32px;
+}
+.el-dialog.product-dialog .el-dialog__body {
+  min-height: 0;
+  overflow-y: auto;
+}
+.el-dialog.product-dialog .el-dialog__header,
+.el-dialog.product-dialog .el-dialog__footer {
+  flex-shrink: 0;
+}
+.el-dialog.product-dialog.is-fullscreen {
+  max-height: 100dvh;
+  margin: 0;
 }
 </style>

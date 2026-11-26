@@ -203,7 +203,17 @@ private fun ProductEditContent(
         item { EditField("库位", uiState.location, enabled = !uiState.isSubmitting) { value -> onChange { it.copy(location = value) } } }
         item { EditField("采购成本", uiState.purchaseCost, numeric = true, enabled = !uiState.isSubmitting) { value -> onChange { it.copy(purchaseCost = value) } } }
         if (uiState.productType == "accessory") item { EditField("成本价格", uiState.costPrice, numeric = true, enabled = !uiState.isSubmitting) { value -> onChange { it.copy(costPrice = value) } } }
-        if (uiState.productType == "finished") item { Text("成品成本按组成与工费计算，保存后更新。", style = MaterialTheme.typography.bodySmall) }
+        if (uiState.productType == "finished") {
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = uiState.costMode == "auto", enabled = !uiState.isSubmitting, onClick = { onChange { it.copy(costMode = "auto") } }, label = { Text("按组成核算") })
+                    FilterChip(selected = uiState.costMode == "manual", enabled = !uiState.isSubmitting, onClick = { onChange { it.copy(costMode = "manual") } }, label = { Text("独立定价") })
+                }
+            }
+            if (uiState.costMode == "manual") item { EditField("独立整件成本", uiState.manualCost, numeric = true, enabled = !uiState.isSubmitting) { value -> onChange { it.copy(manualCost = value) } } }
+            item { Text(if (uiState.costMode == "manual") "独立成本已包含整件费用；组成和工费仅用于参考测算，材料变价不会覆盖它。" else "采用成本随组成、材料单价和工费自动更新。", style = MaterialTheme.typography.bodySmall) }
+            item { EditField("成本变更原因（调整独立成本或切换模式时必填）", uiState.costNote, enabled = !uiState.isSubmitting) { value -> onChange { it.copy(costNote = value.take(400)) } } }
+        }
         if (uiState.productType == "children_clothing") item { Text("商品成本取最低尺码成本。", style = MaterialTheme.typography.bodySmall) }
         item { EditField("售卖价格", uiState.sellingPrice, numeric = true, enabled = !uiState.isSubmitting) { value -> onChange { it.copy(sellingPrice = value) } } }
         item {

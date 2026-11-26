@@ -102,10 +102,14 @@
               <span>工费: ¥{{ scope.row.finished.labor_cost.toFixed(2) }}</span>
               <span>弹性成本: ¥{{ scope.row.finished.elastic_cost.toFixed(2) }}</span>
             </div>
+            <div class="cost-monitor">
+              <el-tag :type="scope.row.finished.cost_mode === 'manual' ? 'warning' : 'info'">{{ scope.row.finished.cost_mode === 'manual' ? '独立定价' : '按组成核算' }}</el-tag>
+              <span>参考测算: {{ formatCostMonitor(scope.row.finished.reference_cost) }}</span>
+            </div>
             <div v-if="scope.row.finished.cost_summary" class="cost-monitor">
-              <span class="cost-monitor-item highest">历史最高: {{ formatCostMonitor(scope.row.finished.cost_summary.highest_cost) }}</span>
-              <span class="cost-monitor-item current">当前成本: {{ formatCostMonitor(scope.row.finished.cost_summary.current_cost) }}</span>
-              <span class="cost-monitor-item lowest">历史最低: {{ formatCostMonitor(scope.row.finished.cost_summary.lowest_cost) }}</span>
+              <span class="cost-monitor-item highest">采用成本最高: {{ formatCostMonitor(scope.row.finished.cost_summary.highest_cost) }}</span>
+              <span class="cost-monitor-item current">当前采用成本: {{ formatCostMonitor(scope.row.finished.cost_summary.current_cost) }}</span>
+              <span class="cost-monitor-item lowest">采用成本最低: {{ formatCostMonitor(scope.row.finished.cost_summary.lowest_cost) }}</span>
               <el-button link type="primary" size="small" @click="openCostHistory(scope.row)">成本历史</el-button>
             </div>
           </div>
@@ -326,10 +330,14 @@
               <span>工费: ¥{{ row.finished.labor_cost.toFixed(2) }}</span>
               <span>弹性成本: ¥{{ row.finished.elastic_cost.toFixed(2) }}</span>
             </div>
+            <div class="cost-monitor">
+              <el-tag :type="row.finished.cost_mode === 'manual' ? 'warning' : 'info'">{{ row.finished.cost_mode === 'manual' ? '独立定价' : '按组成核算' }}</el-tag>
+              <span>参考测算: {{ formatCostMonitor(row.finished.reference_cost) }}</span>
+            </div>
             <div v-if="row.finished.cost_summary" class="cost-monitor">
-              <span class="cost-monitor-item highest">历史最高: {{ formatCostMonitor(row.finished.cost_summary.highest_cost) }}</span>
-              <span class="cost-monitor-item current">当前成本: {{ formatCostMonitor(row.finished.cost_summary.current_cost) }}</span>
-              <span class="cost-monitor-item lowest">历史最低: {{ formatCostMonitor(row.finished.cost_summary.lowest_cost) }}</span>
+              <span class="cost-monitor-item highest">采用成本最高: {{ formatCostMonitor(row.finished.cost_summary.highest_cost) }}</span>
+              <span class="cost-monitor-item current">当前采用成本: {{ formatCostMonitor(row.finished.cost_summary.current_cost) }}</span>
+              <span class="cost-monitor-item lowest">采用成本最低: {{ formatCostMonitor(row.finished.cost_summary.lowest_cost) }}</span>
               <el-button link type="primary" size="small" @click="openCostHistory(row)">成本历史</el-button>
             </div>
           </div>

@@ -20,9 +20,10 @@
         <span class="value">¥{{ form.elastic_cost.toFixed(2) }}</span>
       </div>
       <div class="cost-item total">
-        <span class="label">总成本：</span>
+        <span class="label">参考测算成本：</span>
         <span class="value">¥{{ totalCost.toFixed(2) }}</span>
       </div>
+      <div class="cost-item total"><span class="label">采用成本：</span><span class="value">¥{{ adoptedCost.toFixed(2) }}</span></div>
       <div v-if="form.selling_price > 0" class="cost-item profit">
         <span class="label">利润：</span>
         <span class="value">¥{{ profit.toFixed(2) }} ({{ profitRate.toFixed(1) }}%)</span>
@@ -396,9 +397,11 @@ const totalCost = computed(() => {
   return beadsCost.value + accessoriesCost.value + props.form.labor_cost + props.form.elastic_cost
 })
 
+const adoptedCost = computed(() => props.form.cost_mode === 'manual' ? Number(props.form.manual_cost || 0) : totalCost.value)
+
 // 计算利润
 const profit = computed(() => {
-  return props.form.selling_price - totalCost.value
+  return props.form.selling_price - adoptedCost.value
 })
 
 // 计算利润率
@@ -425,10 +428,12 @@ watch([
   () => props.form.beads,
   () => props.form.labor_cost,
   () => props.form.elastic_cost,
-  () => props.form.accessories
+  () => props.form.accessories,
+  () => props.form.cost_mode,
+  () => props.form.manual_cost
 ], () => {
   if (props.form.product_type === 'finished') {
-    props.form.cost_price = totalCost.value
+    props.form.cost_price = adoptedCost.value
   }
 }, { deep: true, immediate: true })
 

@@ -145,18 +145,19 @@
 
       <div class="simulate-summary" :class="{ 'simulate-summary-mobile': isMobile }">
         <div class="summary-row">
-          <span>原成本: <b>¥{{ simulateOriginalCost.toFixed(2) }}</b></span>
-          <span>新成本: <b :style="{ color: simulateNewCost > simulateOriginalCost ? '#ef4444' : '#10b981' }">¥{{ simulateNewCost.toFixed(2) }}</b></span>
+          <span>原测算成本: <b>¥{{ simulateOriginalCost.toFixed(2) }}</b></span>
+          <span>新测算成本: <b :style="{ color: simulateNewCost > simulateOriginalCost ? '#ef4444' : '#10b981' }">¥{{ simulateNewCost.toFixed(2) }}</b></span>
           <span>成本变动: <b :style="{ color: simulateNewCost > simulateOriginalCost ? '#ef4444' : '#10b981' }">{{ simulateNewCost > simulateOriginalCost ? '+' : '' }}¥{{ (simulateNewCost - simulateOriginalCost).toFixed(2) }}</b></span>
         </div>
         <div class="summary-row">
-          <span>原利润: <b>¥{{ (row.selling_price - simulateOriginalCost).toFixed(2) }}</b></span>
-          <span>新利润: <b :style="{ color: (row.selling_price - simulateNewCost) >= 0 ? '#10b981' : '#ef4444' }">¥{{ (row.selling_price - simulateNewCost).toFixed(2) }}</b></span>
+          <span>测算原利润: <b>¥{{ (row.selling_price - simulateOriginalCost).toFixed(2) }}</b></span>
+          <span>测算新利润: <b :style="{ color: (row.selling_price - simulateNewCost) >= 0 ? '#10b981' : '#ef4444' }">¥{{ (row.selling_price - simulateNewCost).toFixed(2) }}</b></span>
           <span>原利润率: <b>{{ row.selling_price > 0 ? ((row.selling_price - simulateOriginalCost) / row.selling_price * 100).toFixed(1) : 0 }}%</b></span>
           <span>新利润率: <b :style="{ color: simulateNewProfitRate >= 30 ? '#10b981' : simulateNewProfitRate >= 15 ? '#f59e0b' : '#ef4444' }">{{ simulateNewProfitRate }}%</b></span>
         </div>
       </div>
     </div>
+    <el-alert v-if="row?.finished?.cost_mode === 'manual'" type="info" :closable="false" :title="`本模拟仅测算组成成本，独立采用成本 ¥${Number(row.cost_price).toFixed(2)} 不变；测算利润不代表当前实际采用成本下的利润。`" />
     <template #footer>
       <div :class="{ 'simulate-footer-mobile': isMobile }">
         <el-button @click="resetSimulate">重置</el-button>

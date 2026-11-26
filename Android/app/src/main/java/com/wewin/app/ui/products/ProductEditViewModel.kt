@@ -72,6 +72,9 @@ data class ProductEditUiState(
     val qualityLevel: String = "5",
     val remark: String = "",
     // 成品特有
+    val costMode: String = "auto",
+    val manualCost: String = "",
+    val costNote: String = "",
     val laborCost: String = "",
     val elasticCost: String = "",
     // 成品组成
@@ -206,6 +209,9 @@ class ProductEditViewModel(
                 productType = product.product_type,
                 purchaseCost = product.purchase_cost.toString(),
                 costPrice = product.cost_price.toString(),
+                costMode = product.finished?.cost_mode ?: "auto",
+                manualCost = product.finished?.manual_cost?.toString() ?: "",
+                costNote = "",
                 sellingPrice = product.selling_price.toString(),
                 location = product.location ?: "",
                 supplier = product.supplier ?: "",
@@ -292,9 +298,20 @@ class ProductEditViewModel(
             return
         }
 
-        val numericValues = listOf(current.purchaseCost, current.costPrice, current.sellingPrice, current.weight, current.laborCost, current.elasticCost)
+        val numericValues = listOf(current.purchaseCost, current.costPrice, current.sellingPrice, current.weight, current.laborCost, current.elasticCost, current.manualCost)
         if (numericValues.any { it.isNotBlank() && (it.toBigDecimalOrNull()?.signum() ?: -1) < 0 }) {
             _uiState.update { it.copy(error = "成本、售价和重量必须是非负数字") }; return
+        }
+        if (current.productType == "finished") {
+            val prior = current.initialProduct?.finished
+            val switched = prior != null && prior.cost_mode != current.costMode
+            val manualChanged = current.costMode == "manual" && (prior == null || current.manualCost.toBigDecimalOrNull()?.compareTo(prior.manual_cost.toBigDecimal()) != 0)
+            if (current.costMode == "manual" && current.manualCost.toBigDecimalOrNull() == null) {
+                _uiState.update { it.copy(error = "请填写独立整件成本") }; return
+            }
+            if ((switched || manualChanged) && current.costNote.isBlank()) {
+                _uiState.update { it.copy(error = "调整独立成本或切换模式，请填写原因") }; return
+            }
         }
         if (current.productType == "bead" && current.qualityLevel.toIntOrNull() !in 1..10) {
             _uiState.update { it.copy(error = "品质等级须为1至10") }; return
@@ -417,6 +434,9 @@ class ProductEditViewModel(
                 put("skus", json.encodeToString(kotlinx.serialization.builtins.ListSerializer(kotlinx.serialization.builtins.MapSerializer(kotlinx.serialization.serializer<String>(), kotlinx.serialization.serializer<String>())), items))
             }
             "finished" -> {
+                put("cost_mode", state.costMode)
+                if (state.manualCost.isNotBlank()) put("manual_cost", state.manualCost)
+                put("cost_note", state.costNote)
                 put("labor_cost", state.laborCost)
                 put("elastic_cost", state.elasticCost)
                 val beadRequests = state.beadComponents

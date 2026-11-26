@@ -25,7 +25,7 @@
         <!-- 概览 -->
         <section class="overview">
           <div class="overview-main">
-            <div class="overview-label">当前成本</div>
+            <div class="overview-label">当前采用成本</div>
             <div class="overview-value">¥{{ formatPrice(stats.current) }}</div>
             <div class="overview-delta" :class="deltaClass(stats.delta)">
               <template v-if="stats.delta !== null">
@@ -36,15 +36,15 @@
           </div>
           <div class="stat-grid">
             <div class="stat-card">
-              <span class="stat-label">历史最高</span>
+              <span class="stat-label">采用成本最高</span>
               <b class="stat-value up">¥{{ formatPrice(stats.highest) }}</b>
             </div>
             <div class="stat-card">
-              <span class="stat-label">历史最低</span>
+              <span class="stat-label">采用成本最低</span>
               <b class="stat-value down">¥{{ formatPrice(stats.lowest) }}</b>
             </div>
             <div class="stat-card">
-              <span class="stat-label">平均成本</span>
+              <span class="stat-label">快照平均采用成本</span>
               <b class="stat-value">¥{{ formatPrice(stats.avg) }}</b>
             </div>
             <div class="stat-card">
@@ -59,7 +59,7 @@
           <div class="section-head">
             <div>
               <div class="section-title">成本走势</div>
-              <div class="section-sub">按快照时间顺序展示</div>
+              <div class="section-sub">展示采用成本；独立定价时参考测算变动不会改变采用成本</div>
             </div>
             <span class="section-tag">¥{{ formatPrice(stats.lowest) }} ~ ¥{{ formatPrice(stats.highest) }}</span>
           </div>
@@ -145,7 +145,7 @@
             <el-option label="手工调整" value="manual" />
             <el-option label="其他" value="other" />
           </el-select>
-          <el-checkbox v-model="onlyChanged" size="small">只看有变化</el-checkbox>
+          <el-checkbox v-model="onlyChanged" size="small">只看采用成本变化</el-checkbox>
           <span class="filter-count">{{ filteredHistory.length }} / {{ history.length }} 条</span>
         </section>
       </template>
@@ -160,7 +160,7 @@
       />
       <div v-else-if="!loading && filteredHistory.length === 0" class="filter-empty">
         <div class="filter-empty-title">没有符合筛选条件的记录</div>
-        <div class="filter-empty-sub">试试切换时间范围或取消“只看有变化”</div>
+        <div class="filter-empty-sub">试试切换时间范围或取消“只看采用成本变化”</div>
         <el-button size="small" @click="resetFilters">重置筛选</el-button>
       </div>
       <div v-else-if="!loading" class="timeline">
@@ -192,11 +192,18 @@
             </div>
 
             <div class="trigger-row">
+              <el-tag size="small" :type="item.cost_mode === 'manual' ? 'warning' : 'info'">{{ item.cost_mode === 'manual' ? '独立定价' : '按组成核算' }}</el-tag>
+              <span>参考测算 ¥{{ formatPrice(item.reference_cost) }}</span>
+              <span v-if="item.change_type === 'mode_switch'">成本模式切换</span>
+              <span v-if="item.change_type === 'legacy'">原有记录</span>
+            </div>
+            <div class="trigger-row">
               <span class="trigger-label">触发</span>
               <span class="trigger-text">{{ item.trigger_reason || '—' }}</span>
               <span v-if="item.created_by_name" class="operator">操作人 {{ item.created_by_name }}</span>
             </div>
 
+            <div class="section-sub">参考测算成本构成</div>
             <div class="stack-bar">
               <span
                 v-for="c in item._composition"
@@ -255,7 +262,7 @@
     <template #footer>
       <div class="dialog-footer">
         <span v-if="stats" class="footer-note">
-          共 {{ stats.count }} 条快照 · 当前成本 ¥{{ formatPrice(stats.current) }}
+          共 {{ stats.count }} 条快照 · 当前采用成本 ¥{{ formatPrice(stats.current) }}
         </span>
         <span v-else class="footer-note">成本变化后会自动生成快照</span>
         <el-button type="primary" @click="dialogVisible = false">关闭</el-button>

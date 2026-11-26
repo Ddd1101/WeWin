@@ -228,6 +228,10 @@ private fun ProductDetailContent(
         if (product.product_type == "finished") {
             item { PriceHeroCard(product = product) }
             item {
+                Text(if (product.finished?.cost_mode == "manual") "独立定价 · 采用成本不随材料变价" else "按组成自动核算", style = MaterialTheme.typography.titleMedium)
+                Text("参考测算成本 ¥${"%.2f".format(product.finished?.reference_cost ?: 0.0)}", style = MaterialTheme.typography.bodyMedium)
+            }
+            item {
                 Button(
                     onClick = { showSimulate = true },
                     modifier = Modifier.fillMaxWidth(),
@@ -992,10 +996,11 @@ private fun SimulateBottomSheet(
                 }
             }
 
-            val originalCost = beads.sumOf { (it.bead_purchase_cost ?: 0.0) * it.bead_weight * it.quantity } +
+            val originalCost = beads.sumOf { it.bead_cost_price * it.quantity } +
                 accessories.sumOf { it.accessory_cost_price * it.quantity } +
                 finished.labor_cost + finished.elastic_cost
 
+            if (finished.cost_mode == "manual") Text("本模拟仅测算组成成本与测算利润；独立采用成本 ¥${"%.2f".format(product.cost_price)} 不变。", style = MaterialTheme.typography.bodyMedium)
             var newCost = 0.0
             beads.forEachIndexed { index, b ->
                 val newPrice = beadNewPrices[index]?.toDoubleOrNull() ?: 0.0
@@ -1132,7 +1137,7 @@ private fun SimulateBeadRow(
     var fieldYInRoot by remember { mutableStateOf(0f) }
 
     val newPrice = newPriceText.toDoubleOrNull() ?: 0.0
-    val originalSubtotal = (bead.bead_purchase_cost ?: 0.0) * bead.bead_weight * bead.quantity
+    val originalSubtotal = bead.bead_cost_price * bead.quantity
     val newSubtotal = newPrice * bead.bead_weight * bead.quantity
     val delta = newSubtotal - originalSubtotal
     val deltaColor = if (delta > 0) Color(0xFFEF4444) else Color(0xFF10B981)
@@ -1565,7 +1570,7 @@ private fun SimulateSummary(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SummaryMetricDark(
-                    label = "新成本",
+                    label = "新测算成本",
                     value = "¥${"%.2f".format(newCost)}",
                     subValue = "原 ¥${"%.2f".format(originalCost)}",
                     valueColor = costColor,
