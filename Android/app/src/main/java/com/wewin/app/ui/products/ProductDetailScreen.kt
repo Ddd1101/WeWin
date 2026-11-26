@@ -26,9 +26,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -49,6 +51,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -75,6 +78,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import coil.compose.AsyncImage
+import androidx.compose.ui.res.painterResource
+import com.wewin.app.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.wewin.app.data.remote.dto.AccessoryDto
@@ -100,6 +105,19 @@ fun ProductDetailScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var confirmDelete by remember { mutableStateOf(false) }
+    LaunchedEffect(uiState.deleteSuccess) { if (uiState.deleteSuccess) onBack() }
+    if (confirmDelete) AlertDialog(
+        onDismissRequest = { confirmDelete = false }, title = { Text("删除商品") },
+        text = { Text("确定删除 ${uiState.product?.code.orEmpty()}？") },
+        confirmButton = { TextButton(onClick = { confirmDelete = false; viewModel.deleteProduct() }) { Text("删除") } },
+        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("取消") } }
+    )
+    if (uiState.deleteError != null) AlertDialog(
+        onDismissRequest = viewModel::clearDeleteError, title = { Text("删除未完成") },
+        text = { Text(uiState.deleteError.orEmpty()) },
+        confirmButton = { TextButton(onClick = viewModel::clearDeleteError) { Text("知道了") } }
+    )
 
     // 从编辑页返回时（ON_RESUME）自动刷新数据，确保显示最新的图片等信息
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -130,7 +148,10 @@ fun ProductDetailScreen(
                 actions = {
                     val product = uiState.product
                     if (product != null) {
-                        IconButton(onClick = { onEdit(product.id) }) {
+                        IconButton(onClick = { confirmDelete = true }, enabled = !uiState.isDeleting) {
+                            Icon(Icons.Filled.Delete, contentDescription = "删除商品")
+                        }
+                        IconButton(onClick = { onEdit(product.id) }, enabled = !uiState.isDeleting) {
                             Icon(
                                 imageVector = Icons.Filled.Edit,
                                 contentDescription = "编辑"
@@ -237,8 +258,18 @@ private fun ProductDetailContent(
             item { FinishedInfoCard(finished = finished) }
         }
 
+        product.children_clothing?.let { clothing ->
+            item { DetailCard(title = "童装信息") {
+                InfoRow("面料", clothing.fabric.orEmpty().ifBlank { "-" })
+                InfoRow("尺码", clothing.size.orEmpty().ifBlank { "-" })
+                InfoRow("颜色", clothing.color.orEmpty().ifBlank { "-" })
+                InfoRow("季节", clothing.season.orEmpty().ifBlank { "-" })
+                InfoRow("性别", clothing.gender.orEmpty().ifBlank { "-" })
+                InfoRow("年龄段", clothing.age_range.orEmpty().ifBlank { "-" })
+            } }
+        }
         if (product.skus.isNotEmpty()) {
-            item { SkuListCard(skus = product.skus) }
+            item { SkuListCard(skus = product.skus, isClothing = product.product_type == "children_clothing") }
         }
 
         if (error != null) {
@@ -274,6 +305,8 @@ private fun ProductImage(imageUrl: String?) {
     val shape = RoundedCornerShape(12.dp)
     if (!imageUrl.isNullOrBlank()) {
         AsyncImage(
+            placeholder = painterResource(R.drawable.ic_image_placeholder),
+            error = painterResource(R.drawable.ic_image_placeholder),
             model = imageUrl,
             contentDescription = "商品图片",
             modifier = Modifier
@@ -430,10 +463,10 @@ private fun BasicInfoCard(product: ProductDto) {
             if (product.product_type != "finished") {
                 InfoRow(
                     label = "采购成本",
-                    value = "¥${"%.2f".format(product.purchase_cost)} /克"
+                    value = "¥${"%.2f".format(product.purchase_cost)}" + if (product.product_type == "bead") " /克" else ""
                 )
                 InfoRow(
-                    label = "单颗成本",
+                    label = if (product.product_type == "bead") "单颗成本" else "成本价格",
                     value = "¥${"%.2f".format(product.cost_price)}"
                 )
                 InfoRow(
@@ -697,17 +730,17 @@ private fun FinishedAccessoryItemRow(item: FinishedAccessoryItemDto) {
 }
 
 @Composable
-private fun SkuListCard(skus: List<SkuDto>) {
+private fun SkuListCard(skus: List<SkuDto>, isClothing: Boolean = false) {
     DetailCard(title = "SKU 列表") {
         skus.forEach { sku ->
-            SkuItemRow(sku = sku)
+            SkuItemRow(sku = sku, isClothing = isClothing)
             Spacer(Modifier.height(8.dp))
         }
     }
 }
 
 @Composable
-private fun SkuItemRow(sku: SkuDto) {
+private fun SkuItemRow(sku: SkuDto, isClothing: Boolean = false) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         shape = RoundedCornerShape(8.dp),
@@ -747,7 +780,7 @@ private fun SkuItemRow(sku: SkuDto) {
 
             val specParts = buildList {
                 sku.material?.let { add(it) }
-                sku.size?.let { add("${it}mm") }
+                sku.size?.let { add(if (isClothing) "尺码 $it" else "${it}mm") }
                 sku.color?.let { add(it) }
             }
             if (specParts.isNotEmpty()) {
@@ -758,7 +791,7 @@ private fun SkuItemRow(sku: SkuDto) {
                 )
             }
 
-            Row(
+            if (!isClothing) Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {

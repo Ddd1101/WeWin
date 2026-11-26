@@ -47,6 +47,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -65,6 +69,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import androidx.compose.ui.res.painterResource
+import com.wewin.app.R
 import com.wewin.app.data.remote.dto.ProductDto
 import com.wewin.app.data.remote.dto.ProductStatsDto.ProductStats
 import com.wewin.app.data.remote.dto.SkuDto
@@ -77,6 +83,12 @@ fun ProductListScreen(
     viewModel: ProductListViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val owner = LocalLifecycleOwner.current
+    DisposableEffect(owner, viewModel) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) viewModel.refresh() }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
 
     Scaffold(
         topBar = {
@@ -119,17 +131,7 @@ fun ProductListScreen(
                 onSearch = viewModel::search
             )
 
-            val keyword = uiState.searchKeyword.trim()
-            val filteredProducts = remember(uiState.products, keyword) {
-                if (keyword.isEmpty()) {
-                    uiState.products
-                } else {
-                    uiState.products.filter { product ->
-                        product.code.contains(keyword, ignoreCase = true) ||
-                            product.name.contains(keyword, ignoreCase = true)
-                    }
-                }
-            }
+            val filteredProducts = uiState.products
 
             ProductListContent(
                 uiState = uiState,
@@ -157,6 +159,9 @@ private fun ProductListContent(
     val listState = rememberLazyListState()
     var expandedIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
 
+    LaunchedEffect(uiState.isLoading) {
+        if (uiState.isLoading) { expandedIds = emptySet(); listState.scrollToItem(0) }
+    }
     val shouldLoadMore by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -209,7 +214,7 @@ private fun ProductListContent(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(filteredProducts) { product ->
+                    items(filteredProducts, key = { it.id }) { product ->
                         val isExpanded = expandedIds.contains(product.id)
                         ProductCard(
                             product = product,
@@ -228,6 +233,12 @@ private fun ProductListContent(
                             skuLoadState = uiState.skuMap[product.id],
                             onRetryLoadSkus = { onRetryLoadSkus(product.id, product.skus) }
                         )
+                    }
+                    if (uiState.error != null) item {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(uiState.error, color = MaterialTheme.colorScheme.error)
+                            Button(onClick = onLoadMore) { Text("重试加载") }
+                        }
                     }
                     if (uiState.isLoadingMore) {
                         item {
@@ -258,34 +269,35 @@ private fun StatsCards(stats: ProductStats?) {
     ) {
         StatCard(
             label = "总数",
-            count = stats?.total_count ?: 0,
+            count = stats?.total_count,
             color = MaterialTheme.colorScheme.primary
         )
         StatCard(
             label = "启用",
-            count = stats?.active_count ?: 0,
+            count = stats?.active_count,
             color = MaterialTheme.colorScheme.tertiary
         )
         StatCard(
             label = "串珠",
-            count = stats?.bead_count ?: 0,
+            count = stats?.bead_count,
             color = MaterialTheme.colorScheme.primary
         )
         StatCard(
             label = "配件",
-            count = stats?.accessory_count ?: 0,
+            count = stats?.accessory_count,
             color = MaterialTheme.colorScheme.tertiary
         )
+        StatCard(label = "童装", count = stats?.children_clothing_count, color = MaterialTheme.colorScheme.tertiary)
         StatCard(
             label = "成品",
-            count = stats?.finished_count ?: 0,
+            count = stats?.finished_count,
             color = MaterialTheme.colorScheme.secondary
         )
     }
 }
 
 @Composable
-private fun StatCard(label: String, count: Int, color: Color) {
+private fun StatCard(label: String, count: Int?, color: Color) {
     Card(
         modifier = Modifier.width(96.dp),
         colors = CardDefaults.cardColors(
@@ -299,7 +311,7 @@ private fun StatCard(label: String, count: Int, color: Color) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = count.toString(),
+                text = count?.toString() ?: "—",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = color
@@ -329,7 +341,8 @@ private fun TypeFilterChips(
             null to "全部",
             "bead" to "串珠",
             "accessory" to "配件",
-            "finished" to "成品"
+            "finished" to "成品",
+            "children_clothing" to "童装"
         )
         chips.forEach { (type, label) ->
             FilterChip(
@@ -853,6 +866,8 @@ private fun ProductThumbnail(imageUrl: String?) {
     val shape = RoundedCornerShape(8.dp)
     if (!imageUrl.isNullOrBlank()) {
         AsyncImage(
+            placeholder = painterResource(R.drawable.ic_image_placeholder),
+            error = painterResource(R.drawable.ic_image_placeholder),
             model = imageUrl,
             contentDescription = null,
             modifier = Modifier

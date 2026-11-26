@@ -41,7 +41,8 @@ interface ApiService {
         @Query("is_active") isActive: String? = null,
         @Query("ordering") ordering: String? = null,
         @Query("page") page: Int = 1,
-        @Query("page_size") pageSize: Int = 50
+        @Query("page_size") pageSize: Int = 50,
+        @Query("search") search: String? = null
     ): Response<ProductListResponse>
 
     @GET("api/store/products/{id}/detail/")

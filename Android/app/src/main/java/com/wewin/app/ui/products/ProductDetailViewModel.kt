@@ -10,13 +10,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import java.io.IOException
 
 data class ProductDetailUiState(
     val product: ProductDto? = null,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isDeleting: Boolean = false,
+    val deleteSuccess: Boolean = false,
+    val deleteError: String? = null
 )
 
 class ProductDetailViewModel(
@@ -71,6 +75,24 @@ class ProductDetailViewModel(
                         error = "加载失败：${e.message ?: "未知错误"}"
                     )
                 }
+            }
+        }
+    }
+
+    fun clearDeleteError() { _uiState.update { it.copy(deleteError = null) } }
+
+    fun deleteProduct() {
+        if (_uiState.value.isDeleting) return
+        _uiState.update { it.copy(isDeleting = true, deleteError = null) }
+        viewModelScope.launch {
+            try {
+                val response = apiService.deleteProduct(productId)
+                if (response.isSuccessful) _uiState.update { it.copy(isDeleting = false, deleteSuccess = true) }
+                else _uiState.update { it.copy(isDeleting = false, deleteError = parseError(response.code(), response.errorBody()?.string())) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isDeleting = false, deleteError = if (e is IOException) "网络连接失败，请检查网络" else "删除失败，请稍后重试") }
             }
         }
     }
