@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
+from django.db.models import Q
 from django.core.exceptions import ValidationError
 from utils.media import product_mutation, delete_image_after_commit, StorageUnavailable, image_value
 import json
@@ -89,6 +90,10 @@ def get_products(request):
             products = products.order_by(ordering)
 
         # 分页
+        search = request.GET.get('search', '').strip()
+        if search:
+            products = products.filter(Q(code__icontains=search) | Q(name__icontains=search))
+
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 50))
         offset = (page - 1) * page_size

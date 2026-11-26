@@ -160,3 +160,17 @@ class DeploymentTests(TransactionTestCase):
         response = self.update(name='Updated text')
         self.assertEqual(response.status_code, 200, response.content)
         self.assertTrue(ProductSku.objects.filter(pk=sku.pk).exists())
+
+    def test_search_finds_older_product_before_paging_and_keeps_company_isolation(self):
+        target = Product.objects.create(code='SEARCH-OLDER', name='Older target', product_type=ProductType.ACCESSORY,
+                                        company=self.company, selling_price=1)
+        Product.objects.bulk_create([Product(code=f'NEWER-{index}', name='Newer record', product_type=ProductType.ACCESSORY,
+                                            company=self.company, selling_price=1) for index in range(55)])
+        Product.objects.create(code='SEARCH-OTHER', name='Older target', product_type=ProductType.ACCESSORY,
+                               company=self.other, selling_price=1)
+        response = self.client.get('/api/store/products/', {'search': 'SEARCH', 'page_size': 50})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['total_count'], 1)
+        self.assertEqual([row['id'] for row in response.json()['products']], [target.pk])
+        by_name = self.client.get('/api/store/products/', {'search': 'Older target'})
+        self.assertEqual([row['id'] for row in by_name.json()['products']], [target.pk])
