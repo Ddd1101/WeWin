@@ -47,3 +47,7 @@ adb -s <serial> shell am start -n com.wewin.app/.MainActivity
 ## 真机验证
 
 使用 `P0110`（Android 17 / API37）验证当前 HTTPS 构建。详细范围、发现的问题、修复与清理结果见 [真机验证记录](../docs/android-device-validation-2026-11-26.md)。APK为调试构建，正式签名发布另行配置。
+
+## 1.1.0 成品成本模式
+
+成品编辑支持按组成核算与独立整件定价。独立定价填写包含整件费用的总成本，调整成本或切换模式必须填写原因；详情展示采用成本和参考测算，克价模拟不覆盖独立成本。完整成本历史在Web查看。接口与迁移说明见 [成品成本模式](../docs/finished-cost-modes.md)。

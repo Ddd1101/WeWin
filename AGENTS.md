@@ -205,6 +205,16 @@ Company（企业）
 
 ---
 
+## 手串成品成本约定
+
+- `FinishedProduct.cost_mode` 区分auto组成核算与manual独立整件定价；manual_cost为包含整件费用的采用成本，不再叠加工费。
+- 组成始终可维护，reference_cost只用于参考测算。材料变价不能覆盖manual采用成本，利润使用顶层cost_price。
+- 保存、重算、详情/列表共用 `store/views/helpers.py` 成本入口；客户端传入cost_price不得覆盖成品采用成本。
+- 模式切换/独立成本调整要求cost_note；快照保存模式、采用成本、参考测算、原因及BOM。旧历史金额不重算，模式切换金额不变也留记录。
+- 验证：`python manage.py test store.test_finished_cost_modes --noinput`；两端行为与API约定见 `docs/finished-cost-modes.md`。
+
+---
+
 ## 重要约定与注意事项
 
 1. **企业数据隔离**：所有业务查询必须按 `request.user.company` 过滤，禁止跨企业访问。
